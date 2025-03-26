@@ -1,0 +1,15 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: onsdigital/dp-concourse-tools-nancy
+    tag: latest
+
+inputs:
+  - name: dis-bundle-api
+    path: dis-bundle-api
+
+run:
+  path: dis-bundle-api/ci/scripts/audit.sh
