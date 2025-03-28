@@ -69,7 +69,7 @@ job "dis-bundle-api" {
       }
 
       vault {
-        policies = ["dis-bundle-api-publishing"]
+        policies = ["dis-bundle-api"]
       }
     }
   }
