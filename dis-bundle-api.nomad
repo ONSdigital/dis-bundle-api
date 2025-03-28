@@ -26,7 +26,7 @@ job "dis-bundle-api" {
       mode     = "delay"
     }
 
-    task "dis-bundle-api-publishing" {
+    task "dis-bundle-api" {
       driver = "docker"
 
       artifact {
