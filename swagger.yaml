@@ -1,130 +1,391 @@
 swagger: "2.0"
 info:
-  title: "dis-bundle-api"
-  description: "The dis-bundle-api is a backend service for managing and publishing datasets and content as bundles, similar to Florence’s collections."
-  version: 1.0.0
+  description: "An API which facilitates the creation, modification, and deletion of bundles.  A bundle is a 
+  collection of datasets which are to be published at the same date and time."
+  version: "1.0.0"
+  title: "Bundle Administration"
   license:
     name: "Open Government Licence v3.0"
     url: "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
 basePath: "/v1"
-schemes:
-  - http
 tags:
-  - name: "hello"
-  - name: "private"
+- name: "Private"
+  description: "Endpoints that are not available to the public"
+schemes:
+- "http"
+parameters:
+  bundle:
+    required: true
+    name: bundle
+    schema:
+      $ref: '#/definitions/Bundle'
+    description: "The bundle definition"
+    in: body
+  bundle_id:
+    name: id
+    type: string
+    required: true
+    description: "The unique bundle ID for grouping datasets"
+    in: path
+  content:
+    required: true
+    name: content
+    schema:
+      $ref: '#/definitions/Content'
+    description: "The content definition"
+    in: body
+  content_id:
+    name: content_id
+    type: string
+    required: true
+    description: "The unique content ID for an item in a bundle"
+    in: path
+  limit:
+    name: limit
+    description: "Maximum number of items that will be returned. A value of zero will return zero items."
+    in: query
+    required: false
+    type: integer
+    default: 20
+    minimum: 0
+    maximum: 1000
+  offset:
+    name: offset
+    description: "Starting index of the items array that will be returned. By default it is zero, meaning that the returned items will start from the beginning."
+    in: query
+    required: false
+    type: integer
+    default: 0
+    minimum: 0
+  update_bundle:
+    required: true
+    name: update_bundle
+    schema:
+      $ref: '#/definitions/Bundle'
+    description: "The fields to update in the bundle"
+    in: body
+securityDefinitions:
+  Authorization:
+    name: Authorization
+    description: "Access token provided by Auth Service in a Bearer format. Can be a human or service user token."
+    in: header
+    type: apiKey
 paths:
-  /hello:
+  /bundles:
     get:
       tags:
-        - hello
-      summary: Example hello world endpoint
-      description: Returns an example payload.
+        - "Private"
+      summary: "List bundles"
+      description: "Returns a list of all bundles available."
+      parameters:
+        - $ref: "#/parameters/limit"
+        - $ref: "#/parameters/offset"
+      security:
+        - {}
+        - Authorization: []
       produces:
-        - application/json
+        - "application/json"
       responses:
         200:
-          description: OK
+          description: "A json list containing bundles"
           schema:
-            $ref: "#/definitions/HelloResponse"
-        500:
-          $ref: '#/responses/InternalError'
-
-  /health:
-    get:
-      tags:
-        - private
-      summary: "Returns API's health status"
-      description: "Returns health status of the API and checks on dependent services"
-      produces:
-        - application/json
-      responses:
-        200:
-          description: "Successfully returns OK status with checks of dependent services"
-          schema:
-            $ref: "#/definitions/Health"
-        429:
-          description: "Services warming up or degraded (at least one check in WARNING or CRITICAL status)"
+            $ref: "#/definitions/Bundles"
         500:
           $ref: "#/responses/InternalError"
-
+    post:
+      tags:
+      - "Private"
+      summary: "Create a bundle"
+      description: "Creates a bundle in the database which groups datasets together to be published on the same date and time"
+      produces:
+      - "application/json"
+      parameters:
+      - $ref: '#/parameters/bundle'
+      responses:
+        201:
+          description: "bundle was created"
+          schema:
+            $ref: '#/definitions/Bundle'
+        400:
+          description: "Invalid request body"
+        500:
+          $ref: '#/responses/InternalError'
+  /bundles/{id}:
+    parameters:
+      - $ref: '#/parameters/bundle_id'
+    get:
+      tags:
+      - "Private"
+      summary: "Get a bundle"
+      description: "Get information for a specific bundle"
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "The bundle was found and document is returned"
+          schema:
+            $ref: '#/definitions/Bundle'
+        404:
+           $ref: '#/responses/BundleNotFound'
+        500:
+          $ref: '#/responses/InternalError'
+    put:
+      tags:
+      - "Private"
+      summary: "Update a bundle"
+      description: "Update the bundle by providing updated information."
+      parameters:
+      - $ref: '#/parameters/update_bundle'
+      responses:
+        200:
+          description: "The bundle has been updated"
+          schema:
+            $ref: '#/definitions/Bundle'
+        400:
+          description: "Invalid request body"
+        404:
+          $ref: '#/responses/BundleNotFound'
+        500:
+          $ref: '#/responses/InternalError'
+    delete:
+      tags:
+      - "Private"
+      summary: "Delete a bundle"
+      description: "Deletes a bundle and removes it from the scheduler if it's for a scheduled publication."
+      parameters:
+        - $ref: '#/parameters/bundle_id'
+      responses:
+        204:
+          description: "The bundle was removed"
+        404:
+          description: "The bundle was not found"
+        500:
+          $ref: '#/responses/InternalError'
+  /bundles/{id}/contents:
+    parameters:
+      - $ref: '#/parameters/bundle_id'
+    get:
+      parameters:
+        - $ref: "#/parameters/limit"
+        - $ref: "#/parameters/offset"
+      tags:
+        - "Private"
+      summary: "Get a list of contents within a bundle"
+      description: "Get a list of contents within a bundle"
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "The bundle was found and the list of contents is returned"
+          schema:
+            $ref: '#/definitions/Contents'
+        404:
+           $ref: '#/responses/BundleNotFound'
+        500:
+          $ref: '#/responses/InternalError'
+    post:
+      tags:
+      - "Private"
+      summary: "Add a dataset item to a bundle"
+      description: "Adds the dataset item to the list of items to be published as part of the bundle"
+      produces:
+      - "application/json"
+      parameters:
+      - $ref: '#/parameters/content'
+      responses:
+        201:
+          description: "Content was added"
+          schema:
+            $ref: '#/definitions/Bundle'
+        400:
+          description: "Invalid request body"
+        500:
+          $ref: '#/responses/InternalError'
+  /bundles/{id}/contents/{content_id}:
+    delete:
+      tags:
+      - "Private"
+      summary: "Delete a content item from a bundle"
+      description: "Deletes a content item from a bundle."
+      parameters:
+        - $ref: '#/parameters/bundle_id'
+        - $ref: '#/parameters/content_id'
+      responses:
+        204:
+          description: "The content was removed"
+        404:
+          description: "The content item was not found"
+        500:
+          $ref: '#/responses/InternalError'
+  /bundles/{id}/publish:
+    put: 
+      parameters:
+        - $ref: '#/parameters/bundle_id'
+      tags:
+        - "Private"
+      summary: "Publishes a bundle"
+      description: "Marks the bundle and the items within as published so they can be accessed by the public."
+      responses:
+        200:
+          description: "The bundle was published"
+        404:
+          description: "The bundle was not found"
+        500:
+          $ref: '#/responses/InternalError'
 responses:
+  BundleNotFound:
+    description: "Bundle not found"
   InternalError:
     description: "Failed to process the request due to an internal error"
-
+  MethodNotSupported:
+    description: "Attempted to call an endpoint that is not supported for this API"
 definitions:
-  HelloResponse:
+  Bundles:
+    description: "A list of bundles"
     type: object
-    properties:
-      message:
-        type: string
-        description: "Message returned by hello world endpoint"
-        example: "Hello, world!"
-  Health:
-    type: object
-    properties:
-      status:
-        type: string
-        description: "The status of the API"
-        enum: ["OK", "WARNING", "CRITICAL"]
-      version:
-        type: object
+    allOf:
+      - $ref: "#/definitions/PaginationFields"
+      - type: object
         properties:
-          build_time:
+          items:
+            type: array
+            items:
+              $ref: "#/definitions/Bundle"
+  Bundle:
+    description: "A model for the response body when retrieving a bundle"
+    allOf:
+      - type: object
+        properties:
+          bundle_type:
+            description: "The type of bundle."
             type: string
-            description: "The build date and time of the API"
-            example: "2020-06-11T12:49:20+01:00"
-          git_commit:
+            enum:
+              - manual
+              - scheduled
+            example: "scheduled"
+          contents:
+            type: array
+            readOnly: true
+            items:
+              $ref: "#/definitions/Content"
+          creator:
+            description: "The user that created the bundle, taken from the auth token supplied.  This should only be set on initial creation of the bundle."
             type: string
-            description: "The git commit hash of the API"
-            example: "7c2febbf2b818175112478d4ffbadbee1b654f63"
-          language:
+            example: "publisher@ons.gov.uk"
+          created_date:
+            description: "The time and date the bundle was created on."
             type: string
-            description: "The programming language used to implement API"
-            example: "go"
-          language_version:
+            format: date-time
+            readOnly: true
+            example: "2025-04-04T07:00:00.000Z"
+          id:
             type: string
-            description: "The version of the programming language used to implement API"
-            example: "go1.14.3"
-          version:
+            description: "The bundle id"
+            readOnly: true
+            example: "9e4e3628-fc85-48cd-80ad-e005d9d283ff"
+          last_updated_by:
+            description: "The user that last updated the bundle, taken from the auth token supplied."
             type: string
-            description: "The version of API"
-            example: "1.0.0"
-      uptime:
-        type: string
-        description: "The uptime of API"
-        example: "34516"
-      start_time:
-        type: string
-        description: "The start date and time of API running"
-        example: "2020-06-11T11:49:21.520922Z"
-      checks:
-        type: array
-        items:
-          $ref: '#/definitions/HealthChecker'
-  HealthChecker:
+            example: "publisher@ons.gov.uk"
+          preview_teams:
+            description: "A list of teams who have permissions to view the dataset series in the bundle.  Supplied by AWS cognito."
+            type: array
+            items:
+              type: string
+          publish_date_time:
+            description: "The time and date of publication."
+            type: string
+            format: date-time
+            example: "2025-04-04T07:00:00.000Z"
+          state:
+            description: "The approval status of the overall bundle (TBC - values provided are examples only)."
+            type: string
+            enum:
+              - not_started
+              - in_progress
+              - approved
+            example: "approved"
+          title:
+            type: string
+            description: "The title of the bundle"
+            example: "CPI March 2025"
+          updated_date:
+            description: "The time and date the bundle was last updated."
+            type: string
+            readOnly: true
+            format: date-time
+            example: "2025-04-04T07:00:00.000Z"
+          wagtail_managed:
+            description: "If the bundle creation was initiated by wagtail"
+            type: boolean
+  Contents:
+    description: "A list of contents related to a bundle"
+    type: object
+    allOf:
+      - $ref: "#/definitions/PaginationFields"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/definitions/Content"
+  Content:
+    description: "A model which holds information about the datasets to be published as part of the bundle"
+    allOf:
+      - type: object
+        properties:
+          dataset_id:
+            type: string
+            description: "The dataset id of the item in the bundle"
+            example: "cpih"
+          edition_id:
+            type: string
+            description: "The edition id of the dataset item in the bundle"
+            example: "march"
+          item_id:
+            type: string
+            readOnly: true
+            description: "An auto generated id field to identify the item"
+            example: "DE3BC0B6-D6C4-4E20-917E-95D7EA8C91DC"
+          state:
+            description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
+            type: string
+            readOnly: true
+            enum:
+              - associated
+              - published
+            example: "published"
+          title:
+            description: "The title of the dataset series, hydrated from dataset-api when this item is retrieved from the database."
+            type: string
+            readOnly: true
+            example: "Consumer Prices Index"
+          url_path:
+            description: "The relavtive path of the item in the bundle to be published."
+            type: string
+            example: "/datasets/cpih/editions/time-series/versions/1"
+  PaginationFields:
     type: object
     properties:
-      name:
-        type: string
-        description: "The name of external service used by API"
-        enum: ["mongodb"]
-      status:
-        type: string
-        description: "The status of the external service"
-        enum: ["OK", "WARNING", "CRITICAL"]
-      message:
-        type: string
-        description: "The message status of the external service"
-        example: "mongodb is OK"
-      last_checked:
-        type: string
-        description: "The last health check date and time of the external service"
-        example: "2020-06-11T11:49:50.330089Z"
-      last_success:
-        type: string
-        description: "The last successful health check date and time of the external service"
-        example: "2020-06-11T11:49:50.330089Z"
-      last_failure:
-        type: string
-        description: "The last failed health check date and time of the external service"
-        example: "2019-09-22T11:48:51.0000001Z"
+      count:
+        description: "The number of items returned."
+        readOnly: true
+        type: integer
+        example: 20
+      limit:
+        description: "The number of items requested."
+        type: integer
+        default: 20
+        minimum: 0
+        maximum: 1000
+      offset:
+        description: "The offset of the first item to retrieve, starting at 0. Use this parameter as a pagination mechanism along with the limit parameter"
+        type: integer
+        example: 0
+        default: 0
+      total_count:
+        description: "The total number of items available."
+        readOnly: true
+        type: integer
+        example: 123
+ 
