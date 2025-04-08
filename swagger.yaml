@@ -1,7 +1,6 @@
 swagger: "2.0"
 info:
-  description: "An API which facilitates the creation, modification, and deletion of bundles.  A bundle is a 
-  collection of datasets which are to be published at the same date and time."
+  description: "An API which facilitates the creation, modification, and deletion of bundles.  A bundle is a collection of datasets which are to be published at the same date and time."
   version: "1.0.0"
   title: "Bundle Administration"
   license:
@@ -13,12 +12,26 @@ tags:
   description: "Endpoints that are not available to the public"
 schemes:
 - "http"
+security:
+- Authorization: []
 parameters:
+  after_filter:
+    name: after_filter
+    type: string
+    format: date
+    description: "The date from which to query bundle events"
+    in: query
+  before_filter:
+    name: before_filter
+    type: string
+    format: date
+    description: "The date to which to query bundle events"
+    in: query
   bundle:
     required: true
     name: bundle
     schema:
-      $ref: '#/definitions/Bundle'
+      $ref: "#/definitions/Bundle"
     description: "The bundle definition"
     in: body
   bundle_id:
@@ -27,11 +40,11 @@ parameters:
     required: true
     description: "The unique bundle ID for grouping datasets"
     in: path
-  content:
+  content_item:
     required: true
     name: content
     schema:
-      $ref: '#/definitions/Content'
+      $ref: "#/definitions/ContentItem"
     description: "The content definition"
     in: body
   content_id:
@@ -40,6 +53,14 @@ parameters:
     required: true
     description: "The unique content ID for an item in a bundle"
     in: path
+  if_match:
+    description: |
+      The RFC7232 `If-Match` header requires the provided entity-tag (`ETag` header value from the previous read request) to match the resources current entity-tag. This prevents the changes from being applied if there have been any changes to the resource since the client last read the resource. If the header value does not match a `412 Precondition Failed` error will be returned.
+    name: If-Match
+    in: header
+    required: true
+    type: string
+    pattern: ^(?:W/)?"(?:[!#-~])+"$
   limit:
     name: limit
     description: "Maximum number of items that will be returned. A value of zero will return zero items."
@@ -61,7 +82,7 @@ parameters:
     required: true
     name: update_bundle
     schema:
-      $ref: '#/definitions/Bundle'
+      $ref: "#/definitions/Bundle"
     description: "The fields to update in the bundle"
     in: body
 securityDefinitions:
@@ -80,16 +101,25 @@ paths:
       parameters:
         - $ref: "#/parameters/limit"
         - $ref: "#/parameters/offset"
-      security:
-        - {}
-        - Authorization: []
       produces:
         - "application/json"
       responses:
         200:
           description: "A json list containing bundles"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
             $ref: "#/definitions/Bundles"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         500:
           $ref: "#/responses/InternalError"
     post:
@@ -97,22 +127,36 @@ paths:
       - "Private"
       summary: "Create a bundle"
       description: "Creates a bundle in the database which groups datasets together to be published on the same date and time"
+      consumes:
+      - "application/json"
       produces:
       - "application/json"
       parameters:
-      - $ref: '#/parameters/bundle'
+      - $ref: "#/parameters/bundle"
       responses:
         201:
           description: "bundle was created"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
-            $ref: '#/definitions/Bundle'
+            $ref: "#/definitions/Bundle"
         400:
           description: "Invalid request body"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
   /bundles/{id}:
     parameters:
-      - $ref: '#/parameters/bundle_id'
+      - $ref: "#/parameters/bundle_id"
     get:
       tags:
       - "Private"
@@ -123,47 +167,84 @@ paths:
       responses:
         200:
           description: "The bundle was found and document is returned"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
-            $ref: '#/definitions/Bundle'
+            $ref: "#/definitions/Bundle"
         404:
-           $ref: '#/responses/BundleNotFound'
+           $ref: "#/responses/BundleNotFound"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
     put:
       tags:
       - "Private"
       summary: "Update a bundle"
       description: "Update the bundle by providing updated information."
+      consumes:
+      - "application/json"
       parameters:
-      - $ref: '#/parameters/update_bundle'
+      - $ref: "#/parameters/if_match"
+      - $ref: "#/parameters/update_bundle"
       responses:
         200:
           description: "The bundle has been updated"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
-            $ref: '#/definitions/Bundle'
+            $ref: "#/definitions/Bundle"
         400:
           description: "Invalid request body"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         404:
-          $ref: '#/responses/BundleNotFound'
+          $ref: "#/responses/BundleNotFound"
+        409:
+          $ref: "#/responses/Conflict"
+        412:
+          $ref: "#/responses/PreconditionFailed"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
     delete:
       tags:
       - "Private"
       summary: "Delete a bundle"
       description: "Deletes a bundle and removes it from the scheduler if it's for a scheduled publication."
+      consumes:
+      - "application/json"
       parameters:
-        - $ref: '#/parameters/bundle_id'
+        - $ref: "#/parameters/bundle_id"
       responses:
         204:
           description: "The bundle was removed"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         404:
           description: "The bundle was not found"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
   /bundles/{id}/contents:
     parameters:
-      - $ref: '#/parameters/bundle_id'
+      - $ref: "#/parameters/bundle_id"
     get:
       parameters:
         - $ref: "#/parameters/limit"
@@ -177,30 +258,56 @@ paths:
       responses:
         200:
           description: "The bundle was found and the list of contents is returned"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
-            $ref: '#/definitions/Contents'
+            $ref: "#/definitions/Contents"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         404:
-           $ref: '#/responses/BundleNotFound'
+           $ref: "#/responses/BundleNotFound"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
     post:
       tags:
       - "Private"
       summary: "Add a dataset item to a bundle"
       description: "Adds the dataset item to the list of items to be published as part of the bundle"
+      consumes:
+      - "application/json"
       produces:
       - "application/json"
       parameters:
-      - $ref: '#/parameters/content'
+      - $ref: "#/parameters/content_item"
       responses:
         201:
           description: "Content was added"
+          headers:
+            ETag:
+              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
-            $ref: '#/definitions/Bundle'
+            $ref: "#/definitions/Bundle"
         400:
           description: "Invalid request body"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
   /bundles/{id}/contents/{content_id}:
     delete:
       tags:
@@ -208,37 +315,107 @@ paths:
       summary: "Delete a content item from a bundle"
       description: "Deletes a content item from a bundle."
       parameters:
-        - $ref: '#/parameters/bundle_id'
-        - $ref: '#/parameters/content_id'
+        - $ref: "#/parameters/bundle_id"
+        - $ref: "#/parameters/content_id"
       responses:
         204:
           description: "The content was removed"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         404:
           description: "The content item was not found"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
   /bundles/{id}/publish:
     put: 
       parameters:
-        - $ref: '#/parameters/bundle_id'
+        - $ref: "#/parameters/bundle_id"
       tags:
         - "Private"
       summary: "Publishes a bundle"
       description: "Marks the bundle and the items within as published so they can be accessed by the public."
       responses:
-        200:
+        204:
           description: "The bundle was published"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
         404:
           description: "The bundle was not found"
         500:
-          $ref: '#/responses/InternalError'
+          $ref: "#/responses/InternalError"
+  /bundle-events:
+    get:
+      parameters:
+        - $ref: "#/parameters/bundle_id"
+        - $ref: "#/parameters/after_filter"
+        - $ref: "#/parameters/before_filter"
+        - $ref: "#/parameters/limit"
+        - $ref: "#/parameters/offset"
+      tags:
+        - "Private"
+      summary: "List the audit events for bundles."
+      description: "Audit log of bundle changes and views."
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: The list of change audit events for the bundle.
+          schema:
+            $ref: "#/definitions/EventsList"
+        401:
+          $ref: "#/responses/UnauthorisedError"
+        403:
+          $ref: "#/responses/ForbiddenError"
+        404:
+          $ref: "#/responses/BundleNotFound"
+        500:
+          $ref: "#/responses/InternalError"
+  /health:
+    get:
+      tags:
+        - private
+      summary: "Returns API's health status"
+      description: "Returns health status of the API and checks on dependent services"
+      produces:
+        - application/json
+      responses:
+        200:
+          description: "Successfully returns OK status with checks of dependent services"
+          schema:
+            $ref: "#/definitions/Health"
+        429:
+          description: "Services warming up or degraded (at least one check in WARNING or CRITICAL status)"
+        500:
+          $ref: "#/responses/InternalError"
 responses:
   BundleNotFound:
     description: "Bundle not found"
+  Conflict:
+    description: |
+      Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.
+    schema:
+      $ref: '#/definitions/ErrorList'
+  ForbiddenError:
+    description: Access denied.
+    schema:
+      $ref: "#/definitions/ErrorList"
   InternalError:
     description: "Failed to process the request due to an internal error"
   MethodNotSupported:
     description: "Attempted to call an endpoint that is not supported for this API"
+  PreconditionFailed:
+    description: |
+      Change rejected due to condition not being met. This is typically because the entity-tag in the `If-Match` request header does not match the current entity-tag of the resource.
+    schema:
+      $ref: '#/definitions/ErrorList'
+  UnauthorisedError:
+    description: Authentication information is missing or invalid
+    schema:
+      $ref: "#/definitions/ErrorList"
 definitions:
   Bundles:
     description: "A list of bundles"
@@ -267,7 +444,7 @@ definitions:
             type: array
             readOnly: true
             items:
-              $ref: "#/definitions/Content"
+              $ref: "#/definitions/ContentItem"
           creator:
             description: "The user that created the bundle, taken from the auth token supplied.  This should only be set on initial creation of the bundle."
             type: string
@@ -328,8 +505,8 @@ definitions:
           items:
             type: array
             items:
-              $ref: "#/definitions/Content"
-  Content:
+              $ref: "#/definitions/ContentItem"
+  ContentItem:
     description: "A model which holds information about the datasets to be published as part of the bundle"
     allOf:
       - type: object
@@ -364,6 +541,158 @@ definitions:
             description: "The relavtive path of the item in the bundle to be published."
             type: string
             example: "/datasets/cpih/editions/time-series/versions/1"
+  ErrorList:
+    description: "A list of errors that occurred."
+    type: object
+    properties:
+      errors:
+        type: array
+        items:
+          $ref: "#/definitions/Error"
+  Error:
+    description: "The details of a specific error."
+    type: object
+    properties:
+      code:
+        type: string
+        description: "Code representing the type of error that occurred for use by consuming systems to identify error types."
+        enum:
+          - SomeError
+          - AnotherError
+      description:
+        type: string
+        description: "Human readable description of the error"
+  Event:
+    description: Details of a specific change event forming part of the change and audit log for a bundle.
+    type: object
+    readOnly: true
+    required:
+      - user_id
+      - action
+      - resource
+    properties:
+      created_at:
+        description: The date and time the event occurred.
+        type: string
+        format: date-time
+      user_id:
+        description: The ID of the user making the request.
+        type: string
+        example: 0889d599-3f0e-4564-9d6e-9455a6b73da7
+      user_email:
+        description: The email of the user making the request. This is only populated if the user is a human user.
+        type: string
+        format: email
+        example: publisher@ons.gov.uk
+      action:
+        description: The action taken by the user.
+        type: string
+        enum:
+          - CREATE
+          - READ
+          - UPDATE
+          - DELETE
+      resource:
+        description: The path of the API resource that was called.
+        type: string
+        example: /bundles/e58e8381-c6b2-4e5a-934c-8cbce9b4dc6f/contents/31fda76c-972e-4f73-a999-f9fc428ba74f
+      status_code:
+        description: The status code of the response from the request.
+        type: integer
+        example: 201
+      data:
+        description: |
+          The state of the resource following a change action. This only applies `create` and `update` actions.
+
+          This will be either a `Bundle` or `ContentItem` object, but as OpenAPI 2.0 does not support `oneOf`, no schema is shown.
+        type: object
+        example:
+          dataset_id: cpih
+          edition_id: march-2025
+          item_id: DE3BC0B6-D6C4-4E20-917E-95D7EA8C91DC
+          state: published
+          url_path: /datasets/cpih/editions/march-2025/versions/1
+  EventsList:
+    description: "The list of change events which form the change and audit log for a bundle."
+    type: object
+    readOnly: true
+    allOf:
+      - $ref: "#/definitions/PaginationFields"
+      - type: object
+        properties:
+          items:
+            type: array
+            items:
+              $ref: "#/definitions/Event"
+  Health:
+    type: object
+    properties:
+      status:
+        type: string
+        description: "The status of the API"
+        enum: ["OK", "WARNING", "CRITICAL"]
+      version:
+        type: object
+        properties:
+          build_time:
+            type: string
+            description: "The build date and time of the API"
+            example: "2020-06-11T12:49:20+01:00"
+          git_commit:
+            type: string
+            description: "The git commit hash of the API"
+            example: "7c2febbf2b818175112478d4ffbadbee1b654f63"
+          language:
+            type: string
+            description: "The programming language used to implement API"
+            example: "go"
+          language_version:
+            type: string
+            description: "The version of the programming language used to implement API"
+            example: "go1.14.3"
+          version:
+            type: string
+            description: "The version of API"
+            example: "1.0.0"
+      uptime:
+        type: string
+        description: "The uptime of API"
+        example: "34516"
+      start_time:
+        type: string
+        description: "The start date and time of API running"
+        example: "2020-06-11T11:49:21.520922Z"
+      checks:
+        type: array
+        items:
+          $ref: '#/definitions/HealthChecker'
+  HealthChecker:
+    type: object
+    properties:
+      name:
+        type: string
+        description: "The name of external service used by API"
+        enum: ["mongodb"]
+      status:
+        type: string
+        description: "The status of the external service"
+        enum: ["OK", "WARNING", "CRITICAL"]
+      message:
+        type: string
+        description: "The message status of the external service"
+        example: "mongodb is OK"
+      last_checked:
+        type: string
+        description: "The last health check date and time of the external service"
+        example: "2020-06-11T11:49:50.330089Z"
+      last_success:
+        type: string
+        description: "The last successful health check date and time of the external service"
+        example: "2020-06-11T11:49:50.330089Z"
+      last_failure:
+        type: string
+        description: "The last failed health check date and time of the external service"
+        example: "2019-09-22T11:48:51.0000001Z"
   PaginationFields:
     type: object
     properties:
