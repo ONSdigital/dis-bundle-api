@@ -18,15 +18,17 @@ parameters:
   after_filter:
     name: after_filter
     type: string
-    format: date
+    format: date-time
     description: "The date from which to query bundle events"
     in: query
+    required: false
   before_filter:
     name: before_filter
     type: string
-    format: date
+    format: date-time
     description: "The date to which to query bundle events"
     in: query
+    required: false
   bundle:
     required: true
     name: bundle
@@ -40,6 +42,13 @@ parameters:
     required: true
     description: "The unique bundle ID for grouping datasets"
     in: path
+  bundle_id_filter:
+    name: bundle
+    description: "The bundle ID to filter the bundle to return events for."
+    in: query
+    required: false
+    type: string
+    pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
   content_item:
     required: true
     name: content
@@ -55,7 +64,7 @@ parameters:
     in: path
   if_match:
     description: |
-      The RFC7232 `If-Match` header requires the provided entity-tag (`ETag` header value from the previous read request) to match the resources current entity-tag. This prevents the changes from being applied if there have been any changes to the resource since the client last read the resource. If the header value does not match a `412 Precondition Failed` error will be returned.
+      The RFC9110 `If-Match` header requires the provided entity-tag (`ETag` header value from the previous read request) to match the resources current entity-tag. This prevents the changes from being applied if there have been any changes to the resource since the client last read the resource. If the header value does not match a `412 Precondition Failed` error will be returned.
     name: If-Match
     in: header
     required: true
@@ -108,7 +117,7 @@ paths:
           description: "A json list containing bundles"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
@@ -116,6 +125,8 @@ paths:
               type: string
           schema:
             $ref: "#/definitions/Bundles"
+        400:
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
@@ -138,16 +149,19 @@ paths:
           description: "bundle was created"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
               description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
               type: string
+            Location:
+              description: The RFC9110 Location header field. Defines the access location (i.e. path) of the primary resource created for use in subsequent requests.
+              type: string
           schema:
             $ref: "#/definitions/Bundle"
         400:
-          description: "Invalid request body"
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
@@ -169,7 +183,7 @@ paths:
           description: "The bundle was found and document is returned"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
@@ -178,7 +192,7 @@ paths:
           schema:
             $ref: "#/definitions/Bundle"
         404:
-           $ref: "#/responses/BundleNotFound"
+           $ref: "#/responses/NotFound"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
@@ -192,6 +206,8 @@ paths:
       description: "Update the bundle by providing updated information."
       consumes:
       - "application/json"
+      produces:
+      - "application/json"
       parameters:
       - $ref: "#/parameters/if_match"
       - $ref: "#/parameters/update_bundle"
@@ -200,7 +216,7 @@ paths:
           description: "The bundle has been updated"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
@@ -209,13 +225,13 @@ paths:
           schema:
             $ref: "#/definitions/Bundle"
         400:
-          description: "Invalid request body"
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-          $ref: "#/responses/BundleNotFound"
+          $ref: "#/responses/NotFound"
         409:
           $ref: "#/responses/Conflict"
         412:
@@ -227,8 +243,6 @@ paths:
       - "Private"
       summary: "Delete a bundle"
       description: "Deletes a bundle and removes it from the scheduler if it's for a scheduled publication."
-      consumes:
-      - "application/json"
       parameters:
         - $ref: "#/parameters/bundle_id"
       responses:
@@ -239,7 +253,7 @@ paths:
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-          description: "The bundle was not found"
+          $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/contents:
@@ -260,7 +274,7 @@ paths:
           description: "The bundle was found and the list of contents is returned"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
@@ -268,12 +282,14 @@ paths:
               type: string
           schema:
             $ref: "#/definitions/Contents"
+        400:
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-           $ref: "#/responses/BundleNotFound"
+           $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
     post:
@@ -292,18 +308,23 @@ paths:
           description: "Content was added"
           headers:
             ETag:
-              description: The RFC7232 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
               pattern: ^(?:W/)?"(?:[!#-~])+"$
             Cache-Control:
               description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
               type: string
+            Location:
+              description: The RFC9110 Location header field. Defines the access location (i.e. path) of the primary resource created for use in subsequent requests.
+              type: string
           schema:
             $ref: "#/definitions/Bundle"
         400:
-          description: "Invalid request body"
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
+        404:
+          $ref: "#/responses/NotFound"
         403:
           $ref: "#/responses/ForbiddenError"
         500:
@@ -325,7 +346,7 @@ paths:
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-          description: "The content item was not found"
+          $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/publish:
@@ -344,13 +365,13 @@ paths:
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-          description: "The bundle was not found"
+          $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
   /bundle-events:
     get:
       parameters:
-        - $ref: "#/parameters/bundle_id"
+        - $ref: "#/parameters/bundle_id_filter"
         - $ref: "#/parameters/after_filter"
         - $ref: "#/parameters/before_filter"
         - $ref: "#/parameters/limit"
@@ -364,22 +385,34 @@ paths:
       responses:
         200:
           description: The list of change audit events for the bundle.
+          headers:
+            ETag:
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
           schema:
             $ref: "#/definitions/EventsList"
+        400:
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-          $ref: "#/responses/BundleNotFound"
+          $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
   /health:
     get:
       tags:
-        - private
+        - Private
       summary: "Returns API's health status"
       description: "Returns health status of the API and checks on dependent services"
+      security:
+        - {}
       produces:
         - application/json
       responses:
@@ -389,11 +422,13 @@ paths:
             $ref: "#/definitions/Health"
         429:
           description: "Services warming up or degraded (at least one check in WARNING or CRITICAL status)"
+          schema:
+            $ref: "#/definitions/Health"
         500:
-          $ref: "#/responses/InternalError"
+          description: Service is failing having at least one check with a CRITICAL status having exceeded the recovery grace period.
+          schema:
+            $ref: "#/definitions/Health"
 responses:
-  BundleNotFound:
-    description: "Bundle not found"
   Conflict:
     description: |
       Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.
@@ -405,8 +440,20 @@ responses:
       $ref: "#/definitions/ErrorList"
   InternalError:
     description: "Failed to process the request due to an internal error"
+    schema:
+      $ref: '#/definitions/ErrorList'
+  InvalidRequest:
+    description: Unable to process request due to a malformed or invalid request body or query parameter.
+    schema:
+      $ref: "#/definitions/ErrorList"
   MethodNotSupported:
     description: "Attempted to call an endpoint that is not supported for this API"
+    schema:
+      $ref: '#/definitions/ErrorList'
+  NotFound:
+    description: "The requested resource does not exist."
+    schema:
+      $ref: '#/definitions/ErrorList'
   PreconditionFailed:
     description: |
       Change rejected due to condition not being met. This is typically because the entity-tag in the `If-Match` request header does not match the current entity-tag of the resource.
