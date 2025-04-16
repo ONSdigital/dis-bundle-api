@@ -565,9 +565,13 @@ definitions:
             readOnly: true
             format: date-time
             example: "2025-04-04T07:00:00.000Z"
-          wagtail_managed:
-            description: "If the bundle creation was initiated by wagtail"
-            type: boolean
+          managed_by:
+            description: "The system that created and manages the bundle"
+            type: string
+            enum:
+              - WAGTAIL
+              - DATA-ADMIN
+            example: WAGTAIL
   Contents:
     description: "A list of contents related to a bundle"
     type: object
