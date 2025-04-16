@@ -10,6 +10,7 @@ import (
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
+	"github.com/ONSdigital/log.go/v2/log"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
@@ -74,10 +75,13 @@ func (e *ExternalServiceList) GetMongoDB(ctx context.Context, cfg config.MongoCo
 
 // DoGetMongoDB returns a MongoDB
 func (e *Init) DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error) {
-	mongodb, err := mongo.NewDBConnection(ctx, cfg)
-	if err != nil {
+	mongodb := &mongo.Mongo{
+		MongoConfig: cfg,
+	}
+	if err := mongodb.Init(ctx); err != nil {
 		return nil, err
 	}
+	log.Info(ctx, "listening to mongo db session", log.Data{"URI": mongodb.ClusterEndpoint})
 	return mongodb, nil
 }
 

@@ -5,10 +5,12 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
-	"github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 )
 
-type MongoConfig = mongodb.MongoDriverConfig
+type MongoConfig struct {
+	mongodriver.MongoDriverConfig
+}
 
 // Config represents service configuration for dis-bundle-api
 type Config struct {
@@ -46,18 +48,20 @@ func Get() (*Config, error) {
 		OTServiceName:              "dis-bundle-api",
 		OtelEnabled:                false,
 		MongoConfig: MongoConfig{
-			ClusterEndpoint:               "mongodb:27017",
-			Username:                      "",
-			Password:                      "",
-			Database:                      "bundles",
-			Collections:                   map[string]string{BundlesCollection: "bundles"},
-			ReplicaSet:                    "",
-			IsStrongReadConcernEnabled:    false,
-			IsWriteConcernMajorityEnabled: true,
-			ConnectTimeout:                5 * time.Second,
-			QueryTimeout:                  15 * time.Second,
-			TLSConnectionConfig: mongodb.TLSConnectionConfig{
-				IsSSL: false,
+			MongoDriverConfig: mongodriver.MongoDriverConfig{
+				ClusterEndpoint:               "localhost:27017",
+				Username:                      "",
+				Password:                      "",
+				Database:                      "bundles",
+				Collections:                   map[string]string{BundlesCollection: "bundles"},
+				ReplicaSet:                    "",
+				IsStrongReadConcernEnabled:    false,
+				IsWriteConcernMajorityEnabled: true,
+				ConnectTimeout:                5 * time.Second,
+				QueryTimeout:                  15 * time.Second,
+				TLSConnectionConfig: mongodriver.TLSConnectionConfig{
+					IsSSL: false,
+				},
 			},
 		},
 	}

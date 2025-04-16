@@ -1,24 +1,15 @@
 package steps
 
 import (
-	"io"
-	"strings"
+	"context"
 
 	"github.com/cucumber/godog"
-	"github.com/stretchr/testify/assert"
 )
 
-func (c *Component) RegisterSteps(ctx *godog.ScenarioContext) {
-	c.apiFeature.RegisterSteps(ctx)
-
-	ctx.Step(`^I should receive a hello-world response$`, c.iShouldReceiveAHelloworldResponse)
+func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
+	ctx.Step(`^there are no bundles$`, c.thereAreNoBundles)
 }
 
-func (c *Component) iShouldReceiveAHelloworldResponse() error {
-	responseBody := c.apiFeature.HTTPResponse.Body
-	body, _ := io.ReadAll(responseBody)
-
-	assert.Equal(c, `{"message":"Hello, World!"}`, strings.TrimSpace(string(body)))
-
-	return c.StepError()
+func (c *BundleComponent) thereAreNoBundles() error {
+	return c.MongoClient.Connection.DropDatabase(context.Background())
 }
