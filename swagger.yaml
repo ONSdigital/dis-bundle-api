@@ -16,14 +16,14 @@ security:
 - Authorization: []
 parameters:
   after_filter:
-    name: after_filter
+    name: after
     type: string
     format: date-time
     description: "The date from which to query bundle events"
     in: query
     required: false
   before_filter:
-    name: before_filter
+    name: before
     type: string
     format: date-time
     description: "The date to which to query bundle events"
@@ -87,6 +87,13 @@ parameters:
     type: integer
     default: 0
     minimum: 0
+  state:
+    required: true
+    name: state
+    schema:
+      $ref: "#/definitions/State"
+    description: "The state definition"
+    in: body
   update_bundle:
     required: true
     name: update_bundle
@@ -349,23 +356,41 @@ paths:
           $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
-  /bundles/{id}/publish:
+  /bundles/{id}/state:
     put: 
       parameters:
+        - $ref: "#/parameters/if_match"
         - $ref: "#/parameters/bundle_id"
+        - $ref: "#/parameters/state"
       tags:
         - "Private"
-      summary: "Publishes a bundle"
-      description: "Marks the bundle and the items within as published so they can be accessed by the public."
+      summary: "Updates the state of a bundle"
+      description: "Updates the state of a bundle and triggers any associated processes such as enabling public access to items in the bundle at publication time."
+      produces:
+      - "application/json"
+      consumes:
+      - "application/json"
       responses:
-        204:
-          description: "The bundle was published"
+        200:
+          description: "The state of the bundle has been updated"
+          headers:
+            ETag:
+              description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
+              type: string
+              pattern: ^(?:W/)?"(?:[!#-~])+"$
+            Cache-Control:
+              description: The RFC9111 Cache-Control header field for the response which instructs how to handle caching the resource.
+              type: string
+          schema:
+            $ref: "#/definitions/Bundle"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
           $ref: "#/responses/ForbiddenError"
         404:
           $ref: "#/responses/NotFound"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundle-events:
@@ -522,16 +547,17 @@ definitions:
             format: date-time
             example: "2025-04-04T07:00:00.000Z"
           state:
-            description: "The approval status of the overall bundle (TBC - values provided are examples only)."
+            description: "The state of the bundle."
             type: string
             enum:
-              - not_started
-              - in_progress
-              - approved
-            example: "approved"
+              - PENDING
+              - APPROVED
+              - RELEASED
+            example: APPROVED
           title:
             type: string
             description: "The title of the bundle"
+            minLength: 1
             example: "CPI March 2025"
           updated_date:
             description: "The time and date the bundle was last updated."
@@ -555,10 +581,18 @@ definitions:
               $ref: "#/definitions/ContentItem"
   ContentItem:
     description: "A model which holds information about the datasets to be published as part of the bundle"
-    allOf:
-      - type: object
+    type: object
+    properties:
+      content_type:
+        description: The type of content the item is.
+        type: string
+        enum:
+          - DATASET
+      dataset:
+        description: The metadata for a dataset item.
+        type: object
         properties:
-          dataset_id:
+          id:
             type: string
             description: "The dataset id of the item in the bundle"
             example: "cpih"
@@ -566,28 +600,28 @@ definitions:
             type: string
             description: "The edition id of the dataset item in the bundle"
             example: "march"
-          item_id:
-            type: string
-            readOnly: true
-            description: "An auto generated id field to identify the item"
-            example: "DE3BC0B6-D6C4-4E20-917E-95D7EA8C91DC"
-          state:
-            description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
-            type: string
-            readOnly: true
-            enum:
-              - associated
-              - published
-            example: "published"
           title:
             description: "The title of the dataset series, hydrated from dataset-api when this item is retrieved from the database."
             type: string
             readOnly: true
             example: "Consumer Prices Index"
-          url_path:
-            description: "The relavtive path of the item in the bundle to be published."
-            type: string
-            example: "/datasets/cpih/editions/time-series/versions/1"
+      id:
+        type: string
+        readOnly: true
+        description: "An auto generated id field to identify the item"
+        example: "de3bc0b6-d6c4-4e20-917e-95d7ea8c91dc"
+      state:
+        description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
+        type: string
+        readOnly: true
+        enum:
+          - associated
+          - published
+        example: "published"
+      url_path:
+        description: "The relavtive path of the item in the bundle to be published."
+        type: string
+        example: "/datasets/cpih/editions/time-series/versions/1"
   ErrorList:
     description: "A list of errors that occurred."
     type: object
@@ -604,7 +638,7 @@ definitions:
         type: string
         description: "Code representing the type of error that occurred for use by consuming systems to identify error types."
         enum:
-          - SomeError
+          - SomeError # TODO: Replace with list of actual error codes once defined
           - AnotherError
       description:
         type: string
@@ -764,4 +798,16 @@ definitions:
         readOnly: true
         type: integer
         example: 123
+  State:
+    description: "A model specific to updating the state of a bundle"
+    type: object
+    properties:
+      state:
+        description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
+        type: string
+        enum:
+          - PENDING
+          - APPROVED
+          - RELEASED
+        example: APPROVED
  
