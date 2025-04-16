@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 )
 
@@ -16,6 +18,8 @@ import (
 type Initialiser interface {
 	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
+	DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
+	DoGetHealthClient(name, url string) *health.Client
 }
 
 // HTTPServer defines the required methods from the HTTP server
