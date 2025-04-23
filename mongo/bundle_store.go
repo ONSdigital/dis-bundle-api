@@ -12,6 +12,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+type MongoDbClientMethods interface {
+	CreateBundle(ctx context.Context, bundle *models.Bundle) error
+	DeleteBundle(ctx context.Context, id string) error
+	GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error)
+	ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error)
+	UpdateBundle(ctx context.Context, id string, bundle *models.Bundle) error
+}
+
 // ListBundles retrieves all bundles
 func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error) {
 	bundles = []*models.Bundle{}
@@ -58,7 +66,9 @@ func buildGetBundleQuery(bundleID string) bson.M {
 // CreateBundle inserts a new bundle
 func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 	bundle.CreatedDate = time.Now()
-	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Insert(ctx, bundle)
+	collectionName := m.ActualCollectionName("BundlesCollection")
+
+	_, err := m.Connection.Collection(collectionName).Insert(ctx, bundle)
 
 	if err != nil {
 		return err

@@ -14,7 +14,6 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/stretchr/testify v1.10.0
 )
 
 require (
@@ -39,12 +38,13 @@ require (
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.263.0
-	github.com/ONSdigital/dp-mongodb-in-memory v1.8.0 // indirect
+	github.com/ONSdigital/dp-mongodb-in-memory v1.8.0
 	github.com/ONSdigital/dp-net/v3 v3.0.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

@@ -1,13 +1,70 @@
 package mongo
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	mim "github.com/ONSdigital/dp-mongodb-in-memory"
+	mongoDriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func TestMimMongo(t *testing.T) {
+	// Config for test mongo in memory instance
+	var (
+		ctx          = context.Background()
+		mongoVersion = "4.4.8"
+		mongoServer  *mim.Server
+		err          error
+	)
+
+	// Get the default app config to use when setting up mongo in memory
+	cfg, _ := config.Get()
+
+	Convey("", t, func() {
+
+		mongoServer, err = mim.Start(ctx, mongoVersion)
+		So(err, ShouldBeNil)
+		defer mongoServer.Stop(ctx)
+
+		conn, err := mongoDriver.Open(getMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections))
+		So(err, ShouldBeNil)
+		So(conn, ShouldNotBeNil)
+
+		mongodb := &Mongo{
+			MongoConfig: cfg.MongoConfig,
+			Connection:  conn,
+		}
+		So(mongodb, ShouldNotBeNil)
+		// Try to create a bundle
+		myBundle := models.Bundle{
+			ID:         "test",
+			BundleType: "test",
+		}
+		err = mongodb.CreateBundle(ctx, &myBundle)
+		So(err, ShouldBeNil)
+
+		returnedBundle, err := mongodb.GetBundle(ctx, myBundle.ID)
+		So(err, ShouldBeNil)
+		So(returnedBundle.BundleType, ShouldEqual, myBundle.BundleType)
+
+	})
+}
+
+// Custom config to work with mongo in memory
+func getMongoDriverConfig(mongoServer *mim.Server, database string, collections map[string]string) *mongoDriver.MongoDriverConfig {
+	return &mongoDriver.MongoDriverConfig{
+		ConnectTimeout:  5 * time.Second,
+		QueryTimeout:    5 * time.Second,
+		ClusterEndpoint: mongoServer.URI(),
+		Database:        database,
+		Collections:     collections,
+	}
+}
 
 func TestBuildListBundlesQuery(t *testing.T) {
 	t.Parallel()
