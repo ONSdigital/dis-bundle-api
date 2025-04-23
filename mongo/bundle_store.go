@@ -9,6 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -28,9 +29,9 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 	return bundles, totalCount, nil
 }
 
-func buildListBundlesQuery() (filter bson.M, sort bson.M) {
-	filter = bson.M{} // No filters yet; future: filter by state/title/etc.
-	sort = bson.M{"id": -1}
+func buildListBundlesQuery() (filter, sort bson.M) {
+	filter = bson.M{}
+	sort = bson.M{"_id": 1}
 	return
 }
 
@@ -46,13 +47,12 @@ func (m *Mongo) GetBundle(ctx context.Context, bundleID string) (*models.Bundle,
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 			return nil, apierrors.ErrBundleNotFound
 		}
-		return nil, err
 	}
 	return &result, nil
 }
 
 func buildGetBundleQuery(bundleID string) bson.M {
-	return bson.M{"id": bundleID}
+	return bson.M{"_id": bundleID}
 }
 
 // CreateBundle inserts a new bundle
@@ -68,34 +68,44 @@ func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 	return nil
 }
 
-// UpdateBundle updates or inserts a bundle
-func (m *Mongo) UpdateBundle(ctx context.Context, id string, bundle *models.Bundle) error {
-	update := bundleUpdateQuery(bundle)
+func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+	collectionName := m.ActualCollectionName("BundlesCollection")
+	filter := bson.M{"_id": id}
 
-	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).UpsertById(ctx, id, update)
+	updateData := bson.M{
+		"$set": bson.M{
+			"bundle_type":       update.BundleType,
+			"contents":          update.Contents,
+			"creator":           update.Creator,
+			"created_date":      update.CreatedDate,
+			"last_updated_by":   update.LastUpdatedBy,
+			"preview_teams":     update.PreviewTeams,
+			"publish_date_time": update.PublishDateTime,
+			"state":             update.State,
+			"title":             update.Title,
+			"updated_date":      update.UpdatedDate,
+			"wagtail_managed":   update.WagtailManaged,
+		},
+	}
 
+	_, err := m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
-}
 
-func bundleUpdateQuery(bundle *models.Bundle) bson.M {
-	return bson.M{
-		"$set":         bundle,
-		"$setOnInsert": bson.M{"created_date": bundle.CreatedDate},
-	}
+	// Re-fetch updated bundle to return full latest version
+	return m.GetBundle(ctx, id)
 }
 
 // DeleteBundle deletes a bundle by ID
-func (m *Mongo) DeleteBundle(ctx context.Context, id string) error {
-	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().DeleteById(ctx, id)
-
-	if err != nil {
+func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
+	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().Delete(ctx, bson.D{{Key: "_id", Value: id}}); err != nil {
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 			return apierrors.ErrBundleNotFound
 		}
 		return err
 	}
+
+	log.Info(context.TODO(), "bundle deleted", log.Data{"_id": id})
 	return nil
 }

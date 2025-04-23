@@ -9,7 +9,7 @@ import (
 )
 
 type Bundle struct {
-	ID              string          `bson:"id" json:"id"`
+	ID              string          `bson:"_id" json:"id"`
 	BundleType      string          `bson:"bundle_type" json:"bundle_type"`
 	Contents        []BundleContent `bson:"contents" json:"contents"`
 	Creator         string          `bson:"creator" json:"creator"`
