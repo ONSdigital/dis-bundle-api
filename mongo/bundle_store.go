@@ -106,6 +106,6 @@ func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
 		return err
 	}
 
-	log.Info(context.TODO(), "bundle deleted", log.Data{"_id": id})
+	log.Info(ctx, "bundle deleted", log.Data{"_id": id})
 	return nil
 }
