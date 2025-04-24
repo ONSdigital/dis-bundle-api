@@ -651,7 +651,7 @@ definitions:
           - published
         example: "published"
       url_path:
-        description: "The relavtive path of the item in the bundle to be published."
+        description: "The relative path of the item in the bundle to be published."
         type: string
         example: "/datasets/cpih/editions/time-series/versions/1"
   ErrorList:
@@ -731,10 +731,6 @@ definitions:
         description: The path of the API resource that was called.
         type: string
         example: /bundles/e58e8381-c6b2-4e5a-934c-8cbce9b4dc6f/contents/31fda76c-972e-4f73-a999-f9fc428ba74f
-      status_code:
-        description: The status code of the response from the request.
-        type: integer
-        example: 201
       data:
         description: |
           The state of the resource following a change action. This only applies `create` and `update` actions.
