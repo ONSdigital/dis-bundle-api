@@ -502,76 +502,104 @@ definitions:
               $ref: "#/definitions/Bundle"
   Bundle:
     description: "A model for the response body when retrieving a bundle"
-    allOf:
-      - type: object
+    type: object
+    required:
+      - bundle_type
+      - preview_teams
+      - title
+    properties:
+      bundle_type:
+        description: "The type of bundle."
+        type: string
+        enum:
+          - MANUAL
+          - SCHEDULED
+        example: SCHEDULED
+      contents:
+        type: array
+        readOnly: true
+        items:
+          $ref: "#/definitions/ContentItem"
+      created_by:
+        description: "The user that created the bundle, taken from the auth token supplied.  This should only be set on initial creation of the bundle."
+        readOnly: true
+        type: object
+        required:
+          - email
         properties:
-          bundle_type:
-            description: "The type of bundle."
+          email:
+            description: The email of the user who created the bundle.
             type: string
-            enum:
-              - manual
-              - scheduled
-            example: "scheduled"
-          contents:
-            type: array
-            readOnly: true
-            items:
-              $ref: "#/definitions/ContentItem"
-          creator:
-            description: "The user that created the bundle, taken from the auth token supplied.  This should only be set on initial creation of the bundle."
+            example: "publisher@ons.gov.uk"    
+      created_at:
+        description: "The time and date the bundle was created at."
+        type: string
+        format: date-time
+        readOnly: true
+        example: "2025-04-04T07:00:00.000Z"
+      id:
+        type: string
+        description: "The bundle id"
+        readOnly: true
+        minLength: 1
+        maxLength: 100
+        pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+        example: "9e4e3628-fc85-48cd-80ad-e005d9d283ff"
+      last_updated_by:
+        description: "The user that last updated the bundle, taken from the auth token supplied."
+        readOnly: true
+        type: object
+        required:
+          - email
+        properties:
+          email:
+            description: The email of the user who updated the bundle.
             type: string
-            example: "publisher@ons.gov.uk"
-          created_date:
-            description: "The time and date the bundle was created on."
-            type: string
-            format: date-time
-            readOnly: true
-            example: "2025-04-04T07:00:00.000Z"
-          id:
-            type: string
-            description: "The bundle id"
-            readOnly: true
-            example: "9e4e3628-fc85-48cd-80ad-e005d9d283ff"
-          last_updated_by:
-            description: "The user that last updated the bundle, taken from the auth token supplied."
-            type: string
-            example: "publisher@ons.gov.uk"
-          preview_teams:
-            description: "A list of teams who have permissions to view the dataset series in the bundle.  Supplied by AWS cognito."
-            type: array
-            items:
+            example: "publisher@ons.gov.uk"    
+      preview_teams:
+        description: "A list of teams who have permissions to view the dataset series in the bundle."
+        type: array
+        minLength: 0
+        items:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              description: The preview team ID.
               type: string
-          publish_date_time:
-            description: "The time and date of publication."
-            type: string
-            format: date-time
-            example: "2025-04-04T07:00:00.000Z"
-          state:
-            description: "The state of the bundle."
-            type: string
-            enum:
-              - PENDING
-              - APPROVED
-              - RELEASED
-            example: APPROVED
-          title:
-            type: string
-            description: "The title of the bundle"
-            minLength: 1
-            example: "CPI March 2025"
-          updated_date:
-            description: "The time and date the bundle was last updated."
-            type: string
-            readOnly: true
-            format: date-time
-            example: "2025-04-04T07:00:00.000Z"
-          managed_by:
-            description: "The system that created and manages the bundle"
-            type: string
-            enum:
-              - WAGTAIL
-              - DATA-ADMIN
-            example: WAGTAIL
+              example: 1253e849-01fd-4662-bee2-63253538da93
+      scheduled_at:
+        description: "The ISO8601 date-time the bundle is scheduled to publish at."
+        type: string
+        format: date-time
+        example: "2025-04-04T07:00:00.000Z"
+      state:
+        description: "The state of the bundle."
+        type: string
+        enum:
+          - PENDING
+          - APPROVED
+          - RELEASED
+        example: APPROVED
+      title:
+        type: string
+        description: "The title of the bundle"
+        minLength: 1
+        example: "CPI March 2025"
+      updated_at:
+        description: "The time and date the bundle was last updated."
+        type: string
+        readOnly: true
+        format: date-time
+        example: "2025-04-04T07:00:00.000Z"
+      managed_by:
+        description: "The system that created and manages the bundle"
+        type: string
+        enum:
+          - WAGTAIL
+          - DATA-ADMIN
+        example: WAGTAIL
   Contents:
     description: "A list of contents related to a bundle"
     type: object
@@ -605,7 +633,7 @@ definitions:
             description: "The edition id of the dataset item in the bundle"
             example: "march"
           title:
-            description: "The title of the dataset series, hydrated from dataset-api when this item is retrieved from the database."
+            description: "The title of the dataset item. Pre-release, this field will be hydrated from the dataset API when requested. Post-release, the bundle API will store a snapshot of the dataset metadata to be returned on subsequent requests."
             type: string
             readOnly: true
             example: "Consumer Prices Index"
@@ -615,7 +643,7 @@ definitions:
         description: "An auto generated id field to identify the item"
         example: "de3bc0b6-d6c4-4e20-917e-95d7ea8c91dc"
       state:
-        description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
+        description: "The approval status of the item. Pre-release, this field will be hydrated from the dataset API when requested. Post-release, the bundle API will store a snapshot of the dataset metadata to be returned on subsequent requests."
         type: string
         readOnly: true
         enum:
@@ -647,6 +675,22 @@ definitions:
       description:
         type: string
         description: "Human readable description of the error"
+      source:
+        description: The details of which field or parameter the error relates to. Used to return validation errors to 4xx requests. Only one of the properties below can be returned in any single error.
+        type: object
+        properties:
+          field:
+            description: The request body JSON field to which the error applies.
+            type: string
+            example: "created_by.email"
+          parameter:
+            description: The path or query parameter to which the error applies.
+            type: string
+            example: "limit"
+          header:
+            description: The header to which the error applies.
+            type: string
+            example: If-Match
   Event:
     description: Details of a specific change event forming part of the change and audit log for a bundle.
     type: object
@@ -660,12 +704,18 @@ definitions:
         description: The date and time the event occurred.
         type: string
         format: date-time
-      user_id:
-        description: The ID of the user making the request.
-        type: string
-        example: 0889d599-3f0e-4564-9d6e-9455a6b73da7
-      user_email:
-        description: The email of the user making the request. This is only populated if the user is a human user.
+      requested_by:
+        description: The user who made the request.
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            description: The ID of the user.
+            type: string
+            example: 0889d599-3f0e-4564-9d6e-9455a6b73da7
+      email:
+        description: The email of the user. This is only populated if the user is a human user.
         type: string
         format: email
         example: publisher@ons.gov.uk
@@ -807,11 +857,20 @@ definitions:
     type: object
     properties:
       state:
-        description: "The approval status of the item, hydrated from dataset-api when this item is retrieved from the database."
+        description: |
+          The current workflow state of the bundle as a whole.
+              
+          The possible states are:
+            * `PENDING`: Bundle has been created and is being populated with content changes.
+            * `IN_REVIEW`: Bundle has been submitted for review.
+            * `APPROVED`: Bundle has been approved and is awaiting release.
+            * `RELEASED`: Bundle has been released and is now public.
         type: string
         enum:
           - PENDING
+          - IN_REVIEW
           - APPROVED
           - RELEASED
         example: APPROVED
+        default: PENDING
  
