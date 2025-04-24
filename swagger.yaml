@@ -532,7 +532,7 @@ definitions:
             type: string
             example: "publisher@ons.gov.uk"    
       created_at:
-        description: "The time and date the bundle was created at."
+        description: "The ISO8601 date-time the bundle was created at."
         type: string
         format: date-time
         readOnly: true
@@ -588,7 +588,7 @@ definitions:
         minLength: 1
         example: "CPI March 2025"
       updated_at:
-        description: "The time and date the bundle was last updated."
+        description: "The ISO8601 date-time the bundle was last updated at."
         type: string
         readOnly: true
         format: date-time
