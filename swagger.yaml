@@ -578,13 +578,7 @@ definitions:
         format: date-time
         example: "2025-04-04T07:00:00.000Z"
       state:
-        description: "The state of the bundle."
-        type: string
-        enum:
-          - PENDING
-          - APPROVED
-          - RELEASED
-        example: APPROVED
+        $ref: "#/definitions/BundleState"
       title:
         type: string
         description: "The title of the bundle"
