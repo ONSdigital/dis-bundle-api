@@ -87,12 +87,12 @@ parameters:
     type: integer
     default: 0
     minimum: 0
-  state:
+  bundle_state:
     required: true
-    name: state
+    name: bundle_state
     schema:
-      $ref: "#/definitions/State"
-    description: "The state definition"
+      $ref: "#/definitions/BundleState"
+    description: "The state definition of the bundle as a whole."
     in: body
   update_bundle:
     required: true
@@ -361,7 +361,7 @@ paths:
       parameters:
         - $ref: "#/parameters/if_match"
         - $ref: "#/parameters/bundle_id"
-        - $ref: "#/parameters/state"
+        - $ref: "#/parameters/bundle_state"
       tags:
         - "Private"
       summary: "Updates the state of a bundle"
@@ -372,8 +372,11 @@ paths:
       - "application/json"
       responses:
         200:
-          description: "The state of the bundle has been updated"
+          description: "The state of the bundle that has been updated"
           headers:
+            Content-Location:
+              description: The RFC2616 `Content-Location` header indicating that the returned resource representation is actually located at a different location and that subsequent requests for the resource should be made to that location instead.
+              type: string
             ETag:
               description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
@@ -620,11 +623,11 @@ definitions:
         type: string
         enum:
           - DATASET
-      dataset:
-        description: The metadata for a dataset item.
+      metadata:
+        description: The metadata for the content item.
         type: object
         properties:
-          id:
+          dataset_id:
             type: string
             description: "The dataset id of the item in the bundle"
             example: "cpih"
@@ -637,6 +640,10 @@ definitions:
             type: string
             readOnly: true
             example: "Consumer Prices Index"
+          version_id:
+            type: integer
+            description: "The version id of the dataset item in the bundle"
+            example: 1
       id:
         type: string
         readOnly: true
@@ -647,13 +654,21 @@ definitions:
         type: string
         readOnly: true
         enum:
-          - associated
-          - published
-        example: "published"
-      url_path:
-        description: "The relative path of the item in the bundle to be published."
-        type: string
-        example: "/datasets/cpih/editions/time-series/versions/1"
+          - APPROVED
+          - PUBLISHED
+        example: PUBLISHED
+      links:
+        description: Navigational links for onward actions related to the content item.
+        type: object
+        properties:
+          edit:
+            description: "The URL to the admin page to make changes to the content item."
+            type: string
+            example: "https://publishing.ons.gov.uk/data-admin/edit/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
+          preview:
+            description: "The URL to the admin page to make changes to the content item."
+            type: string
+            example: "https://publishing.ons.gov.uk/data-admin/preview/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
   ErrorList:
     description: "A list of errors that occurred."
     type: object
@@ -680,9 +695,9 @@ definitions:
         type: object
         properties:
           field:
-            description: The request body JSON field to which the error applies.
+            description: The RFC 6901 JSON Pointer to the JSON field in the request body to which the error applies.
             type: string
-            example: "created_by.email"
+            example: "/preview_teams/0"
           parameter:
             description: The path or query parameter to which the error applies.
             type: string
@@ -714,11 +729,11 @@ definitions:
             description: The ID of the user.
             type: string
             example: 0889d599-3f0e-4564-9d6e-9455a6b73da7
-      email:
-        description: The email of the user. This is only populated if the user is a human user.
-        type: string
-        format: email
-        example: publisher@ons.gov.uk
+          email:
+            description: The email of the user. This is only populated if the user is a human user.
+            type: string
+            format: email
+            example: publisher@ons.gov.uk
       action:
         description: The action taken by the user.
         type: string
@@ -740,7 +755,7 @@ definitions:
         example:
           dataset_id: cpih
           edition_id: march-2025
-          item_id: DE3BC0B6-D6C4-4E20-917E-95D7EA8C91DC
+          item_id: de3bc0b6-d6c4-4e20-917e-95d7ea8c91dc
           state: published
           url_path: /datasets/cpih/editions/march-2025/versions/1
   EventsList:
@@ -848,25 +863,21 @@ definitions:
         readOnly: true
         type: integer
         example: 123
-  State:
-    description: "A model specific to updating the state of a bundle"
-    type: object
-    properties:
-      state:
-        description: |
-          The current workflow state of the bundle as a whole.
+  BundleState:
+    description: |
+      The current workflow state of the bundle as a whole.
               
-          The possible states are:
-            * `PENDING`: Bundle has been created and is being populated with content changes.
-            * `IN_REVIEW`: Bundle has been submitted for review.
-            * `APPROVED`: Bundle has been approved and is awaiting release.
-            * `RELEASED`: Bundle has been released and is now public.
-        type: string
-        enum:
-          - PENDING
-          - IN_REVIEW
-          - APPROVED
-          - RELEASED
-        example: APPROVED
-        default: PENDING
+      The possible states are:
+        * `DRAFT `: Bundle has been created and is being populated with content changes.
+        * `IN_REVIEW`: Bundle has been submitted for review.
+        * `APPROVED`: Bundle has been approved and is awaiting release.
+        * `PUBLISHED `: Bundle has been published and is now public.
+    type: string
+    enum:
+      - DRAFT
+      - IN_REVIEW
+      - APPROVED
+      - PUBLISHED
+    example: APPROVED
+    default: DRAFT
  

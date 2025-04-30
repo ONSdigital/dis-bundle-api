@@ -8,6 +8,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/features/steps"
 	componenttest "github.com/ONSdigital/dp-component-test"
+	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
 )
@@ -18,27 +19,36 @@ type ComponentTest struct {
 	MongoFeature *componenttest.MongoFeature
 }
 
-func (f *ComponentTest) InitializeScenario(ctx *godog.ScenarioContext) {
-	component, err := steps.NewComponent()
+func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
+	authorizationFeature := componenttest.NewAuthorizationFeature()
+	bundleFeature, err := steps.NewBundleComponent(f.MongoFeature.Server.URI())
 	if err != nil {
 		panic(err)
 	}
 
-	ctx.Before(func(ctx context.Context, sc *godog.Scenario) (context.Context, error) {
-		component.Reset()
+	apiFeature := componenttest.NewAPIFeature(bundleFeature.InitialiseService)
 
-		return ctx, nil
-	})
-
-	ctx.After(func(ctx context.Context, sc *godog.Scenario, err error) (context.Context, error) {
-		if closeErr := component.Close(); closeErr != nil {
-			panic(closeErr)
+	godogCtx.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
+		apiFeature.Reset()
+		if err := bundleFeature.Reset(); err != nil {
+			panic(err)
 		}
-
+		if err := f.MongoFeature.Reset(); err != nil {
+			log.Error(context.Background(), "failed to reset mongo feature", err)
+		}
+		authorizationFeature.Reset()
 		return ctx, nil
 	})
 
-	component.RegisterSteps(ctx)
+	godogCtx.After(func(ctx context.Context, _ *godog.Scenario, _ error) (context.Context, error) {
+		bundleFeature.Close()
+		authorizationFeature.Close()
+		return ctx, nil
+	})
+
+	bundleFeature.RegisterSteps(godogCtx)
+	apiFeature.RegisterSteps(godogCtx)
+	authorizationFeature.RegisterSteps(godogCtx)
 }
 
 func (f *ComponentTest) InitializeTestSuite(ctx *godog.TestSuiteContext) {

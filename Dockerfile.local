@@ -4,7 +4,6 @@ ENV GOCACHE=/go/.go/cache GOPATH=/go/.go/path TZ=Europe/London
 RUN GOBIN=/bin go install github.com/cespare/reflex@latest
 
 RUN git config --global --add safe.directory /go
-
 # Map between the working directories of dev and live
 RUN ln -s /go /dis-bundle-api
 WORKDIR /dis-bundle-api

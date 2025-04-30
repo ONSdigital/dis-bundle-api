@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/gorilla/mux"
 )
 
@@ -12,7 +13,7 @@ type API struct {
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, r *mux.Router) *API {
+func Setup(ctx context.Context, r *mux.Router, store *store.DataStore) *API {
 	api := &API{
 		Router: r,
 	}
