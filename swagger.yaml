@@ -518,11 +518,6 @@ definitions:
           - MANUAL
           - SCHEDULED
         example: SCHEDULED
-      contents:
-        type: array
-        readOnly: true
-        items:
-          $ref: "#/definitions/ContentItem"
       created_by:
         description: "The user that created the bundle, taken from the auth token supplied.  This should only be set on initial creation of the bundle."
         readOnly: true
