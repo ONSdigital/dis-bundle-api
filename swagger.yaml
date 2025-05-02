@@ -325,7 +325,7 @@ paths:
               description: The RFC9110 Location header field. Defines the access location (i.e. path) of the primary resource created for use in subsequent requests.
               type: string
           schema:
-            $ref: "#/definitions/Bundle"
+            $ref: "#/definitions/ContentItem"
         400:
           $ref: "#/responses/InvalidRequest"
         401:
