@@ -7,6 +7,16 @@ The dis-bundle-api is a backend service for managing and publishing datasets and
 * Run `make debug` to run application on http://localhost:29800
 * Run `make help` to see full list of make targets
 
+To run `make lint-api-spec` you require the Node version specified in [`.nvmrc`](.nvmrc) and to install `redocly/cli`:
+
+```sh
+   # Ensure you have the correct version of node installed
+   nvm install
+
+   # Install redocly
+   nvm exec -- npm install -g @redocly/cli
+```
+
 ### Dependencies
 
 * No further dependencies other than those defined in `go.mod`

@@ -8,12 +8,12 @@ info:
     url: "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
 basePath: "/v1"
 tags:
-- name: "Private"
-  description: "Endpoints that are not available to the public"
+  - name: "Private"
+    description: "Endpoints that are not available to the public"
 schemes:
-- "http"
+  - "http"
 security:
-- Authorization: []
+  - Authorization: []
 parameters:
   after_filter:
     name: after
@@ -142,15 +142,15 @@ paths:
           $ref: "#/responses/InternalError"
     post:
       tags:
-      - "Private"
+        - "Private"
       summary: "Create a bundle"
       description: "Creates a bundle in the database which groups datasets together to be published on the same date and time"
       consumes:
-      - "application/json"
+        - "application/json"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - $ref: "#/parameters/bundle"
+        - $ref: "#/parameters/bundle"
       responses:
         201:
           description: "bundle was created"
@@ -180,11 +180,11 @@ paths:
       - $ref: "#/parameters/bundle_id"
     get:
       tags:
-      - "Private"
+        - "Private"
       summary: "Get a bundle"
       description: "Get information for a specific bundle"
       produces:
-      - "application/json"
+        - "application/json"
       responses:
         200:
           description: "The bundle was found and document is returned"
@@ -199,7 +199,7 @@ paths:
           schema:
             $ref: "#/definitions/Bundle"
         404:
-           $ref: "#/responses/NotFound"
+          $ref: "#/responses/NotFound"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
@@ -208,16 +208,16 @@ paths:
           $ref: "#/responses/InternalError"
     put:
       tags:
-      - "Private"
+        - "Private"
       summary: "Update a bundle"
       description: "Update the bundle by providing updated information."
       consumes:
-      - "application/json"
+        - "application/json"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - $ref: "#/parameters/if_match"
-      - $ref: "#/parameters/update_bundle"
+        - $ref: "#/parameters/if_match"
+        - $ref: "#/parameters/update_bundle"
       responses:
         200:
           description: "The bundle has been updated"
@@ -247,7 +247,7 @@ paths:
           $ref: "#/responses/InternalError"
     delete:
       tags:
-      - "Private"
+        - "Private"
       summary: "Delete a bundle"
       description: "Deletes a bundle and removes it from the scheduler if it's for a scheduled publication."
       parameters:
@@ -296,20 +296,20 @@ paths:
         403:
           $ref: "#/responses/ForbiddenError"
         404:
-           $ref: "#/responses/NotFound"
+          $ref: "#/responses/NotFound"
         500:
           $ref: "#/responses/InternalError"
     post:
       tags:
-      - "Private"
+        - "Private"
       summary: "Add a dataset item to a bundle"
       description: "Adds the dataset item to the list of items to be published as part of the bundle"
       consumes:
-      - "application/json"
+        - "application/json"
       produces:
-      - "application/json"
+        - "application/json"
       parameters:
-      - $ref: "#/parameters/content_item"
+        - $ref: "#/parameters/content_item"
       responses:
         201:
           description: "Content was added"
@@ -339,7 +339,7 @@ paths:
   /bundles/{id}/contents/{content_id}:
     delete:
       tags:
-      - "Private"
+        - "Private"
       summary: "Delete a content item from a bundle"
       description: "Deletes a content item from a bundle."
       parameters:
@@ -357,7 +357,7 @@ paths:
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/state:
-    put: 
+    put:
       parameters:
         - $ref: "#/parameters/if_match"
         - $ref: "#/parameters/bundle_id"
@@ -367,9 +367,9 @@ paths:
       summary: "Updates the state of a bundle"
       description: "Updates the state of a bundle and triggers any associated processes such as enabling public access to items in the bundle at publication time."
       produces:
-      - "application/json"
+        - "application/json"
       consumes:
-      - "application/json"
+        - "application/json"
       responses:
         200:
           description: "The state of the bundle that has been updated"
@@ -461,7 +461,7 @@ responses:
     description: |
       Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.
     schema:
-      $ref: '#/definitions/ErrorList'
+      $ref: "#/definitions/ErrorList"
   ForbiddenError:
     description: Access denied.
     schema:
@@ -469,7 +469,7 @@ responses:
   InternalError:
     description: "Failed to process the request due to an internal error"
     schema:
-      $ref: '#/definitions/ErrorList'
+      $ref: "#/definitions/ErrorList"
   InvalidRequest:
     description: Unable to process request due to a malformed or invalid request body or query parameter.
     schema:
@@ -477,16 +477,16 @@ responses:
   MethodNotSupported:
     description: "Attempted to call an endpoint that is not supported for this API"
     schema:
-      $ref: '#/definitions/ErrorList'
+      $ref: "#/definitions/ErrorList"
   NotFound:
     description: "The requested resource does not exist."
     schema:
-      $ref: '#/definitions/ErrorList'
+      $ref: "#/definitions/ErrorList"
   PreconditionFailed:
     description: |
       Change rejected due to condition not being met. This is typically because the entity-tag in the `If-Match` request header does not match the current entity-tag of the resource.
     schema:
-      $ref: '#/definitions/ErrorList'
+      $ref: "#/definitions/ErrorList"
   UnauthorisedError:
     description: Authentication information is missing or invalid
     schema:
@@ -533,7 +533,7 @@ definitions:
           email:
             description: The email of the user who created the bundle.
             type: string
-            example: "publisher@ons.gov.uk"    
+            example: "publisher@ons.gov.uk"
       created_at:
         description: "The ISO8601 date-time the bundle was created at."
         type: string
@@ -558,7 +558,7 @@ definitions:
           email:
             description: The email of the user who updated the bundle.
             type: string
-            example: "publisher@ons.gov.uk"    
+            example: "publisher@ons.gov.uk"
       preview_teams:
         description: "A list of teams who have permissions to view the dataset series in the bundle."
         type: array
@@ -805,7 +805,7 @@ definitions:
       checks:
         type: array
         items:
-          $ref: '#/definitions/HealthChecker'
+          $ref: "#/definitions/HealthChecker"
   HealthChecker:
     type: object
     properties:
@@ -860,7 +860,7 @@ definitions:
   BundleState:
     description: |
       The current workflow state of the bundle as a whole.
-              
+
       The possible states are:
         * `DRAFT `: Bundle has been created and is being populated with content changes.
         * `IN_REVIEW`: Bundle has been submitted for review.
@@ -874,4 +874,3 @@ definitions:
       - PUBLISHED
     example: APPROVED
     default: DRAFT
- 

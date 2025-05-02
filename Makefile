@@ -1,4 +1,11 @@
 BINPATH ?= build
+NVM_SOURCE_PATH ?= $(HOME)/.nvm/nvm.sh
+
+ifneq ("$(wildcard $(NVM_SOURCE_PATH))","")
+        NVM_EXEC = source $(NVM_SOURCE_PATH) && nvm exec --
+endif
+
+REDOCLY ?= $(NVM_EXEC) redocly
 
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
@@ -45,8 +52,11 @@ lint: ## Used in ci to run linters against Go code
 	golangci-lint run ./...
 
 .PHONY: lint-local
-lint-local: ## Use locally to run linters against Go code
-	golangci-lint run ./...
+lint-local: lint-api-spec lint ## Use locally to run linters against Go code and OpenAPI spec
+
+.PHONY: lint-api-spec
+lint-api-spec: ## Use to lint the OpenAPI spec
+	$(REDOCLY) lint swagger.yaml
 
 .PHONY: test
 test: ## Runs unit tests including checks for race conditions and returns coverage
