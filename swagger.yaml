@@ -607,6 +607,14 @@ definitions:
     description: "A model which holds information about the datasets to be published as part of the bundle"
     type: object
     properties:
+      bundle_id:
+        description: The ID of the bundle the content item is associated with.
+        type: string
+        readOnly: true
+        minLength: 1
+        maxLength: 100
+        pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+        example: "9e4e3628-fc85-48cd-80ad-e005d9d283ff"
       content_type:
         description: The type of content the item is.
         type: string
