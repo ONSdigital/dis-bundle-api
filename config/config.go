@@ -28,7 +28,8 @@ type Config struct {
 var cfg *Config
 
 const (
-	BundlesCollection = "BundlesCollection"
+	BundlesCollection      = "BundlesCollection"
+	BundleEventsCollection = "BundleEventsCollection"
 )
 
 // Get returns the default config with any modifications through environment
@@ -53,7 +54,7 @@ func Get() (*Config, error) {
 				Username:                      "",
 				Password:                      "",
 				Database:                      "bundles",
-				Collections:                   map[string]string{BundlesCollection: "bundles"},
+				Collections:                   map[string]string{BundlesCollection: "bundles", BundleEventsCollection: "bundle_events"},
 				ReplicaSet:                    "",
 				IsStrongReadConcernEnabled:    false,
 				IsWriteConcernMajorityEnabled: true,
