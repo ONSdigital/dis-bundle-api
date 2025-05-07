@@ -510,6 +510,7 @@ definitions:
       - bundle_type
       - preview_teams
       - title
+      - managed_by
     properties:
       bundle_type:
         description: "The type of bundle."
@@ -566,6 +567,8 @@ definitions:
             id:
               description: The preview team ID.
               type: string
+              minLength: 1
+              pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
               example: 1253e849-01fd-4662-bee2-63253538da93
       scheduled_at:
         description: "The ISO8601 date-time the bundle is scheduled to publish at."
@@ -606,6 +609,10 @@ definitions:
   ContentItem:
     description: "A model which holds information about the datasets to be published as part of the bundle"
     type: object
+    required:
+      - content_type
+      - metadata
+      - links
     properties:
       bundle_id:
         description: The ID of the bundle the content item is associated with.
@@ -627,10 +634,12 @@ definitions:
           dataset_id:
             type: string
             description: "The dataset id of the item in the bundle"
+            minLength: 1
             example: "cpih"
           edition_id:
             type: string
             description: "The edition id of the dataset item in the bundle"
+            minLength: 1
             example: "march"
           title:
             description: "The title of the dataset item. Pre-release, this field will be hydrated from the dataset API when requested. Post-release, the bundle API will store a snapshot of the dataset metadata to be returned on subsequent requests."
@@ -640,6 +649,7 @@ definitions:
           version_id:
             type: integer
             description: "The version id of the dataset item in the bundle"
+            minimum: 1
             example: 1
       id:
         type: string
@@ -657,14 +667,21 @@ definitions:
       links:
         description: Navigational links for onward actions related to the content item.
         type: object
+        required:
+          - edit
+          - preview
         properties:
           edit:
             description: "The URL to the admin page to make changes to the content item."
             type: string
+            format: url
+            minLength: 1
             example: "https://publishing.ons.gov.uk/data-admin/edit/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
           preview:
             description: "The URL to the admin page to make changes to the content item."
             type: string
+            format: url
+            minLength: 1
             example: "https://publishing.ons.gov.uk/data-admin/preview/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
   ErrorList:
     description: "A list of errors that occurred."
