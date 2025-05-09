@@ -25,7 +25,7 @@ func TestSpec(t *testing.T) {
 				So(cfg.HealthCheckInterval, ShouldEqual, 30*time.Second)
 				So(cfg.MongoConfig.ClusterEndpoint, ShouldEqual, "localhost:27017")
 				So(cfg.MongoConfig.Database, ShouldEqual, "bundles")
-				So(cfg.MongoConfig.Collections, ShouldResemble, map[string]string{"BundlesCollection": "bundles", "BundleEventsCollection": "bundle_events"})
+				So(cfg.MongoConfig.Collections, ShouldResemble, map[string]string{"BundlesCollection": "bundles", "BundleEventsCollection": "bundle_events", "BundleContentsCollection": "bundle_contents"})
 				So(cfg.MongoConfig.Username, ShouldEqual, "")
 				So(cfg.MongoConfig.Password, ShouldEqual, "")
 				So(cfg.MongoConfig.IsSSL, ShouldEqual, false)

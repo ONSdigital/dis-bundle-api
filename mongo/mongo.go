@@ -29,6 +29,7 @@ func (m *Mongo) Init(ctx context.Context) (err error) {
 		mongohealth.Database(m.Database): {
 			mongohealth.Collection(m.ActualCollectionName(config.BundlesCollection)),
 			mongohealth.Collection(m.ActualCollectionName(config.BundleEventsCollection)),
+			mongohealth.Collection(m.ActualCollectionName(config.BundleContentsCollection)),
 		},
 	}
 	m.healthClient = mongohealth.NewClientWithCollections(m.Connection, databaseCollectionBuilder)
