@@ -50,7 +50,7 @@ func TestMongoCRUD(t *testing.T) {
 			Convey("When the bundle is fetched successfully", func() {
 				returnedBundle, err := mongodb.GetBundle(ctx, "bundle1")
 				So(err, ShouldBeNil)
-				So(returnedBundle.BundleType, ShouldEqual, "scheduled")
+				So(returnedBundle.BundleType, ShouldEqual, models.BundleTypeScheduled)
 			})
 
 			Convey("When the bundle is not found", func() {
@@ -106,8 +106,8 @@ func TestMongoCRUD(t *testing.T) {
 		Convey("When the UpdateBundle is called", func() {
 			Convey("When the bundle is updated successfully", func() {
 				myBundle := models.Bundle{
-					BundleType:  "UpdatedType",
-					CreatedDate: time.Now(),
+					BundleType: models.BundleTypeManual,
+					CreatedAt:  time.Now(),
 				}
 				updatedBundle, err := mongodb.UpdateBundle(ctx, "bundle1", &myBundle)
 				So(err, ShouldBeNil)
@@ -116,8 +116,8 @@ func TestMongoCRUD(t *testing.T) {
 
 			Convey("When the bundle returns error", func() {
 				myBundle := models.Bundle{
-					BundleType:  "UpdatedType",
-					CreatedDate: time.Now(),
+					BundleType: models.BundleTypeManual,
+					CreatedAt:  time.Now(),
 				}
 				mongodb.Connection.Close(ctx)
 				_, err := mongodb.UpdateBundle(ctx, "bundle1", &myBundle)
@@ -157,58 +157,30 @@ func setupTestData(ctx context.Context, mongo *Mongo) error {
 
 	bundles := []*models.Bundle{
 		{
-			ID:         "bundle1",
-			BundleType: "scheduled",
-			Contents: []models.BundleContent{
-				{
-					DatasetID: "dataset1",
-					EditionID: "edition1",
-					ItemID:    "item1",
-					State:     "published",
-					Title:     "Dataset 1",
-					URLPath:   "/dataset1/edition1/item1",
-				},
-				{
-					DatasetID: "dataset2",
-					EditionID: "edition2",
-					ItemID:    "item2",
-					State:     "draft",
-					Title:     "Dataset 2",
-					URLPath:   "/dataset2/edition2/item2",
-				},
-			},
-			Creator:         "user1",
-			CreatedDate:     time.Now(),
-			LastUpdatedBy:   "user1",
-			PreviewTeams:    []string{"team1", "team2"},
-			PublishDateTime: time.Now().Add(24 * time.Hour), // 1 day from now
-			State:           "active",
-			Title:           "Scheduled Bundle 1",
-			UpdatedDate:     time.Now(),
-			WagtailManaged:  false,
+			ID:            "bundle1",
+			BundleType:    models.BundleTypeScheduled,
+			CreatedBy:     models.User{Email: "user1@ons.gov.uk"},
+			CreatedAt:     time.Now(),
+			LastUpdatedBy: models.User{Email: "user1@ons.gov.uk"},
+			PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+			ScheduledAt:   time.Now().Add(24 * time.Hour), // 1 day from now
+			State:         models.BundleStateDraft,
+			Title:         "Scheduled Bundle 1",
+			UpdatedAt:     time.Now(),
+			ManagedBy:     models.ManagedByDataAdmin,
 		},
 		{
-			ID:         "bundle2",
-			BundleType: "manual",
-			Contents: []models.BundleContent{
-				{
-					DatasetID: "dataset3",
-					EditionID: "edition3",
-					ItemID:    "item3",
-					State:     "draft",
-					Title:     "Dataset 3",
-					URLPath:   "/dataset3/edition3/item3",
-				},
-			},
-			Creator:         "user2",
-			CreatedDate:     time.Now(),
-			LastUpdatedBy:   "user2",
-			PreviewTeams:    []string{"team3"},
-			PublishDateTime: time.Now().Add(48 * time.Hour), // 2 days from now
-			State:           "inactive",
-			Title:           "Manual Bundle 2",
-			UpdatedDate:     time.Now(),
-			WagtailManaged:  true,
+			ID:            "bundle2",
+			BundleType:    models.BundleTypeManual,
+			CreatedBy:     models.User{Email: "user2@ons.gov.uk"},
+			CreatedAt:     time.Now(),
+			LastUpdatedBy: models.User{Email: "user2@ons.gov.uk"},
+			PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
+			ScheduledAt:   time.Now().Add(48 * time.Hour), // 2 days from now
+			State:         models.BundleStateDraft,
+			Title:         "Manual Bundle 2",
+			UpdatedAt:     time.Now(),
+			ManagedBy:     models.ManagedByWagtail,
 		},
 	}
 
