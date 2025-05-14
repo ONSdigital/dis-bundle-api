@@ -1,4 +1,5 @@
 /build
+/.go
 
 # Mac
 .DS_Store
