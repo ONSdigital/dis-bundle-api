@@ -2,7 +2,7 @@ version: '3.3'
 services:
   dis-bundle-api:
     build:
-      context: ../../../dis-bundle-api
+      context: ../../../../dis-bundle-api
       dockerfile: Dockerfile.local
     command:
       - go
@@ -12,7 +12,7 @@ services:
       - -coverpkg=github.com/ONSdigital/dis-bundle-api/...
       - -component
     volumes:
-      - ../../:/dis-bundle-api
+      - ../../../:/dis-bundle-api
     depends_on:
       - kafka-1
     ports:
