@@ -64,7 +64,7 @@ test: ## Runs unit tests including checks for race conditions and returns covera
 
 .PHONY: test-component
 test-component: ## Runs component test suite
-	go test -cover -coverpkg=github.com/ONSdigital/dis-bundle-api/... -component
+	cd features/steps/compose; docker-compose up --abort-on-container-exit
 
 .PHONY: help
 help: ## Show help page for list of make targets
