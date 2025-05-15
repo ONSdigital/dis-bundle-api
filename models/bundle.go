@@ -215,6 +215,10 @@ func ValidateBundle(bundle *Bundle) error {
 		missingFields = append(missingFields, "title")
 	}
 
+	if bundle.ManagedBy == "" {
+		missingFields = append(missingFields, "managed_by")
+	}
+
 	if missingFields != nil {
 		return fmt.Errorf("missing mandatory fields: %v", missingFields)
 	}

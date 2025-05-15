@@ -288,6 +288,15 @@ func TestValidateBundle(t *testing.T) {
 			})
 		})
 
+		Convey("When Validate is called and ManagedBy is empty", func() {
+			testBundle.ManagedBy = ""
+			Convey("Then it should return an error", func() {
+				err := ValidateBundle(&testBundle)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"managed_by"}))
+			})
+		})
+
 		Convey("When Validate is called and all mandatory fields are empty", func() {
 			testBundle.BundleType = ""
 			testBundle.PreviewTeams = []PreviewTeam{}
