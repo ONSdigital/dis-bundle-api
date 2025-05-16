@@ -91,7 +91,22 @@ func TestCreateContentItem(t *testing.T) {
 
 	Convey("Return error when unable to generate UUID", t, func() {
 		Convey("when the UUID generator returns an error", func() {
-			b := `{"bundle_id": "123"}`
+			b := `{
+			"id": "123",
+			"bundle_id": "456",
+			"content_type": "DATASET",
+			"metadata": {
+				"dataset_id": "dataset-id",
+				"edition_id": "edition-id",
+				"title": "title",
+				"version_id": 1
+			},
+			"state": "APPROVED",
+			"links": {
+				"edit": "/edit",
+				"preview": "/preview"
+			}
+			}`
 			reader := bytes.NewReader([]byte(b))
 			_, err := CreateContentItem(reader, &ErrorUUIDGenerator{})
 			So(err, ShouldNotBeNil)
@@ -138,9 +153,254 @@ func TestMarshalJSON(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "invalid State")
 			})
 		})
+
+		Convey("When the ID is empty", func() {
+			contentItem.ID = ""
+
+			Convey("Then the ID should not be marshalled", func() {
+				b, err := json.Marshal(contentItem)
+				So(err, ShouldBeNil)
+				So(b, ShouldNotBeEmpty)
+
+				bStr := string(b)
+				So(bStr, ShouldNotContainSubstring, `"id":""`)
+			})
+		})
+
+		Convey("When the bundle ID is empty", func() {
+			contentItem.BundleID = ""
+
+			Convey("Then the bundle ID should not be marshalled", func() {
+				b, err := json.Marshal(contentItem)
+				So(err, ShouldBeNil)
+				So(b, ShouldNotBeEmpty)
+
+				bStr := string(b)
+				So(bStr, ShouldNotContainSubstring, `"bundle_id":""`)
+			})
+		})
+
+		Convey("When the title is empty", func() {
+			contentItem.Metadata.Title = ""
+
+			Convey("Then the title should not be marshalled", func() {
+				b, err := json.Marshal(contentItem)
+				So(err, ShouldBeNil)
+				So(b, ShouldNotBeEmpty)
+
+				bStr := string(b)
+				So(bStr, ShouldNotContainSubstring, `"title":""`)
+			})
+		})
 	})
 }
 
+func TestUnmarshalJSON(t *testing.T) {
+	Convey("Given a valid JSON for ContentItem", t, func() {
+		validJSON := []byte(`{
+			"id": "123",
+			"bundle_id": "456",
+			"content_type": "DATASET",
+			"metadata": {
+				"dataset_id": "dataset-id",
+				"edition_id": "edition-id",
+				"title": "title",
+				"version_id": 1
+			},
+			"state": "APPROVED",
+			"links": {
+				"edit": "/edit",
+				"preview": "/preview"
+			}
+		}`)
+
+		Convey("When we unmarshall it", func() {
+			var contentItem ContentItem
+			err := json.Unmarshal(validJSON, &contentItem)
+
+			Convey("Then it should not return an error", func() {
+				So(err, ShouldBeNil)
+				So(contentItem.ID, ShouldEqual, "123")
+				So(contentItem.BundleID, ShouldEqual, "456")
+				So(contentItem.ContentType, ShouldEqual, ContentTypeDataset)
+				So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+				So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+				So(contentItem.Metadata.Title, ShouldEqual, "title")
+				So(contentItem.Metadata.VersionID, ShouldEqual, 1)
+				So(contentItem.State, ShouldEqual, StateApproved)
+				So(contentItem.Links.Edit, ShouldEqual, "/edit")
+				So(contentItem.Links.Preview, ShouldEqual, "/preview")
+			})
+		})
+	})
+
+	Convey("Given a valid JSON for ContentItem", t, func() {
+		Convey("And the ID is empty", func() {
+			validJSON := []byte(`{
+				"bundle_id": "456",
+				"content_type": "DATASET",
+				"metadata": {
+					"dataset_id": "dataset-id",
+					"edition_id": "edition-id",
+					"title": "title",
+					"version_id": 1
+				},
+				"state": "APPROVED",
+				"links": {
+					"edit": "/edit",
+					"preview": "/preview"
+				}
+			}`)
+
+			Convey("When we unmarshall it", func() {
+				var contentItem ContentItem
+				err := json.Unmarshal(validJSON, &contentItem)
+
+				Convey("Then it should not return an error and the ID should be empty", func() {
+					So(err, ShouldBeNil)
+					So(contentItem.ID, ShouldEqual, "")
+					So(contentItem.BundleID, ShouldEqual, "456")
+					So(contentItem.ContentType, ShouldEqual, ContentTypeDataset)
+					So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+					So(contentItem.Metadata.Title, ShouldEqual, "title")
+					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
+					So(contentItem.State, ShouldEqual, StateApproved)
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
+				})
+			})
+		})
+	})
+
+	Convey("Given a valid JSON for ContentItem", t, func() {
+		Convey("And the bundle ID is empty", func() {
+			validJSON := []byte(`{
+				"id": "123",
+				"content_type": "DATASET",
+				"metadata": {
+					"dataset_id": "dataset-id",
+					"edition_id": "edition-id",
+					"title": "title",
+					"version_id": 1
+				},
+				"state": "APPROVED",
+				"links": {
+					"edit": "/edit",
+					"preview": "/preview"
+				}
+			}`)
+
+			Convey("When we unmarshall it", func() {
+				var contentItem ContentItem
+				err := json.Unmarshal(validJSON, &contentItem)
+
+				Convey("Then it should not return an error and the bundle ID should be empty", func() {
+					So(err, ShouldBeNil)
+					So(contentItem.ID, ShouldEqual, "123")
+					So(contentItem.BundleID, ShouldEqual, "")
+					So(contentItem.ContentType, ShouldEqual, ContentTypeDataset)
+					So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+					So(contentItem.Metadata.Title, ShouldEqual, "title")
+					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
+					So(contentItem.State, ShouldEqual, StateApproved)
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
+				})
+			})
+		})
+	})
+
+	Convey("Given a valid JSON for ContentItem", t, func() {
+		Convey("And the state is empty", func() {
+			validJSON := []byte(`{
+				"id": "123",
+				"bundle_id": "456",
+				"content_type": "DATASET",
+				"metadata": {
+					"dataset_id": "dataset-id",
+					"edition_id": "edition-id",
+					"title": "title",
+					"version_id": 1
+				},
+				"links": {
+					"edit": "/edit",
+					"preview": "/preview"
+				}
+			}`)
+
+			Convey("When we unmarshall it", func() {
+				var contentItem ContentItem
+				err := json.Unmarshal(validJSON, &contentItem)
+
+				Convey("Then we should get an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "invalid state: ")
+				})
+			})
+		})
+	})
+
+	Convey("Given a valid JSON for ContentItem", t, func() {
+		Convey("And the content type is empty", func() {
+			validJSON := []byte(`{
+				"id": "123",
+				"bundle_id": "456",
+				"metadata": {
+					"dataset_id": "dataset-id",
+					"edition_id": "edition-id",
+					"title": "title",
+					"version_id": 1
+				},
+				"state": "APPROVED",
+				"links": {
+					"edit": "/edit",
+					"preview": "/preview"
+				}
+			}`)
+
+			Convey("When we unmarshall it", func() {
+				var contentItem ContentItem
+				err := json.Unmarshal(validJSON, &contentItem)
+
+				Convey("Then we should get an error", func() {
+					So(err, ShouldNotBeNil)
+					So(err.Error(), ShouldContainSubstring, "invalid content type: ")
+				})
+			})
+		})
+	})
+
+	Convey("Given an  invalid JSON for ContentItem", t, func() {
+		invalidJSON := []byte(`{
+			"id": "123,
+			"bundle_id": "456",
+			"content_type": "DATASET",
+			"metadata": {
+				"dataset_id": "dataset-id",
+				"edition_id": "edition-id",
+				"title": "title",
+				"version_id": 1
+			},
+			"state": "APPROVED",
+			"links": {
+				"edit": "/edit",
+				"preview": "/preview"
+			}
+		}`)
+
+		Convey("When we unmarshall it", func() {
+			var contentItem ContentItem
+			err := json.Unmarshal(invalidJSON, &contentItem)
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "invalid character")
+			})
+		})
+	})
+}
 func TestUnmarshalJSON_InvalidContentType(t *testing.T) {
 	Convey("Given invalid JSON for ContentType", t, func() {
 		invalidJSON := []byte(`123`) // Invalid JSON for a string
@@ -194,6 +454,37 @@ func TestUnmarshalJSON_InvalidState(t *testing.T) {
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "invalid State: INVALID")
+			})
+		})
+	})
+}
+
+func TestUnmarshalJSON_InvalidContentItem(t *testing.T) {
+	Convey("Given invalid JSON for ContentItem", t, func() {
+		invalidJSON := []byte(`{
+			"id": "123,
+			"bundle_id": "456",
+			"content_type": "DATASET",
+			"metadata": {
+				"dataset_id": "dataset-id",
+				"edition_id": "edition-id",
+				"title": "title",
+				"version_id": 1
+			},
+			"state": "APPROVED",
+			"links": {
+				"edit": "/edit",
+				"preview": "/preview"
+			}
+		}`)
+
+		Convey("When UnmarshalJSON is called", func() {
+			var contentItem ContentItem
+			err := contentItem.UnmarshalJSON(invalidJSON)
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "invalid character")
 			})
 		})
 	})

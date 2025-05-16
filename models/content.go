@@ -10,8 +10,8 @@ import (
 )
 
 type ContentItem struct {
-	ID          string      `bson:"_id" json:"id"`
-	BundleID    string      `bson:"bundle_id" json:"bundle_id"`
+	ID          string      `bson:"_id,omitempty" json:"id,omitempty"`
+	BundleID    string      `bson:"bundle_id,omitempty" json:"bundle_id,omitempty"`
 	ContentType ContentType `bson:"content_type" json:"content_type"`
 	Metadata    Metadata    `bson:"metadata" json:"metadata"`
 	State       State       `bson:"state" json:"state"`
@@ -21,7 +21,7 @@ type ContentItem struct {
 type Metadata struct {
 	DatasetID string `bson:"dataset_id" json:"dataset_id"`
 	EditionID string `bson:"edition_id" json:"edition_id"`
-	Title     string `bson:"title" json:"title"`
+	Title     string `bson:"title,omitempty" json:"title,omitempty"`
 	VersionID int    `bson:"version_id" json:"version_id"`
 }
 
@@ -32,6 +32,30 @@ type Links struct {
 
 type Contents struct {
 	Contents []ContentItem `bson:"contents" json:"contents"`
+}
+
+// UnmarshalJSON unmarshals a string to ContentItem
+func (c *ContentItem) UnmarshalJSON(data []byte) error {
+	type Alias ContentItem
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if !aux.State.IsValid() {
+		return fmt.Errorf("invalid state: %s", aux.State)
+	}
+
+	if !aux.ContentType.IsValid() {
+		return fmt.Errorf("invalid content type: %s", aux.ContentType)
+	}
+
+	return nil
 }
 
 // ContentType enum represents the type of content
