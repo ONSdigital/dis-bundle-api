@@ -14,7 +14,7 @@ type ContentItem struct {
 	BundleID    string      `bson:"bundle_id,omitempty" json:"bundle_id,omitempty"`
 	ContentType ContentType `bson:"content_type" json:"content_type"`
 	Metadata    Metadata    `bson:"metadata" json:"metadata"`
-	State       State       `bson:"state" json:"state"`
+	State       State       `bson:"state,omitempty" json:"state,omitempty"`
 	Links       Links       `bson:"links" json:"links"`
 }
 
@@ -110,12 +110,13 @@ type State string
 const (
 	StateApproved  State = "APPROVED"
 	StatePublished State = "PUBLISHED"
+	StateEmpty     State = ""
 )
 
 // IsValid validates that the State is a valid enum value
 func (s State) IsValid() bool {
 	switch s {
-	case StateApproved, StatePublished:
+	case StateApproved, StatePublished, StateEmpty:
 		return true
 	default:
 		return false

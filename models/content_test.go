@@ -192,6 +192,19 @@ func TestMarshalJSON(t *testing.T) {
 				So(bStr, ShouldNotContainSubstring, `"title":""`)
 			})
 		})
+
+		Convey("When the state is empty", func() {
+			contentItem.State = ""
+
+			Convey("Then the state should not be marshalled", func() {
+				b, err := json.Marshal(contentItem)
+				So(err, ShouldBeNil)
+				So(b, ShouldNotBeEmpty)
+
+				bStr := string(b)
+				So(bStr, ShouldNotContainSubstring, `"state":""`)
+			})
+		})
 	})
 }
 
@@ -334,9 +347,18 @@ func TestUnmarshalJSON(t *testing.T) {
 				var contentItem ContentItem
 				err := json.Unmarshal(validJSON, &contentItem)
 
-				Convey("Then we should get an error", func() {
-					So(err, ShouldNotBeNil)
-					So(err.Error(), ShouldContainSubstring, "invalid state: ")
+				Convey("Then it should not return an error and the state should be empty", func() {
+					So(err, ShouldBeNil)
+					So(contentItem.ID, ShouldEqual, "123")
+					So(contentItem.BundleID, ShouldEqual, "456")
+					So(contentItem.ContentType, ShouldEqual, ContentTypeDataset)
+					So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+					So(contentItem.Metadata.Title, ShouldEqual, "title")
+					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
+					So(contentItem.State, ShouldEqual, StateEmpty)
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
 				})
 			})
 		})
