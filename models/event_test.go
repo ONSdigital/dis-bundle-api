@@ -90,6 +90,14 @@ func TestCreateEvent(t *testing.T) {
 			So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
 		})
 	})
+
+	Convey("Return error when unable to read message", t, func() {
+		errorReader := &ErrorReader{Err: fmt.Errorf("read error")}
+		_, err := CreateEvent(errorReader)
+		So(err, ShouldNotBeNil)
+		So(err, ShouldEqual, errs.ErrUnableToReadMessage)
+	})
+
 }
 
 func TestActionMarshalJSON(t *testing.T) {
@@ -340,4 +348,12 @@ func TestAction_String(t *testing.T) {
 		So(ActionUpdate.String(), ShouldEqual, "UPDATE")
 		So(ActionDelete.String(), ShouldEqual, "DELETE")
 	})
+}
+
+type ErrorReader struct {
+	Err error
+}
+
+func (er *ErrorReader) Read(p []byte) (n int, err error) {
+	return 0, er.Err
 }
