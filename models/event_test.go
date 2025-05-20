@@ -97,7 +97,6 @@ func TestCreateEvent(t *testing.T) {
 		So(err, ShouldNotBeNil)
 		So(err, ShouldEqual, errs.ErrUnableToReadMessage)
 	})
-
 }
 
 func TestActionMarshalJSON(t *testing.T) {
