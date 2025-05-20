@@ -57,7 +57,6 @@ func TestCreateEvent(t *testing.T) {
 		})
 
 		Convey("when the event has minimal required fields", func() {
-			// Test with minimal fields (no CreatedAt or Data)
 			jsonStr := `{
 				"requested_by": {"id": "user456"},
 				"action": "READ",
@@ -282,14 +281,14 @@ func TestEventsList(t *testing.T) {
 		}
 
 		events := []Event{event}
-		eventsList := EventsList{
+		eventsList := &EventsList{
 			PaginationFields: PaginationFields{
 				Count:      1,
 				Limit:      20,
 				Offset:     0,
 				TotalCount: 1,
 			},
-			Items: events,
+			Items: &events,
 		}
 
 		Convey("it should have the correct pagination fields", func() {
@@ -300,8 +299,8 @@ func TestEventsList(t *testing.T) {
 		})
 
 		Convey("it should have the correct items", func() {
-			So(len(eventsList.Items), ShouldEqual, 1)
-			So(eventsList.Items[0], ShouldResemble, event)
+			So(len(*eventsList.Items), ShouldEqual, 1)
+			So((*eventsList.Items)[0], ShouldResemble, event)
 		})
 
 		Convey("it should marshal to JSON correctly", func() {

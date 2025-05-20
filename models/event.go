@@ -85,7 +85,7 @@ type Event struct {
 // EventsList represents a list of events
 type EventsList struct {
 	PaginationFields
-	Items []Event `bson:"items" json:"items"`
+	Items *[]Event `bson:"items,omitempty" json:"items,omitempty"`
 }
 
 // CreateEvent creates an Event from a JSON request body
