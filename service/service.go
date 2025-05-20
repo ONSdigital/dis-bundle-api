@@ -77,8 +77,8 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	}
 	// Get HTTP Server and ... // TODO: Add any middleware that your service requires
 	r := mux.NewRouter()
-	middle := svc.createMiddleware(svc.Config)
-	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middle.Then(r))
+	middleware := svc.createMiddleware()
+	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
 	// Set up the API
 	s := store.DataStore{Backend: BundleAPIStore{svc.mongoDB}}
@@ -97,7 +97,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 
 // CreateMiddleware creates an Alice middleware chain of handlers
 // to forward collectionID from cookie from header
-func (svc *Service) createMiddleware(cfg *config.Config) alice.Chain {
+func (svc *Service) createMiddleware() alice.Chain {
 	// healthcheck
 	healthcheckHandler := healthcheckMiddleware(svc.HealthCheck.Handler, "/health")
 	middleware := alice.New(healthcheckHandler)
