@@ -10,6 +10,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// ContentItem represents information about the datasets to be published as part of the bundle
 type ContentItem struct {
 	ID          string      `bson:"_id,omitempty" json:"id,omitempty"`
 	BundleID    string      `bson:"bundle_id,omitempty" json:"bundle_id,omitempty"`
@@ -19,6 +20,7 @@ type ContentItem struct {
 	Links       Links       `bson:"links" json:"links"`
 }
 
+// Metadata represents the metadata for the content item
 type Metadata struct {
 	DatasetID string `bson:"dataset_id" json:"dataset_id"`
 	EditionID string `bson:"edition_id" json:"edition_id"`
@@ -26,11 +28,13 @@ type Metadata struct {
 	VersionID int    `bson:"version_id" json:"version_id"`
 }
 
+// Links represents the navigational links for onward actions related to the content item
 type Links struct {
 	Edit    *url.URL `bson:"edit" json:"edit"`
 	Preview *url.URL `bson:"preview" json:"preview"`
 }
 
+// Contents represents a list of contents related to a bundle
 type Contents struct {
 	Contents []ContentItem `bson:"contents" json:"contents"`
 }
