@@ -16,7 +16,7 @@ type ContentItem struct {
 	BundleID    string      `bson:"bundle_id,omitempty" json:"bundle_id,omitempty"`
 	ContentType ContentType `bson:"content_type" json:"content_type"`
 	Metadata    Metadata    `bson:"metadata" json:"metadata"`
-	State       State       `bson:"state,omitempty" json:"state,omitempty"`
+	State       *State      `bson:"state,omitempty" json:"state,omitempty"`
 	Links       Links       `bson:"links" json:"links"`
 }
 

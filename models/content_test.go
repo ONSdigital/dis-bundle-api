@@ -31,6 +31,7 @@ func TestCreateContentItem(t *testing.T) {
 		Convey("when the content item has all fields", func() {
 			edit, _ := url.Parse("/edit")
 			preview, _ := url.Parse("/preview")
+			state := StateApproved
 			testContentItem := ContentItem{
 				ID:          "123",
 				BundleID:    "456",
@@ -41,7 +42,7 @@ func TestCreateContentItem(t *testing.T) {
 					Title:     "title",
 					VersionID: 1,
 				},
-				State: StateApproved,
+				State: &state,
 				Links: Links{
 					Edit:    edit,
 					Preview: preview,
@@ -120,6 +121,7 @@ func TestCreateContentItem(t *testing.T) {
 
 func TestMarshalJSON(t *testing.T) {
 	Convey("Given a ContentItem", t, func() {
+		state := StateApproved
 		edit, _ := url.Parse("/edit")
 		preview, _ := url.Parse("/preview")
 		contentItem := ContentItem{
@@ -132,7 +134,7 @@ func TestMarshalJSON(t *testing.T) {
 				Title:     "title",
 				VersionID: 1,
 			},
-			State: StateApproved,
+			State: &state,
 			Links: Links{
 				Edit:    edit,
 				Preview: preview,
@@ -150,7 +152,8 @@ func TestMarshalJSON(t *testing.T) {
 		})
 
 		Convey("When the state is invalid", func() {
-			contentItem.State = invalid
+			state = invalid
+			contentItem.State = &state
 
 			Convey("Then it should return an error", func() {
 				_, err := json.Marshal(contentItem)
@@ -199,7 +202,7 @@ func TestMarshalJSON(t *testing.T) {
 		})
 
 		Convey("When the state is empty", func() {
-			contentItem.State = ""
+			contentItem.State = nil
 
 			Convey("Then the state should not be marshalled", func() {
 				b, err := json.Marshal(contentItem)
@@ -237,6 +240,7 @@ func TestUnmarshalJSON(t *testing.T) {
 			err := json.Unmarshal(validJSON, &contentItem)
 
 			Convey("Then it should not return an error", func() {
+				state := StateApproved
 				So(err, ShouldBeNil)
 				So(contentItem.ID, ShouldEqual, "123")
 				So(contentItem.BundleID, ShouldEqual, "456")
@@ -245,7 +249,7 @@ func TestUnmarshalJSON(t *testing.T) {
 				So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
 				So(contentItem.Metadata.Title, ShouldEqual, "title")
 				So(contentItem.Metadata.VersionID, ShouldEqual, 1)
-				So(contentItem.State, ShouldEqual, StateApproved)
+				So(contentItem.State, ShouldEqual, &state)
 				So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
 				So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
 			})
@@ -275,6 +279,7 @@ func TestUnmarshalJSON(t *testing.T) {
 				err := json.Unmarshal(validJSON, &contentItem)
 
 				Convey("Then it should not return an error and the ID should be empty", func() {
+					state := StateApproved
 					So(err, ShouldBeNil)
 					So(contentItem.ID, ShouldEqual, "")
 					So(contentItem.BundleID, ShouldEqual, "456")
@@ -283,7 +288,7 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
-					So(contentItem.State, ShouldEqual, StateApproved)
+					So(contentItem.State, ShouldEqual, &state)
 					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
 					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
 				})
@@ -314,6 +319,7 @@ func TestUnmarshalJSON(t *testing.T) {
 				err := json.Unmarshal(validJSON, &contentItem)
 
 				Convey("Then it should not return an error and the bundle ID should be empty", func() {
+					state := StateApproved
 					So(err, ShouldBeNil)
 					So(contentItem.ID, ShouldEqual, "123")
 					So(contentItem.BundleID, ShouldEqual, "")
@@ -322,7 +328,7 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
-					So(contentItem.State, ShouldEqual, StateApproved)
+					So(contentItem.State, ShouldEqual, &state)
 					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
 					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
 				})
@@ -361,7 +367,7 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
-					So(contentItem.State, ShouldEqual, StateEmpty)
+					So(contentItem.State, ShouldBeNil)
 					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
 					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
 				})
@@ -581,6 +587,7 @@ func TestUnmarshalJSON_LinksObject(t *testing.T) {
 
 func TestValidateContentItem(t *testing.T) {
 	Convey("Given a ContentItem with all required fields", t, func() {
+		state := StateApproved
 		edit, _ := url.Parse("/edit")
 		preview, _ := url.Parse("/preview")
 		contentItem := ContentItem{
@@ -593,7 +600,7 @@ func TestValidateContentItem(t *testing.T) {
 				Title:     "title",
 				VersionID: 1,
 			},
-			State: StateApproved,
+			State: &state,
 			Links: Links{
 				Edit:    edit,
 				Preview: preview,
