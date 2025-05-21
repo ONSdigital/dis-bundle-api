@@ -182,24 +182,21 @@ func TestCodeUnmarshalJSON(t *testing.T) {
 	})
 }
 
-func TestCodeOmitEmpty(t *testing.T) {
-	Convey("Given an Error struct with an empty Code", t, func() {
-		err := Error{
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
+func TestAllFieldsOmitEmpty(t *testing.T) {
+	Convey("Given an Error struct with all fields empty", t, func() {
+		err := Error{}
 
 		Convey("When marshaled to JSON", func() {
 			data, marshalErr := json.Marshal(err)
 
-			Convey("The 'code' field should be omitted", func() {
+			Convey("All fields should be omitted", func() {
 				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"code"`)
+				So(string(data), ShouldEqual, `{}`)
 			})
 		})
 	})
 
-	Convey("Given an Error struct with a non-empty Code", t, func() {
+	Convey("Given an Error struct with all fields set", t, func() {
 		code := CodeInternalServerError
 		err := Error{
 			Code:        &code,
@@ -210,82 +207,10 @@ func TestCodeOmitEmpty(t *testing.T) {
 		Convey("When marshaled to JSON", func() {
 			data, marshalErr := json.Marshal(err)
 
-			Convey("The 'code' field should be present", func() {
+			Convey("All fields should be present", func() {
 				So(marshalErr, ShouldBeNil)
 				So(string(data), ShouldContainSubstring, `"code":"internal_server_error"`)
-			})
-		})
-	})
-}
-
-func TestDescriptionOmitEmpty(t *testing.T) {
-	Convey("Given an Error struct with an empty Description", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:   &code,
-			Source: &Source{Field: "field_name"},
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("The 'description' field should be omitted", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"description"`)
-			})
-		})
-	})
-
-	Convey("Given an Error struct with a non-empty Description", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("The 'description' field should be present", func() {
-				So(marshalErr, ShouldBeNil)
 				So(string(data), ShouldContainSubstring, `"description":"Some description"`)
-			})
-		})
-	})
-}
-
-func TestSourceOmitEmpty(t *testing.T) {
-	Convey("Given an Error struct with an empty Source", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:        &code,
-			Description: "Some description",
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("The 'source' field should be omitted", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"source"`)
-			})
-		})
-	})
-
-	Convey("Given an Error struct with a non-empty Source", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("The 'source' field should be present", func() {
-				So(marshalErr, ShouldBeNil)
 				So(string(data), ShouldContainSubstring, `"source":{"field":"field_name"}`)
 			})
 		})
