@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/ONSdigital/dis-bundle-api/api"
+	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -15,17 +17,59 @@ import (
 
 // Service contains all the configs, server and clients to run the API
 type Service struct {
-	Config      *config.Config
-	Server      HTTPServer
-	Router      *mux.Router
-	API         *api.API
-	ServiceList *ExternalServiceList
-	HealthCheck HealthChecker
-	mongoDB     store.MongoDB
+	Config                *config.Config
+	Server                HTTPServer
+	Router                *mux.Router
+	API                   *api.API
+	ServiceList           *ExternalServiceList
+	HealthCheck           HealthChecker
+	mongoDB               store.MongoDB
+	stateMachineBundleAPI *application.StateMachineBundleAPI
 }
 
 type BundleAPIStore struct {
 	store.MongoDB
+}
+
+var stateMachine *application.StateMachine
+var stateMachineInit sync.Once
+
+func GetListTransitions() []application.Transition {
+	draftTransition := application.Transition{
+		Label:               "draft",
+		TargetState:         application.Draft,
+		AllowedSourceStates: []string{"in_review", "approved"},
+	}
+
+	inReviewTransition := application.Transition{
+		Label:               "in_review",
+		TargetState:         application.InReview,
+		AllowedSourceStates: []string{"draft", "approved"},
+	}
+
+	approvedTransition := application.Transition{
+		Label:               "approved",
+		TargetState:         application.Approved,
+		AllowedSourceStates: []string{"in_review"},
+	}
+
+	publishedTransition := application.Transition{
+		Label:               "published",
+		TargetState:         application.Published,
+		AllowedSourceStates: []string{"approved"},
+	}
+
+	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
+}
+
+func GetStateMachine(ctx context.Context, datastore store.Datastore) *application.StateMachine {
+	stateMachineInit.Do(func() {
+		states := []application.State{application.Draft, application.InReview, application.Approved, application.Published}
+		transitions := GetListTransitions()
+		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore)
+	})
+
+	return stateMachine
 }
 
 // New creates a new service
@@ -65,6 +109,9 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 		return err
 	}
 
+	// Get Datastore
+	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
+
 	// Get HealthCheck
 	svc.HealthCheck, err = svc.ServiceList.GetHealthCheck(svc.Config, buildTime, gitCommit, version)
 	if err != nil {
@@ -75,14 +122,17 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	if err := svc.registerCheckers(ctx); err != nil {
 		return errors.Wrap(err, "unable to register checkers")
 	}
-	// Get HTTP Server and ... // TODO: Add any middleware that your service requires
+	// Get HTTP Server and create middleware
 	r := mux.NewRouter()
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
-	// Set up the API
-	s := store.DataStore{Backend: BundleAPIStore{svc.mongoDB}}
-	svc.API = api.Setup(ctx, r, &s)
+	// Setup state machine
+	sm := GetStateMachine(ctx, datastore)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
+
+	// Setup API
+	svc.API = api.Setup(ctx, r, &datastore, svc.stateMachineBundleAPI)
 
 	svc.HealthCheck.Start(ctx)
 
