@@ -26,7 +26,7 @@ type Bundle struct {
 
 // Bundles represents a list of bundles
 type Bundles struct {
-	Items []Bundle `bson:"items" json:"items"`
+	Items *[]Bundle `bson:"items" json:"items"`
 }
 
 type User struct {
