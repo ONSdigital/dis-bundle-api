@@ -158,13 +158,12 @@ type State string
 const (
 	StateApproved  State = "APPROVED"
 	StatePublished State = "PUBLISHED"
-	StateEmpty     State = ""
 )
 
 // IsValid validates that the State is a valid enum value
 func (s State) IsValid() bool {
 	switch s {
-	case StateApproved, StatePublished, StateEmpty:
+	case StateApproved, StatePublished:
 		return true
 	default:
 		return false
