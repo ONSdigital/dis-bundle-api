@@ -100,10 +100,17 @@ func ValidateError(e *Error) error {
 
 	err := fmt.Errorf("only one of Source.Field, Source.Parameter, Source.Header can be set")
 	if e.Source != nil {
-		if e.Source.Field != "" && (e.Source.Parameter != "" || e.Source.Header != "") {
-			return err
+		count := 0
+		if e.Source.Field != "" {
+			count++
 		}
-		if e.Source.Parameter != "" && e.Source.Header != "" {
+		if e.Source.Parameter != "" {
+			count++
+		}
+		if e.Source.Header != "" {
+			count++
+		}
+		if count > 1 {
 			return err
 		}
 	}
