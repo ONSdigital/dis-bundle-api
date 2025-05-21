@@ -21,6 +21,7 @@ func TestMongoCRUD(t *testing.T) {
 		mongoVersion = "4.4.8"
 		mongoServer  *mim.Server
 		err          error
+		now          = time.Now()
 	)
 
 	// Get the default app config to use when setting up mongo in memory
@@ -107,7 +108,7 @@ func TestMongoCRUD(t *testing.T) {
 			Convey("When the bundle is updated successfully", func() {
 				myBundle := models.Bundle{
 					BundleType: models.BundleTypeManual,
-					CreatedAt:  time.Now(),
+					CreatedAt:  &now,
 				}
 				updatedBundle, err := mongodb.UpdateBundle(ctx, "bundle1", &myBundle)
 				So(err, ShouldBeNil)
@@ -117,7 +118,7 @@ func TestMongoCRUD(t *testing.T) {
 			Convey("When the bundle returns error", func() {
 				myBundle := models.Bundle{
 					BundleType: models.BundleTypeManual,
-					CreatedAt:  time.Now(),
+					CreatedAt:  &now,
 				}
 				mongodb.Connection.Close(ctx)
 				_, err := mongodb.UpdateBundle(ctx, "bundle1", &myBundle)
@@ -155,31 +156,35 @@ func setupTestData(ctx context.Context, mongo *Mongo) error {
 		return err
 	}
 
+	now := time.Now()
+	oneDayFromNow := now.Add(24 * time.Hour)
+	twoDaysFromNow := now.Add(48 * time.Hour)
+	draft := models.BundleStateDraft
 	bundles := []*models.Bundle{
 		{
 			ID:            "bundle1",
 			BundleType:    models.BundleTypeScheduled,
-			CreatedBy:     models.User{Email: "user1@ons.gov.uk"},
-			CreatedAt:     time.Now(),
-			LastUpdatedBy: models.User{Email: "user1@ons.gov.uk"},
-			PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
-			ScheduledAt:   time.Now().Add(24 * time.Hour), // 1 day from now
-			State:         models.BundleStateDraft,
+			CreatedBy:     &models.User{Email: "user1@ons.gov.uk"},
+			CreatedAt:     &now,
+			LastUpdatedBy: &models.User{Email: "user1@ons.gov.uk"},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+			ScheduledAt:   &oneDayFromNow, // 1 day from now
+			State:         &draft,
 			Title:         "Scheduled Bundle 1",
-			UpdatedAt:     time.Now(),
+			UpdatedAt:     &now,
 			ManagedBy:     models.ManagedByDataAdmin,
 		},
 		{
 			ID:            "bundle2",
 			BundleType:    models.BundleTypeManual,
-			CreatedBy:     models.User{Email: "user2@ons.gov.uk"},
-			CreatedAt:     time.Now(),
-			LastUpdatedBy: models.User{Email: "user2@ons.gov.uk"},
-			PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
-			ScheduledAt:   time.Now().Add(48 * time.Hour), // 2 days from now
-			State:         models.BundleStateDraft,
+			CreatedBy:     &models.User{Email: "user2@ons.gov.uk"},
+			CreatedAt:     &now,
+			LastUpdatedBy: &models.User{Email: "user2@ons.gov.uk"},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
+			ScheduledAt:   &twoDaysFromNow, // 2 days from now
+			State:         &draft,
 			Title:         "Manual Bundle 2",
-			UpdatedAt:     time.Now(),
+			UpdatedAt:     &now,
 			ManagedBy:     models.ManagedByWagtail,
 		},
 	}

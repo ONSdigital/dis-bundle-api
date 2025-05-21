@@ -57,7 +57,8 @@ func buildGetBundleQuery(bundleID string) bson.M {
 
 // CreateBundle inserts a new bundle
 func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
-	bundle.CreatedAt = time.Now()
+	now := time.Now()
+	bundle.CreatedAt = &now
 	collectionName := m.ActualCollectionName("BundlesCollection")
 
 	_, err := m.Connection.Collection(collectionName).Insert(ctx, bundle)

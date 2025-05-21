@@ -30,19 +30,20 @@ func TestCreateBundle(t *testing.T) {
 			previewTeam := PreviewTeam{
 				ID: "team1",
 			}
+			state := BundleStateDraft
 			testBundle := Bundle{
 				ID:            bundleID,
 				BundleType:    BundleTypeManual,
-				CreatedBy:     user,
-				CreatedAt:     now,
-				LastUpdatedBy: user,
-				PreviewTeams: []PreviewTeam{
+				CreatedBy:     &user,
+				CreatedAt:     &now,
+				LastUpdatedBy: &user,
+				PreviewTeams: &[]PreviewTeam{
 					previewTeam,
 				},
-				ScheduledAt: now,
-				State:       BundleStateDraft,
+				ScheduledAt: &now,
+				State:       &state,
 				Title:       "Test Bundle",
-				UpdatedAt:   now,
+				UpdatedAt:   &now,
 				ManagedBy:   ManagedByWagtail,
 			}
 			b, err := json.Marshal(testBundle)
@@ -56,14 +57,14 @@ func TestCreateBundle(t *testing.T) {
 			So(bundle, ShouldNotBeNil)
 			So(bundle.ID, ShouldEqual, bundleID)
 			So(bundle.BundleType, ShouldEqual, BundleTypeManual)
-			So(bundle.CreatedBy, ShouldEqual, user)
-			So(bundle.CreatedAt, ShouldEqual, now)
-			So(bundle.LastUpdatedBy, ShouldEqual, user)
-			So(bundle.PreviewTeams, ShouldEqual, []PreviewTeam{previewTeam})
-			So(bundle.ScheduledAt, ShouldEqual, now)
-			So(bundle.State, ShouldEqual, BundleStateDraft)
+			So(bundle.CreatedBy, ShouldEqual, &user)
+			So(bundle.CreatedAt.Equal(now), ShouldBeTrue)
+			So(bundle.LastUpdatedBy, ShouldEqual, &user)
+			So(bundle.PreviewTeams, ShouldEqual, &[]PreviewTeam{previewTeam})
+			So(bundle.ScheduledAt.Equal(now), ShouldBeTrue)
+			So(bundle.State, ShouldEqual, &state)
 			So(bundle.Title, ShouldEqual, "Test Bundle")
-			So(bundle.UpdatedAt, ShouldEqual, now)
+			So(bundle.UpdatedAt.Equal(now), ShouldBeTrue)
 			So(bundle.ManagedBy, ShouldEqual, ManagedByWagtail)
 		})
 	})
@@ -98,19 +99,20 @@ func TestMarshalJSON(t *testing.T) {
 		previewTeam := PreviewTeam{
 			ID: "team1",
 		}
+		state := BundleStateDraft
 		testBundle := Bundle{
 			ID:            bundleID,
 			BundleType:    BundleTypeManual,
-			CreatedBy:     user,
-			CreatedAt:     now,
-			LastUpdatedBy: user,
-			PreviewTeams: []PreviewTeam{
+			CreatedBy:     &user,
+			CreatedAt:     &now,
+			LastUpdatedBy: &user,
+			PreviewTeams: &[]PreviewTeam{
 				previewTeam,
 			},
-			ScheduledAt: now,
-			State:       BundleStateDraft,
+			ScheduledAt: &now,
+			State:       &state,
 			Title:       "Test Bundle",
-			UpdatedAt:   now,
+			UpdatedAt:   &now,
 			ManagedBy:   ManagedByWagtail,
 		}
 		Convey("when the bundle type is invalid", func() {
@@ -122,7 +124,8 @@ func TestMarshalJSON(t *testing.T) {
 			})
 		})
 		Convey("when the bundle state is invalid", func() {
-			testBundle.State = invalid
+			state = invalid
+			testBundle.State = &state
 			Convey("then it should return an error", func() {
 				_, err := json.Marshal(testBundle)
 				So(err, ShouldNotBeNil)
@@ -237,19 +240,20 @@ func TestValidateBundle(t *testing.T) {
 		previewTeam := PreviewTeam{
 			ID: "team1",
 		}
+		state := BundleStateDraft
 		testBundle := Bundle{
 			ID:            bundleID,
 			BundleType:    BundleTypeManual,
-			CreatedBy:     user,
-			CreatedAt:     now,
-			LastUpdatedBy: user,
-			PreviewTeams: []PreviewTeam{
+			CreatedBy:     &user,
+			CreatedAt:     &now,
+			LastUpdatedBy: &user,
+			PreviewTeams: &[]PreviewTeam{
 				previewTeam,
 			},
-			ScheduledAt: now,
-			State:       BundleStateDraft,
+			ScheduledAt: &now,
+			State:       &state,
 			Title:       "Test Bundle",
-			UpdatedAt:   now,
+			UpdatedAt:   &now,
 			ManagedBy:   ManagedByWagtail,
 		}
 
@@ -271,7 +275,7 @@ func TestValidateBundle(t *testing.T) {
 		})
 
 		Convey("When Validate is called and PreviewTeams is empty", func() {
-			testBundle.PreviewTeams = []PreviewTeam{}
+			testBundle.PreviewTeams = &[]PreviewTeam{}
 			Convey("Then it should return an error", func() {
 				err := ValidateBundle(&testBundle)
 				So(err, ShouldNotBeNil)
@@ -299,12 +303,43 @@ func TestValidateBundle(t *testing.T) {
 
 		Convey("When Validate is called and all mandatory fields are empty", func() {
 			testBundle.BundleType = ""
-			testBundle.PreviewTeams = []PreviewTeam{}
+			testBundle.PreviewTeams = &[]PreviewTeam{}
 			testBundle.Title = ""
 			Convey("Then it should return an error", func() {
 				err := ValidateBundle(&testBundle)
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"bundle_type", "preview_teams", "title"}))
+			})
+		})
+	})
+}
+
+func TestBundleIdOmitEmpty(t *testing.T) {
+	Convey("Given a valid bundle with empty the non-mandatory fields", t, func() {
+		previewTeam := PreviewTeam{
+			ID: "team1",
+		}
+		testBundle := Bundle{
+			BundleType: BundleTypeManual,
+			PreviewTeams: &[]PreviewTeam{
+				previewTeam,
+			},
+			Title:     "Test Bundle",
+			ManagedBy: ManagedByWagtail,
+		}
+
+		Convey("When marshaling to JSON", func() {
+			data, err := json.Marshal(testBundle)
+
+			Convey("Then it should omit the ID field", func() {
+				So(err, ShouldBeNil)
+				So(string(data), ShouldNotContainSubstring, `"id":""`)
+				So(string(data), ShouldNotContainSubstring, `"created_by"`)
+				So(string(data), ShouldNotContainSubstring, `"created_at"`)
+				So(string(data), ShouldNotContainSubstring, `"last_updated_by"`)
+				So(string(data), ShouldNotContainSubstring, `"scheduled_at"`)
+				So(string(data), ShouldNotContainSubstring, `"state"`)
+				So(string(data), ShouldNotContainSubstring, `"updated_at"`)
 			})
 		})
 	})

@@ -9,31 +9,24 @@ import (
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
 
+// Bundle is the model for the response body when retrieving a bundle
 type Bundle struct {
-	ID            string        `bson:"_id" json:"id"`
-	BundleType    BundleType    `bson:"bundle_type" json:"bundle_type"`
-	CreatedBy     User          `bson:"created_by" json:"created_by"`
-	CreatedAt     time.Time     `bson:"created_at" json:"created_at"`
-	LastUpdatedBy User          `bson:"last_updated_by" json:"last_updated_by"`
-	PreviewTeams  []PreviewTeam `bson:"preview_teams" json:"preview_teams"`
-	ScheduledAt   time.Time     `bson:"scheduled_at" json:"scheduled_at"`
-	State         BundleState   `bson:"state" json:"state"`
-	Title         string        `bson:"title" json:"title"`
-	UpdatedAt     time.Time     `bson:"updated_at" json:"updated_at"`
-	ManagedBy     ManagedBy     `bson:"managed_by" json:"managed_by"`
+	ID            string         `bson:"_id,omitempty" json:"id,omitempty"`
+	BundleType    BundleType     `bson:"bundle_type" json:"bundle_type"` //
+	CreatedBy     *User          `bson:"created_by,omitempty" json:"created_by,omitempty"`
+	CreatedAt     *time.Time     `bson:"created_at,omitempty" json:"created_at,omitempty"`
+	LastUpdatedBy *User          `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
+	PreviewTeams  *[]PreviewTeam `bson:"preview_teams" json:"preview_teams"` //
+	ScheduledAt   *time.Time     `bson:"scheduled_at,omitempty" json:"scheduled_at,omitempty"`
+	State         *BundleState   `bson:"state,omitempty" json:"state,omitempty"`
+	Title         string         `bson:"title" json:"title"` //
+	UpdatedAt     *time.Time     `bson:"updated_at,omitempty" json:"updated_at,omitempty"`
+	ManagedBy     ManagedBy      `bson:"managed_by" json:"managed_by"` //
 }
 
+// Bundles represents a list of bundles
 type Bundles struct {
 	Items []Bundle `bson:"items" json:"items"`
-}
-
-type BundleContent struct {
-	DatasetID string `bson:"dataset_id" json:"dataset_id"`
-	EditionID string `bson:"edition_id" json:"edition_id"`
-	ItemID    string `bson:"item_id" json:"item_id"`
-	State     string `bson:"state" json:"state"`
-	Title     string `bson:"title" json:"title"`
-	URLPath   string `bson:"url_path" json:"url_path"`
 }
 
 type User struct {
@@ -207,7 +200,7 @@ func ValidateBundle(bundle *Bundle) error {
 		missingFields = append(missingFields, "bundle_type")
 	}
 
-	if len(bundle.PreviewTeams) == 0 {
+	if len(*bundle.PreviewTeams) == 0 {
 		missingFields = append(missingFields, "preview_teams")
 	}
 
