@@ -31,13 +31,13 @@ func (s State) String() string {
 
 func getStateByName(stateName string) (*State, bool) {
 	switch stateName {
-	case "draft":
+	case "DRAFT":
 		return &Draft, true
-	case "in_review":
+	case "IN_REVIEW":
 		return &InReview, true
-	case "approved":
+	case "APPROVED":
 		return &Approved, true
-	case "published":
+	case "PUBLISHED":
 		return &Published, true
 	default:
 		return nil, false
