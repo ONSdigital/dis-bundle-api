@@ -10,8 +10,8 @@ import (
 //go:generate moq -out datastoretest/mongo.go -pkg storetest . MongoDB
 //go:generate moq -out datastoretest/datastore.go -pkg storetest . Storer
 
-// DataStore provides a datastore.Storer interface used to store, retrieve, remove or update datasets
-type DataStore struct {
+// Datastore provides a datastore.Storer interface used to store, retrieve, remove or update datasets
+type Datastore struct {
 	Backend Storer
 }
 
