@@ -3,22 +3,28 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
 
+// Error represents the details of a specific error
 type Error struct {
-	Code        Code   `bson:"code" json:"code"`
-	Description string `bson:"description" json:"description"`
-	Source      Source `bson:"source" json:"source"`
+	Code        *Code   `bson:"code,omitempty" json:"code,omitempty"`
+	Description string  `bson:"description,omitempty" json:"description,omitempty"`
+	Source      *Source `bson:"source,omitempty" json:"source,omitempty"`
 }
 
+// ErrorList represents a list of errors
 type ErrorList struct {
-	Errors []Error `bson:"errors" json:"errors"`
+	Errors []Error `bson:"errors,omitempty" json:"errors,omitempty"`
 }
 
+// Source represents the details of which field or parameter the error relates to. Used to return validation errors to 4xx requests. Only one of the properties below can be returned in any single error.
 type Source struct {
-	Field     string `bson:"field" json:"field"`
-	Parameter string `bson:"parameter" json:"parameter"`
-	Header    string `bson:"header" json:"header"`
+	Field     string `bson:"field,omitempty" json:"field,omitempty"`
+	Parameter string `bson:"parameter,omitempty" json:"parameter,omitempty"`
+	Header    string `bson:"header,omitempty" json:"header,omitempty"`
 }
 
 // Code enum representing the error code
@@ -68,5 +74,38 @@ func (c *Code) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid Code: %s", str)
 	}
 	*c = converted
+	return nil
+}
+
+func CreateError(reader io.Reader) (*Error, error) {
+	b, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, errs.ErrUnableToReadMessage
+	}
+
+	var errorObj Error
+
+	err = json.Unmarshal(b, &errorObj)
+	if err != nil {
+		return nil, errs.ErrUnableToParseJSON
+	}
+
+	return &errorObj, nil
+}
+
+func ValidateError(e *Error) error {
+	if e == nil {
+		return fmt.Errorf("error cannot be nil")
+	}
+
+	err := fmt.Errorf("only one of Source.Field, Source.Parameter, Source.Header can be set")
+	if e.Source != nil {
+		if e.Source.Field != "" && (e.Source.Parameter != "" || e.Source.Header != "") {
+			return err
+		}
+		if e.Source.Parameter != "" && e.Source.Header != "" {
+			return err
+		}
+	}
 	return nil
 }
