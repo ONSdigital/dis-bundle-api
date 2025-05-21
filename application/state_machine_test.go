@@ -101,7 +101,7 @@ func TestGetStateByName(t *testing.T) {
 			})
 		})
 
-		Convey("When the state name is unknown", func() {
+		Convey("When the state name is 'unknown'", func() {
 			state, found := getStateByName("unknown")
 
 			Convey("Then it should return nil and found should be false", func() {
