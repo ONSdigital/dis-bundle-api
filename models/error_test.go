@@ -295,7 +295,7 @@ func TestSourceOmitEmpty(t *testing.T) {
 func TestErrorListOmitEmpty(t *testing.T) {
 	Convey("Given an ErrorList struct with an empty Errors slice", t, func() {
 		errList := ErrorList{
-			Errors: []Error{},
+			Errors: nil,
 		}
 
 		Convey("When marshaled to JSON", func() {
@@ -311,7 +311,7 @@ func TestErrorListOmitEmpty(t *testing.T) {
 	Convey("Given an ErrorList struct with a non-empty Errors slice", t, func() {
 		code := CodeInternalServerError
 		errList := ErrorList{
-			Errors: []Error{
+			Errors: &[]Error{
 				{
 					Code:        &code,
 					Description: "Some description",
