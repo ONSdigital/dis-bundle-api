@@ -11,12 +11,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-type ErrorReader struct{}
-
-func (e *ErrorReader) Read(p []byte) (n int, err error) {
-	return 0, fmt.Errorf("mock read error")
-}
-
 const invalid = "INVALID"
 
 func TestCreateBundle(t *testing.T) {
