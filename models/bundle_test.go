@@ -320,7 +320,6 @@ func TestValidateBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"created_by", "last_updated_by"}))
 			})
-
 		})
 	})
 }
