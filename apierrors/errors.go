@@ -38,8 +38,8 @@ var (
 	ErrTooManyQueryParameters = errors.New("too many query parameters provided")
 
 	// State errors
-	ErrExpectedStateOfCreated  = errors.New("expected bundle state to be 'created'")
-	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'approved'")
+	ErrExpectedStateOfCreated  = errors.New("expected bundle state to be 'CREATED'")
+	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
 )
 
 // Grouping for error response handling

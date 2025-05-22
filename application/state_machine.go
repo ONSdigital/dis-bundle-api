@@ -31,13 +31,13 @@ func (s State) String() string {
 
 func getStateByName(stateName string) (*State, bool) {
 	switch stateName {
-	case "draft":
+	case "DRAFT":
 		return &Draft, true
-	case "in_review":
+	case "IN_REVIEW":
 		return &InReview, true
-	case "approved":
+	case "APPROVED":
 		return &Approved, true
-	case "published":
+	case "PUBLISHED":
 		return &Published, true
 	default:
 		return nil, false
@@ -71,9 +71,9 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 	match := false
 
 	for state, transitions := range sm.transitions {
-		if state == bundleUpdate.State {
+		if state == bundleUpdate.State.String() {
 			for i := range transitions {
-				if currentBundle.State != transitions[i] {
+				if currentBundle.State.String() != transitions[i] {
 					continue
 				}
 				match = true
@@ -83,7 +83,7 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 					return errors.New("incorrect state value")
 				}
 
-				if currentBundle.State == InReview.String() && bundleUpdate.State == Approved.String() {
+				if currentBundle.State.String() == InReview.String() && bundleUpdate.State.String() == Approved.String() {
 					allApproved := checkAllBundleContentsAreApproved(currentBundle.Contents)
 					if !allApproved {
 						return errors.New("not all bundle contents are approved")

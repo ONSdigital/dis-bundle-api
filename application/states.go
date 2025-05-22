@@ -2,8 +2,8 @@ package application
 
 // list of states for the state machine
 var (
-	Draft     = State{Name: "draft"}
-	InReview  = State{Name: "in_review"}
-	Approved  = State{Name: "approved"}
-	Published = State{Name: "published"}
+	Draft     = State{Name: "DRAFT"}
+	InReview  = State{Name: "IN_REVIEW"}
+	Approved  = State{Name: "APPROVED"}
+	Published = State{Name: "PUBLISHED"}
 )
