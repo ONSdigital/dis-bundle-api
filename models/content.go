@@ -35,7 +35,8 @@ type Links struct {
 
 // Contents represents a list of contents related to a bundle
 type Contents struct {
-	Contents []ContentItem `bson:"contents" json:"contents"`
+	PaginationFields
+	Items []ContentItem `bson:"contents,omitempty" json:"contents,omitempty"`
 }
 
 // UnmarshalJSON unmarshals a string to ContentItem
