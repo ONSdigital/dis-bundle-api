@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"testing"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -29,8 +28,6 @@ const invalid = "INVALID"
 func TestCreateContentItem(t *testing.T) {
 	Convey("Successfully return without any errors", t, func() {
 		Convey("when the content item has all fields", func() {
-			edit, _ := url.Parse("/edit")
-			preview, _ := url.Parse("/preview")
 			state := StateApproved
 			testContentItem := ContentItem{
 				ID:          "123",
@@ -44,8 +41,8 @@ func TestCreateContentItem(t *testing.T) {
 				},
 				State: &state,
 				Links: Links{
-					Edit:    edit,
-					Preview: preview,
+					Edit:    "/edit",
+					Preview: "/preview",
 				},
 			}
 
@@ -122,8 +119,6 @@ func TestCreateContentItem(t *testing.T) {
 func TestMarshalJSON(t *testing.T) {
 	Convey("Given a ContentItem", t, func() {
 		state := StateApproved
-		edit, _ := url.Parse("/edit")
-		preview, _ := url.Parse("/preview")
 		contentItem := ContentItem{
 			ID:          "123",
 			BundleID:    "456",
@@ -136,8 +131,8 @@ func TestMarshalJSON(t *testing.T) {
 			},
 			State: &state,
 			Links: Links{
-				Edit:    edit,
-				Preview: preview,
+				Edit:    "/edit",
+				Preview: "/preview",
 			},
 		}
 
@@ -250,8 +245,8 @@ func TestUnmarshalJSON(t *testing.T) {
 				So(contentItem.Metadata.Title, ShouldEqual, "title")
 				So(contentItem.Metadata.VersionID, ShouldEqual, 1)
 				So(contentItem.State, ShouldEqual, &state)
-				So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
-				So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
+				So(contentItem.Links.Edit, ShouldEqual, "/edit")
+				So(contentItem.Links.Preview, ShouldEqual, "/preview")
 			})
 		})
 	})
@@ -289,8 +284,8 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
 					So(contentItem.State, ShouldEqual, &state)
-					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
-					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
 				})
 			})
 		})
@@ -329,8 +324,8 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
 					So(contentItem.State, ShouldEqual, &state)
-					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
-					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
 				})
 			})
 		})
@@ -368,8 +363,8 @@ func TestUnmarshalJSON(t *testing.T) {
 					So(contentItem.Metadata.Title, ShouldEqual, "title")
 					So(contentItem.Metadata.VersionID, ShouldEqual, 1)
 					So(contentItem.State, ShouldBeNil)
-					So(contentItem.Links.Edit.String(), ShouldEqual, "/edit")
-					So(contentItem.Links.Preview.String(), ShouldEqual, "/preview")
+					So(contentItem.Links.Edit, ShouldEqual, "/edit")
+					So(contentItem.Links.Preview, ShouldEqual, "/preview")
 				})
 			})
 		})
@@ -523,73 +518,9 @@ func TestUnmarshalJSON_InvalidContentItem(t *testing.T) {
 	})
 }
 
-func TestUnmarshalJSON_LinksObject(t *testing.T) {
-	Convey("Given a valid JSON for Links", t, func() {
-		validJSON := []byte(`{
-			"edit": "/edit",
-			"preview": "/preview"
-		}`)
-
-		Convey("When UnmarshalJSON is called", func() {
-			var links Links
-			err := links.UnmarshalJSON(validJSON)
-
-			Convey("Then it should not return an error", func() {
-				So(err, ShouldBeNil)
-				So(links.Edit.String(), ShouldEqual, "/edit")
-				So(links.Preview.String(), ShouldEqual, "/preview")
-			})
-		})
-	})
-
-	Convey("Given invalid JSON for Links", t, func() {
-		invalidJSON := []byte(`{"edit": 123, "preview": 456}`) // Invalid JSON for URLs
-
-		Convey("When UnmarshalJSON is called", func() {
-			var links Links
-			err := links.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "cannot unmarshal number into Go struct field")
-			})
-		})
-	})
-
-	Convey("Given a JSON with an invalid URL for the edit field", t, func() {
-		invalidJSON := []byte(`{"edit": "http://localhost:port", "preview": "/preview"}`)
-
-		Convey("When UnmarshalJSON is called", func() {
-			var links Links
-			err := links.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error indicating the invalid URL", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid URL for edit")
-			})
-		})
-	})
-
-	Convey("Given a JSON with an invalid URL for the preview field", t, func() {
-		invalidJSON := []byte(`{"edit": "/edit", "preview": "http://localhost:port"}`)
-
-		Convey("When UnmarshalJSON is called", func() {
-			var links Links
-			err := links.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error indicating the invalid URL", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid URL for preview")
-			})
-		})
-	})
-}
-
 func TestValidateContentItem(t *testing.T) {
 	Convey("Given a ContentItem with all required fields", t, func() {
 		state := StateApproved
-		edit, _ := url.Parse("/edit")
-		preview, _ := url.Parse("/preview")
 		contentItem := ContentItem{
 			ID:          "123",
 			BundleID:    "456",
@@ -602,8 +533,8 @@ func TestValidateContentItem(t *testing.T) {
 			},
 			State: &state,
 			Links: Links{
-				Edit:    edit,
-				Preview: preview,
+				Edit:    "/edit",
+				Preview: "/preview",
 			},
 		}
 
@@ -643,7 +574,7 @@ func TestValidateContentItem(t *testing.T) {
 		})
 
 		Convey("When Validate is called and Links has blank fields", func() {
-			contentItem.Links = Links{Edit: &url.URL{Path: ""}, Preview: &url.URL{Path: ""}}
+			contentItem.Links = Links{Edit: "", Preview: ""}
 			Convey("Then it should return an error", func() {
 				err := ValidateContentItem(&contentItem)
 				So(err, ShouldNotBeNil)

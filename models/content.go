@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/url"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/gofrs/uuid"
@@ -30,60 +29,13 @@ type Metadata struct {
 
 // Links represents the navigational links for onward actions related to the content item
 type Links struct {
-	Edit    *url.URL `bson:"edit" json:"edit"`
-	Preview *url.URL `bson:"preview" json:"preview"`
+	Edit    string `bson:"edit" json:"edit"`
+	Preview string `bson:"preview" json:"preview"`
 }
 
 // Contents represents a list of contents related to a bundle
 type Contents struct {
 	Contents []ContentItem `bson:"contents" json:"contents"`
-}
-
-// UnmarshalJSON for Links to parse URLs from JSON strings
-func (l *Links) UnmarshalJSON(data []byte) error {
-	type Alias Links
-	aux := &struct {
-		Edit    string `json:"edit"`
-		Preview string `json:"preview"`
-		*Alias
-	}{
-		Alias: (*Alias)(l),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	var err error
-	if aux.Edit != "" {
-		l.Edit, err = url.Parse(aux.Edit)
-		if err != nil {
-			return fmt.Errorf("invalid URL for edit: %w", err)
-		}
-	}
-
-	if aux.Preview != "" {
-		l.Preview, err = url.Parse(aux.Preview)
-		if err != nil {
-			return fmt.Errorf("invalid URL for preview: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// MarshalJSON for Links to convert URLs to JSON strings
-func (l Links) MarshalJSON() ([]byte, error) {
-	type Alias Links
-	return json.Marshal(&struct {
-		Edit    string `json:"edit"`
-		Preview string `json:"preview"`
-		*Alias
-	}{
-		Edit:    l.Edit.String(),
-		Preview: l.Preview.String(),
-		Alias:   (*Alias)(&l),
-	})
 }
 
 // UnmarshalJSON unmarshals a string to ContentItem
@@ -247,18 +199,10 @@ func ValidateContentItem(contentItem *ContentItem) error {
 		invalidFields = append(invalidFields, "version_id")
 	}
 
-	if contentItem.Links.Edit == nil {
+	if contentItem.Links.Edit == "" {
 		missingFields = append(missingFields, "edit")
 	}
-
-	if contentItem.Links.Preview == nil {
-		missingFields = append(missingFields, "preview")
-	}
-
-	if contentItem.Links.Edit != nil && contentItem.Links.Edit.String() == "" {
-		missingFields = append(missingFields, "edit")
-	}
-	if contentItem.Links.Preview != nil && contentItem.Links.Preview.String() == "" {
+	if contentItem.Links.Preview == "" {
 		missingFields = append(missingFields, "preview")
 	}
 
