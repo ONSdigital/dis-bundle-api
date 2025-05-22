@@ -11,19 +11,11 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-type ErrorReader struct{}
-
-func (e *ErrorReader) Read(p []byte) (n int, err error) {
-	return 0, fmt.Errorf("mock read error")
-}
-
 type ErrorUUIDGenerator struct{}
 
 func (e *ErrorUUIDGenerator) NewV4() (uuid.UUID, error) {
 	return uuid.UUID{}, fmt.Errorf("mock UUID generation error")
 }
-
-const invalid = "INVALID"
 
 func TestCreateContentItem(t *testing.T) {
 	Convey("Successfully return without any errors", t, func() {
@@ -116,7 +108,7 @@ func TestCreateContentItem(t *testing.T) {
 	})
 }
 
-func TestMarshalJSON(t *testing.T) {
+func TestMarshalJSONForContentItem(t *testing.T) {
 	Convey("Given a ContentItem", t, func() {
 		state := StateApproved
 		contentItem := ContentItem{

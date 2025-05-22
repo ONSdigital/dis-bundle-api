@@ -83,7 +83,7 @@ func TestCreateBundle(t *testing.T) {
 	})
 }
 
-func TestMarshalJSON(t *testing.T) {
+func TestMarshalJSONForBundle(t *testing.T) {
 	Convey("Given a bundle", t, func() {
 		bundleID := "12345"
 		user := User{
