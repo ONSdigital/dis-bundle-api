@@ -12,7 +12,7 @@ import (
 // ContentItem represents information about the datasets to be published as part of the bundle
 type ContentItem struct {
 	ID          string      `bson:"_id,omitempty" json:"id,omitempty"`
-	BundleID    string      `bson:"bundle_id,omitempty" json:"bundle_id,omitempty"`
+	BundleID    string      `bson:"bundle_id" json:"bundle_id"`
 	ContentType ContentType `bson:"content_type" json:"content_type"`
 	Metadata    Metadata    `bson:"metadata" json:"metadata"`
 	State       *State      `bson:"state,omitempty" json:"state,omitempty"`
@@ -185,6 +185,10 @@ func CreateContentItem(reader io.Reader, generator UUIDGenerator) (*ContentItem,
 func ValidateContentItem(contentItem *ContentItem) error {
 	var missingFields []string
 	var invalidFields []string
+
+	if contentItem.BundleID == "" {
+		missingFields = append(missingFields, "bundle_id")
+	}
 
 	if contentItem.ContentType == "" {
 		missingFields = append(missingFields, "content_type")

@@ -315,6 +315,15 @@ func TestValidateBundle(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"created_by", "last_updated_by"}))
 			})
 		})
+
+		Convey("When Validate is called and id is empty", func() {
+			testBundle.ID = ""
+			Convey("Then it should return an error", func() {
+				err := ValidateBundle(&testBundle)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"id"}))
+			})
+		})
 	})
 }
 
@@ -337,7 +346,6 @@ func TestBundleIdOmitEmpty(t *testing.T) {
 
 			Convey("Then it should omit the ID field", func() {
 				So(err, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"id":""`)
 				So(string(data), ShouldNotContainSubstring, `"created_by"`)
 				So(string(data), ShouldNotContainSubstring, `"created_at"`)
 				So(string(data), ShouldNotContainSubstring, `"last_updated_by"`)

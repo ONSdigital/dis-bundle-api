@@ -11,7 +11,7 @@ import (
 
 // Bundle is the model for the response body when retrieving a bundle
 type Bundle struct {
-	ID            string          `bson:"_id,omitempty" json:"id,omitempty"`
+	ID            string          `bson:"_id" json:"id"`
 	BundleType    BundleType      `bson:"bundle_type" json:"bundle_type"`
 	CreatedBy     *User           `bson:"created_by,omitempty" json:"created_by,omitempty"`
 	CreatedAt     *time.Time      `bson:"created_at,omitempty" json:"created_at,omitempty"`
@@ -208,6 +208,10 @@ func (mb *ManagedBy) UnmarshalJSON(data []byte) error {
 
 func ValidateBundle(bundle *Bundle) error {
 	var missingFields []string
+
+	if bundle.ID == "" {
+		missingFields = append(missingFields, "id")
+	}
 
 	if bundle.BundleType == "" {
 		missingFields = append(missingFields, "bundle_type")

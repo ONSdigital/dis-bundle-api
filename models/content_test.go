@@ -162,19 +162,6 @@ func TestMarshalJSONForContentItem(t *testing.T) {
 			})
 		})
 
-		Convey("When the bundle ID is empty", func() {
-			contentItem.BundleID = ""
-
-			Convey("Then the bundle ID should not be marshalled", func() {
-				b, err := json.Marshal(contentItem)
-				So(err, ShouldBeNil)
-				So(b, ShouldNotBeEmpty)
-
-				bStr := string(b)
-				So(bStr, ShouldNotContainSubstring, `"bundle_id":""`)
-			})
-		})
-
 		Convey("When the title is empty", func() {
 			contentItem.Metadata.Title = ""
 
@@ -580,6 +567,15 @@ func TestValidateContentItem(t *testing.T) {
 				err := ValidateContentItem(&contentItem)
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("invalid fields: %v", []string{"version_id"}))
+			})
+		})
+
+		Convey("When Validate is called and BundleID is nil", func() {
+			contentItem.BundleID = ""
+			Convey("Then it should return an error", func() {
+				err := ValidateContentItem(&contentItem)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"bundle_id"}))
 			})
 		})
 	})
