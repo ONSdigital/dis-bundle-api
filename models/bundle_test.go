@@ -311,6 +311,17 @@ func TestValidateBundle(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"bundle_type", "preview_teams", "title"}))
 			})
 		})
+
+		Convey("When Validate is called and User fields are empty", func() {
+			testBundle.CreatedBy = &User{Email: ""}
+			testBundle.LastUpdatedBy = &User{Email: ""}
+			Convey("Then it should return an error", func() {
+				err := ValidateBundle(&testBundle)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"created_by", "last_updated_by"}))
+			})
+
+		})
 	})
 }
 

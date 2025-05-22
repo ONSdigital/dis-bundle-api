@@ -225,6 +225,14 @@ func ValidateBundle(bundle *Bundle) error {
 		missingFields = append(missingFields, "managed_by")
 	}
 
+	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
+		missingFields = append(missingFields, "created_by")
+	}
+
+	if bundle.LastUpdatedBy != nil && bundle.LastUpdatedBy.Email == "" {
+		missingFields = append(missingFields, "last_updated_by")
+	}
+
 	if missingFields != nil {
 		return fmt.Errorf("missing mandatory fields: %v", missingFields)
 	}
