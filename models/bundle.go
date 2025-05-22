@@ -9,6 +9,7 @@ import (
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
 
+// Bundle is the model for the response body when retrieving a bundle
 type Bundle struct {
 	ID            string          `bson:"_id,omitempty" json:"id,omitempty"`
 	BundleType    BundleType      `bson:"bundle_type" json:"bundle_type"`
@@ -29,14 +30,17 @@ type Bundles struct {
 	Items *[]Bundle `bson:"items" json:"items"`
 }
 
+// User represents the user who created or updated the bundle
 type User struct {
 	Email string `bson:"email" json:"email"`
 }
 
+// PreviewTeam represents a team who have permissions to view the dataset series in the bundle
 type PreviewTeam struct {
 	ID string `bson:"id" json:"id"`
 }
 
+// BundleContent represents the content of the bundle
 type BundleContent struct {
 	DatasetID string `bson:"dataset_id" json:"dataset_id"`
 	EditionID string `bson:"edition_id" json:"edition_id"`
