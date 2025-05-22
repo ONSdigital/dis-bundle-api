@@ -11,18 +11,23 @@ import (
 )
 
 var (
-	currentBundleWithStateDraft                          = &models.Bundle{State: Draft.String()}
-	currentBundleWithStateInReview                       = &models.Bundle{State: InReview.String()}
-	currentBundleWithStateInReviewAndContentsApproved    = &models.Bundle{State: InReview.String(), Contents: []models.BundleContent{{State: Approved.String()}}}
-	currentBundleWithStateInReviewAndContentsNotApproved = &models.Bundle{State: InReview.String(), Contents: []models.BundleContent{{State: Draft.String()}}}
-	currentBundleWithStateApproved                       = &models.Bundle{State: Approved.String()}
-	currentBundleWithStateUnknown                        = &models.Bundle{State: "UNKNOWN"}
+	bundleStateDraft                                     = models.BundleStateDraft
+	bundleStateInReview                                  = models.BundleStateInReview
+	bundleStateApproved                                  = models.BundleStateApproved
+	bundleStateUnknown                                   = models.BundleState("UNKNOWN")
+	bundleStatePublished                                 = models.BundleStatePublished
+	currentBundleWithStateDraft                          = &models.Bundle{State: &bundleStateDraft}
+	currentBundleWithStateInReview                       = &models.Bundle{State: &bundleStateInReview}
+	currentBundleWithStateInReviewAndContentsApproved    = &models.Bundle{State: &bundleStateInReview, Contents: []models.BundleContent{{State: Approved.String()}}}
+	currentBundleWithStateInReviewAndContentsNotApproved = &models.Bundle{State: &bundleStateInReview, Contents: []models.BundleContent{{State: Draft.String()}}}
+	currentBundleWithStateApproved                       = &models.Bundle{State: &bundleStateApproved}
+	currentBundleWithStateUnknown                        = &models.Bundle{State: &bundleStateUnknown}
 
-	bundleUpdateWithStateDraft     = &models.Bundle{State: Draft.String()}
-	bundleUpdateWithStateInReview  = &models.Bundle{State: InReview.String()}
-	bundleUpdateWithStateApproved  = &models.Bundle{State: Approved.String()}
-	bundleUpdateWithStatePublished = &models.Bundle{State: Published.String()}
-	bundleUpdateWithStateUnknown   = &models.Bundle{State: "UNKNOWN"}
+	bundleUpdateWithStateDraft     = &models.Bundle{State: &bundleStateDraft}
+	bundleUpdateWithStateInReview  = &models.Bundle{State: &bundleStateInReview}
+	bundleUpdateWithStateApproved  = &models.Bundle{State: &bundleStateApproved}
+	bundleUpdateWithStatePublished = &models.Bundle{State: &bundleStatePublished}
+	bundleUpdateWithStateUnknown   = &models.Bundle{State: &bundleStateUnknown}
 )
 
 func getMockStates() []State {

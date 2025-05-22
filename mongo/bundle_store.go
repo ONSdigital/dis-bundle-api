@@ -57,7 +57,8 @@ func buildGetBundleQuery(bundleID string) bson.M {
 
 // CreateBundle inserts a new bundle
 func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
-	bundle.CreatedDate = time.Now()
+	now := time.Now()
+	bundle.CreatedAt = &now
 	collectionName := m.ActualCollectionName("BundlesCollection")
 
 	_, err := m.Connection.Collection(collectionName).Insert(ctx, bundle)
@@ -74,17 +75,16 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 
 	updateData := bson.M{
 		"$set": bson.M{
-			"bundle_type":       update.BundleType,
-			"contents":          update.Contents,
-			"creator":           update.Creator,
-			"created_date":      update.CreatedDate,
-			"last_updated_by":   update.LastUpdatedBy,
-			"preview_teams":     update.PreviewTeams,
-			"publish_date_time": update.PublishDateTime,
-			"state":             update.State,
-			"title":             update.Title,
-			"updated_date":      update.UpdatedDate,
-			"wagtail_managed":   update.WagtailManaged,
+			"bundle_type":     update.BundleType,
+			"created_by":      update.CreatedBy,
+			"created_at":      update.CreatedAt,
+			"last_updated_by": update.LastUpdatedBy,
+			"preview_teams":   update.PreviewTeams,
+			"scheduled_at":    update.ScheduledAt,
+			"state":           update.State,
+			"title":           update.Title,
+			"updated_at":      update.UpdatedAt,
+			"managed_by":      update.ManagedBy,
 		},
 	}
 
