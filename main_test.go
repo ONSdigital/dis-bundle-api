@@ -13,6 +13,10 @@ import (
 	"github.com/cucumber/godog/colors"
 )
 
+const mongoVersion = "4.4.8"
+const databaseName = "testing"
+const replicaSetName = "rs0"
+
 var componentFlag = flag.Bool("component", false, "perform component tests")
 
 type ComponentTest struct {
@@ -21,7 +25,7 @@ type ComponentTest struct {
 
 func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 	authorizationFeature := componenttest.NewAuthorizationFeature()
-	bundleFeature, err := steps.NewBundleComponent(f.MongoFeature.Server.URI())
+	bundleFeature, err := steps.NewBundleComponent(f.MongoFeature.Server.URI(), authorizationFeature.FakeAuthService.ResolveURL(""))
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +56,12 @@ func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 }
 
 func (f *ComponentTest) InitializeTestSuite(ctx *godog.TestSuiteContext) {
-
+	ctx.BeforeSuite(func() {
+		f.MongoFeature = componenttest.NewMongoFeature(componenttest.MongoOptions{MongoVersion: mongoVersion, DatabaseName: databaseName, ReplicaSetName: replicaSetName})
+	})
+	ctx.AfterSuite(func() {
+		f.MongoFeature.Close()
+	})
 }
 
 func TestComponent(t *testing.T) {

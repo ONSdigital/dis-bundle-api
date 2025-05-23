@@ -12,15 +12,15 @@ type Bundle struct {
 	ID              string          `bson:"_id" json:"id"`
 	BundleType      string          `bson:"bundle_type" json:"bundle_type"`
 	Contents        []BundleContent `bson:"contents" json:"contents"`
-	Creator         string          `bson:"creator" json:"creator"`
 	CreatedDate     time.Time       `bson:"created_date" json:"created_date"`
-	LastUpdatedBy   string          `bson:"last_updated_by" json:"last_updated_by"`
-	PreviewTeams    []string        `bson:"preview_teams" json:"preview_teams"`
+	LastUpdatedBy   User            `bson:"last_updated_by" json:"last_updated_by"`
+	PreviewTeams    []PreviewTeam   `bson:"preview_teams" json:"preview_teams"`
 	PublishDateTime time.Time       `bson:"publish_date_time" json:"publish_date_time"`
 	State           string          `bson:"state" json:"state"`
 	Title           string          `bson:"title" json:"title"`
-	UpdatedDate     time.Time       `bson:"updated_date" json:"updated_date"`
+	UpdatedDate     time.Time       `bson:"updated_at" json:"updated_at"`
 	WagtailManaged  bool            `bson:"wagtail_managed" json:"wagtail_managed"`
+	ETag            string          `bson:"e_tag"                           json:"-"`
 }
 
 type BundleContent struct {
@@ -30,6 +30,21 @@ type BundleContent struct {
 	State     string `bson:"state" json:"state"`
 	Title     string `bson:"title" json:"title"`
 	URLPath   string `bson:"url_path" json:"url_path"`
+}
+
+type PaginationFields struct {
+	Count      int `json:"count"`
+	Limit      int `json:"limit"`
+	Offset     int `json:"offset"`
+	TotalCount int `json:"total_count"`
+}
+
+type User struct {
+	Email string `bson:"email,omitempty" json:"email,omitempty"`
+}
+
+type PreviewTeam struct {
+	ID string `bson:"id" json:"id"`
 }
 
 func CreateBundle(reader io.Reader) (*Bundle, error) {

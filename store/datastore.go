@@ -32,3 +32,7 @@ type MongoDB interface {
 type Storer interface {
 	dataMongoDB
 }
+
+func (ds *DataStore) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+	return ds.Backend.ListBundles(ctx, offset, limit)
+}

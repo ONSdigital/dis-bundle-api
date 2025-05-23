@@ -28,7 +28,7 @@ type BundleComponent struct {
 	initialiser    service.Initialiser
 }
 
-func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
+func NewBundleComponent(mongoURI, zebedeeURL string) (*BundleComponent, error) {
 	c := &BundleComponent{
 		HTTPServer: &http.Server{
 			ReadHeaderTimeout: 60 * time.Second,

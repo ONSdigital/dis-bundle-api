@@ -177,10 +177,12 @@ func setupTestData(ctx context.Context, mongo *Mongo) error {
 					URLPath:   "/dataset2/edition2/item2",
 				},
 			},
-			Creator:         "user1",
-			CreatedDate:     time.Now(),
-			LastUpdatedBy:   "user1",
-			PreviewTeams:    []string{"team1", "team2"},
+			CreatedDate:   time.Now(),
+			LastUpdatedBy: models.User{Email: "ABCD"},
+			PreviewTeams: []models.PreviewTeam{
+				{ID: "team1"},
+				{ID: "team2"},
+			},
 			PublishDateTime: time.Now().Add(24 * time.Hour), // 1 day from now
 			State:           "active",
 			Title:           "Scheduled Bundle 1",
@@ -200,10 +202,12 @@ func setupTestData(ctx context.Context, mongo *Mongo) error {
 					URLPath:   "/dataset3/edition3/item3",
 				},
 			},
-			Creator:         "user2",
-			CreatedDate:     time.Now(),
-			LastUpdatedBy:   "user2",
-			PreviewTeams:    []string{"team3"},
+			CreatedDate:   time.Now(),
+			LastUpdatedBy: models.User{Email: "ABCD"},
+			PreviewTeams: []models.PreviewTeam{
+				{ID: "team1"},
+				{ID: "team2"},
+			},
 			PublishDateTime: time.Now().Add(48 * time.Hour), // 2 days from now
 			State:           "inactive",
 			Title:           "Manual Bundle 2",
