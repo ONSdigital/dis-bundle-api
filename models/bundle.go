@@ -166,7 +166,7 @@ type ManagedBy string
 // Define the possible values for the ManagedBy enum
 const (
 	ManagedByWagtail   ManagedBy = "WAGTAIL"
-	ManagedByDataAdmin ManagedBy = "DATA_ADMIN"
+	ManagedByDataAdmin ManagedBy = "DATA-ADMIN"
 )
 
 // IsValid validates that the ManagedBy is a valid enum value

@@ -9,6 +9,8 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dp-authorisation/auth"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -20,7 +22,7 @@ type Service struct {
 	Config                *config.Config
 	Server                HTTPServer
 	Router                *mux.Router
-	API                   *api.API
+	API                   *api.BundleAPI
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
@@ -131,8 +133,11 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	sm := GetStateMachine(ctx, datastore)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
+	//Get Permissions
+	permissions := getAuthorisationHandlers(ctx, svc.Config)
+
 	// Setup API
-	svc.API = api.Setup(ctx, r, &datastore, svc.stateMachineBundleAPI)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, permissions)
 
 	svc.HealthCheck.Start(ctx)
 
@@ -232,4 +237,25 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 		return errors.New("Error(s) registering checkers for healthcheck")
 	}
 	return nil
+}
+
+func getAuthorisationHandlers(ctx context.Context, cfg *config.Config) (permissions api.AuthHandler) {
+	if !cfg.EnablePermissionsAuth {
+		log.Info(ctx, "feature flag not enabled defaulting to nop auth impl", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
+		return &auth.NopHandler{}
+	}
+
+	log.Info(ctx, "feature flag enabled", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
+
+	authClient := auth.NewPermissionsClient(dphttp.NewClient())
+	authVerifier := auth.DefaultPermissionsVerifier()
+
+	// for checking caller permissions when we only have a user/service token
+	permissions = auth.NewHandler(
+		auth.NewPermissionsRequestBuilder(cfg.ZebedeeURL),
+		authClient,
+		authVerifier,
+	)
+
+	return permissions
 }
