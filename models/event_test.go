@@ -3,10 +3,10 @@ package models
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -15,6 +15,8 @@ var (
 	yesterday = today.Add(-24 * time.Hour)
 	tomorrow  = today.Add(24 * time.Hour)
 )
+
+var bundleStateDraft = BundleStateDraft
 
 var fullyPopulatedEvent = Event{
 	CreatedAt: &today,
@@ -38,14 +40,14 @@ var fullyPopulatedEvent = Event{
 	Bundle: &Bundle{
 		ID:         "bundle123",
 		BundleType: BundleTypeManual,
-		CreatedBy: User{
+		CreatedBy: &User{
 			Email: "user123@ons.gov.uk",
 		},
-		CreatedAt: yesterday,
-		LastUpdatedBy: User{
+		CreatedAt: &yesterday,
+		LastUpdatedBy: &User{
 			Email: "user123@ons.gov.uk",
 		},
-		PreviewTeams: []PreviewTeam{
+		PreviewTeams: &[]PreviewTeam{
 			{
 				ID: "team1",
 			},
@@ -53,10 +55,10 @@ var fullyPopulatedEvent = Event{
 				ID: "team2",
 			},
 		},
-		ScheduledAt: tomorrow,
-		State:       BundleStateDraft,
+		ScheduledAt: &tomorrow,
+		State:       &bundleStateDraft,
 		Title:       "Test Bundle",
-		UpdatedAt:   today,
+		UpdatedAt:   &today,
 		ManagedBy:   ManagedByDataAdmin,
 	},
 }
@@ -66,10 +68,10 @@ var minimallyPopulatedEvent = Event{
 	Resource: "/bundles/123",
 	Bundle: &Bundle{
 		BundleType: BundleTypeManual,
-		CreatedBy: User{
+		CreatedBy: &User{
 			Email: "user123@ons.gov.uk",
 		},
-		PreviewTeams: []PreviewTeam{
+		PreviewTeams: &[]PreviewTeam{
 			{
 				ID: "team1",
 			},
@@ -80,14 +82,6 @@ var minimallyPopulatedEvent = Event{
 		Title:     "Test Bundle",
 		ManagedBy: ManagedByDataAdmin,
 	},
-}
-
-type ErrorReader struct {
-	Err error
-}
-
-func (er *ErrorReader) Read(p []byte) (n int, err error) {
-	return 0, er.Err
 }
 
 func TestCreateEvent_Success(t *testing.T) {
@@ -110,13 +104,13 @@ func TestCreateEvent_Success(t *testing.T) {
 				So(event.Bundle.ID, ShouldEqual, fullyPopulatedEvent.Bundle.ID)
 				So(event.Bundle.BundleType, ShouldEqual, fullyPopulatedEvent.Bundle.BundleType)
 				So(event.Bundle.CreatedBy, ShouldResemble, fullyPopulatedEvent.Bundle.CreatedBy)
-				So(event.Bundle.CreatedAt.Equal(fullyPopulatedEvent.Bundle.CreatedAt), ShouldBeTrue)
+				So(event.Bundle.CreatedAt.Equal(*fullyPopulatedEvent.Bundle.CreatedAt), ShouldBeTrue)
 				So(event.Bundle.LastUpdatedBy, ShouldResemble, fullyPopulatedEvent.Bundle.LastUpdatedBy)
 				So(event.Bundle.PreviewTeams, ShouldResemble, fullyPopulatedEvent.Bundle.PreviewTeams)
-				So(event.Bundle.ScheduledAt.Equal(fullyPopulatedEvent.Bundle.ScheduledAt), ShouldBeTrue)
+				So(event.Bundle.ScheduledAt.Equal(*fullyPopulatedEvent.Bundle.ScheduledAt), ShouldBeTrue)
 				So(event.Bundle.State, ShouldEqual, fullyPopulatedEvent.Bundle.State)
 				So(event.Bundle.Title, ShouldEqual, fullyPopulatedEvent.Bundle.Title)
-				So(event.Bundle.UpdatedAt.Equal(fullyPopulatedEvent.Bundle.UpdatedAt), ShouldBeTrue)
+				So(event.Bundle.UpdatedAt.Equal(*fullyPopulatedEvent.Bundle.UpdatedAt), ShouldBeTrue)
 				So(event.Bundle.ManagedBy, ShouldEqual, fullyPopulatedEvent.Bundle.ManagedBy)
 			})
 		})
@@ -141,14 +135,14 @@ func TestCreateEvent_Success(t *testing.T) {
 
 func TestCreateEvent_Failure(t *testing.T) {
 	Convey("Given an io.Reader that returns an error", t, func() {
-		errorReader := &ErrorReader{Err: fmt.Errorf("read error")}
+		errorReader := &ErrorReader{}
 
 		Convey("When CreateEvent is called", func() {
 			_, err := CreateEvent(errorReader)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "failed to read message body")
+				So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
 			})
 		})
 	})
