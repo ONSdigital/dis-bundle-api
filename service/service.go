@@ -36,27 +36,27 @@ var stateMachineInit sync.Once
 
 func GetListTransitions() []application.Transition {
 	draftTransition := application.Transition{
-		Label:               "draft",
+		Label:               "DRAFT",
 		TargetState:         application.Draft,
-		AllowedSourceStates: []string{"in_review", "approved"},
+		AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
 	}
 
 	inReviewTransition := application.Transition{
-		Label:               "in_review",
+		Label:               "IN_REVIEW",
 		TargetState:         application.InReview,
-		AllowedSourceStates: []string{"draft", "approved"},
+		AllowedSourceStates: []string{"DRAFT", "APPROVED"},
 	}
 
 	approvedTransition := application.Transition{
-		Label:               "approved",
+		Label:               "APPROVED",
 		TargetState:         application.Approved,
-		AllowedSourceStates: []string{"in_review"},
+		AllowedSourceStates: []string{"IN_REVIEW"},
 	}
 
 	publishedTransition := application.Transition{
-		Label:               "published",
+		Label:               "PUBLISHED",
 		TargetState:         application.Published,
-		AllowedSourceStates: []string{"approved"},
+		AllowedSourceStates: []string{"APPROVED"},
 	}
 
 	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
