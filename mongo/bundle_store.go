@@ -31,7 +31,7 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 
 func buildListBundlesQuery() (filter, sort bson.M) {
 	filter = bson.M{}
-	sort = bson.M{"_id": 1}
+	sort = bson.M{"updated_at": -1}
 	return
 }
 

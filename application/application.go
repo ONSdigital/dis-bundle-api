@@ -1,6 +1,8 @@
 package application
 
 import (
+	"context"
+
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 )
@@ -24,4 +26,22 @@ func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
 		}
 	}
 	return true
+}
+
+type Bundlestore interface {
+	ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error)
+}
+
+type BundleService struct {
+	Store Bundlestore
+}
+
+func NewBundleService(store Bundlestore) *BundleService {
+	return &BundleService{
+		Store: store,
+	}
+}
+
+func (s *BundleService) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+	return s.Store.ListBundles(ctx, offset, limit)
 }

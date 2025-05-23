@@ -22,6 +22,11 @@ type Config struct {
 	OTExporterOTLPEndpoint     string        `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OTServiceName              string        `envconfig:"OTEL_SERVICE_NAME"`
 	OtelEnabled                bool          `envconfig:"OTEL_ENABLED"`
+	DefaultMaxLimit            int           `envconfig:"DEFAULT_MAXIMUM_LIMIT"`
+	DefaultLimit               int           `envconfig:"DEFAULT_LIMIT"`
+	DefaultOffset              int           `envconfig:"DEFAULT_OFFSET"`
+	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
+	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	MongoConfig
 }
 
@@ -49,6 +54,9 @@ func Get() (*Config, error) {
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
 		OtelEnabled:                false,
+		DefaultMaxLimit:            1000,
+		DefaultLimit:               20,
+		DefaultOffset:              0,
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",
