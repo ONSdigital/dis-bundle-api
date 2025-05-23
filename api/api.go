@@ -8,12 +8,8 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/pagination"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/dp-authorisation/auth"
+	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	"github.com/gorilla/mux"
-)
-
-var (
-	readPermission = auth.Permissions{Read: true}
 )
 
 // API provides a struct to wrap the api around
@@ -21,23 +17,23 @@ type BundleAPI struct {
 	Router                *mux.Router
 	Store                 *store.Datastore
 	stateMachineBundleAPI *application.StateMachineBundleAPI
-	permissions           AuthHandler
+	authMiddleware        auth.Middleware
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, permissions AuthHandler) *BundleAPI {
+func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware) *BundleAPI {
 	api := &BundleAPI{
 		Router:                router,
 		Store:                 store,
 		stateMachineBundleAPI: stateMachineBundleAPI,
-		permissions:           permissions,
+		authMiddleware:        authMiddleware,
 	}
 
 	paginator := pagination.NewPaginator(cfg.DefaultLimit, cfg.DefaultOffset, cfg.DefaultMaxLimit)
 
 	api.get(
 		"/bundles",
-		api.isAuthorised(readPermission, paginator.Paginate(api.getBundles)),
+		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundles)),
 	)
 	return api
 }
@@ -47,10 +43,10 @@ func (api *BundleAPI) get(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodGet)
 }
 
-type AuthHandler interface {
-	Require(required auth.Permissions, handler http.HandlerFunc) http.HandlerFunc
-}
+// type AuthHandler interface {
+// 	Require(required auth.Permissions, handler http.HandlerFunc) http.HandlerFunc
+// }
 
-func (api *BundleAPI) isAuthorised(required auth.Permissions, handler http.HandlerFunc) http.HandlerFunc {
-	return api.permissions.Require(required, handler)
-}
+// func (api *BundleAPI) isAuthorised(required auth.Permissions, handler http.HandlerFunc) http.HandlerFunc {
+// 	return api.permissions.Require(required, handler)
+// }

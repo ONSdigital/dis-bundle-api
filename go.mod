@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/ONSdigital/dp-permissions-api v0.27.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250304222902-64be311ed8b0 // indirect
 	github.com/chromedp/chromedp v0.13.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
@@ -29,6 +30,7 @@ require (
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-memdb v1.3.5 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
@@ -45,6 +47,7 @@ require (
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.266.0
 	github.com/ONSdigital/dp-authorisation v0.5.0
+	github.com/ONSdigital/dp-authorisation/v2 v2.32.2
 	github.com/ONSdigital/dp-mongodb-in-memory v1.8.1
 	github.com/ONSdigital/dp-net/v3 v3.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect

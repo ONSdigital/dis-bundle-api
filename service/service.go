@@ -9,8 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/dp-authorisation/auth"
-	dphttp "github.com/ONSdigital/dp-net/v3/http"
+	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -27,6 +26,7 @@ type Service struct {
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
 	stateMachineBundleAPI *application.StateMachineBundleAPI
+	AuthMiddleware        auth.Middleware
 }
 
 type BundleAPIStore struct {
@@ -80,6 +80,7 @@ func New(cfg *config.Config, serviceList *ExternalServiceList) *Service {
 		Config:      cfg,
 		ServiceList: serviceList,
 	}
+
 	return svc
 }
 
@@ -134,10 +135,14 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
 	// Get Permissions
-	permissions := getAuthorisationHandlers(ctx, svc.Config)
+	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, &cfg.AuthConfig)
+	if err != nil {
+		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
+		return err
+	}
 
 	// Setup API
-	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, permissions)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth)
 
 	svc.HealthCheck.Start(ctx)
 
@@ -239,23 +244,23 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	return nil
 }
 
-func getAuthorisationHandlers(ctx context.Context, cfg *config.Config) (permissions api.AuthHandler) {
-	if !cfg.EnablePermissionsAuth {
-		log.Info(ctx, "feature flag not enabled defaulting to nop auth impl", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
-		return &auth.NopHandler{}
-	}
+// func getAuthorisationHandlers(ctx context.Context, cfg *config.Config) (permissions api.AuthHandler) {
+// 	if !cfg.EnablePermissionsAuth {
+// 		log.Info(ctx, "feature flag not enabled defaulting to nop auth impl", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
+// 		return &auth.NopHandler{}
+// 	}
 
-	log.Info(ctx, "feature flag enabled", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
+// 	log.Info(ctx, "feature flag enabled", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
 
-	authClient := auth.NewPermissionsClient(dphttp.NewClient())
-	authVerifier := auth.DefaultPermissionsVerifier()
+// 	authClient := auth.NewPermissionsClient(dphttp.NewClient())
+// 	authVerifier := auth.DefaultPermissionsVerifier()
 
-	// for checking caller permissions when we only have a user/service token
-	permissions = auth.NewHandler(
-		auth.NewPermissionsRequestBuilder(cfg.ZebedeeURL),
-		authClient,
-		authVerifier,
-	)
+// 	// for checking caller permissions when we only have a user/service token
+// 	permissions = auth.NewHandler(
+// 		auth.NewPermissionsRequestBuilder(cfg.ZebedeeURL),
+// 		authClient,
+// 		authVerifier,
+// 	)
 
-	return permissions
-}
+// 	return permissions
+// }

@@ -5,12 +5,15 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 )
 
 type MongoConfig struct {
 	mongodriver.MongoDriverConfig
 }
+
+type AuthConfig = authorisation.Config
 
 // Config represents service configuration for dis-bundle-api
 type Config struct {
@@ -28,6 +31,7 @@ type Config struct {
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	MongoConfig
+	AuthConfig
 }
 
 var cfg *Config
@@ -73,6 +77,15 @@ func Get() (*Config, error) {
 					IsSSL: false,
 				},
 			},
+		},
+		AuthConfig: AuthConfig{
+			Enabled:                        true,
+			PermissionsAPIURL:              "http://localhost:25400",
+			IdentityWebKeySetURL:           "http://localhost:25600",
+			PermissionsCacheUpdateInterval: time.Minute * 5,
+			PermissionsMaxCacheTime:        time.Minute * 15,
+			IdentityClientMaxRetries:       2,
+			ZebedeeURL:                     "http://localhost:8082",
 		},
 	}
 

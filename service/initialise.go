@@ -8,6 +8,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/mongo"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v2/http"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -88,4 +89,16 @@ func (e *Init) DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.
 // DoGetHealthClient creates a new Health Client for the provided name and url
 func (e *Init) DoGetHealthClient(name, url string) *health.Client {
 	return health.NewClient(name, url)
+}
+
+func (e *ExternalServiceList) GetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+	return e.Init.DoGetAuthorisationMiddleware(ctx, authorisationConfig)
+}
+
+// DoGetAuthorisationMiddleware creates authorisation middleware for the given config
+func (e *Init) DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+	if authorisationConfig.Enabled {
+		return authorisation.NewMiddlewareFromConfig(ctx, authorisationConfig, nil)
+	}
+	return authorisation.NewFeatureFlaggedMiddleware(ctx, authorisationConfig, nil)
 }

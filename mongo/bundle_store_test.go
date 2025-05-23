@@ -216,7 +216,7 @@ func TestBuildListBundlesQuery(t *testing.T) {
 		filter, sort := buildListBundlesQuery()
 
 		expectedFilter := bson.M{}
-		expectedSort := bson.M{"_id": 1}
+		expectedSort := bson.M{"updated_at": -1}
 
 		So(filter, ShouldResemble, expectedFilter)
 		So(sort, ShouldResemble, expectedSort)
