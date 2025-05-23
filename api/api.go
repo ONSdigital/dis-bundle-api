@@ -20,7 +20,6 @@ var (
 type BundleAPI struct {
 	Router                *mux.Router
 	Store                 *store.Datastore
-	bundleAPI             *application.BundleService
 	stateMachineBundleAPI *application.StateMachineBundleAPI
 	permissions           AuthHandler
 }
@@ -30,13 +29,12 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 	api := &BundleAPI{
 		Router:                router,
 		Store:                 store,
-		bundleAPI:             application.NewBundleService(store),
 		stateMachineBundleAPI: stateMachineBundleAPI,
 		permissions:           permissions,
 	}
 
 	paginator := pagination.NewPaginator(cfg.DefaultLimit, cfg.DefaultOffset, cfg.DefaultMaxLimit)
-	// TODO: remove hello world example handler route
+
 	api.get(
 		"/bundles",
 		api.isAuthorised(readPermission, paginator.Paginate(api.getBundles)),

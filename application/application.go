@@ -28,20 +28,6 @@ func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
 	return true
 }
 
-type Bundlestore interface {
-	ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error)
-}
-
-type BundleService struct {
-	Store Bundlestore
-}
-
-func NewBundleService(store Bundlestore) *BundleService {
-	return &BundleService{
-		Store: store,
-	}
-}
-
-func (s *BundleService) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	return s.Store.ListBundles(ctx, offset, limit)
+func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+	return s.Datastore.ListBundles(ctx, offset, limit)
 }

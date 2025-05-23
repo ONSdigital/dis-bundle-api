@@ -133,7 +133,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	sm := GetStateMachine(ctx, datastore)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
-	//Get Permissions
+	// Get Permissions
 	permissions := getAuthorisationHandlers(ctx, svc.Config)
 
 	// Setup API
