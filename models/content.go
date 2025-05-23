@@ -150,17 +150,9 @@ func (s *State) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type UUIDGenerator interface {
-	NewV4() (uuid.UUID, error)
-}
+var newUUID = uuid.NewV4
 
-type DefaultUUIDGenerator struct{}
-
-func (g DefaultUUIDGenerator) NewV4() (uuid.UUID, error) {
-	return uuid.NewV4()
-}
-
-func CreateContentItem(reader io.Reader, generator UUIDGenerator) (*ContentItem, error) {
+func CreateContentItem(reader io.Reader) (*ContentItem, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errs.ErrUnableToReadMessage
@@ -173,7 +165,7 @@ func CreateContentItem(reader io.Reader, generator UUIDGenerator) (*ContentItem,
 		return nil, errs.ErrUnableToParseJSON
 	}
 
-	id, err := generator.NewV4()
+	id, err := newUUID()
 	if err != nil {
 		return nil, err
 	}

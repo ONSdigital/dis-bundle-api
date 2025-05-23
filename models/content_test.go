@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -10,12 +11,6 @@ import (
 	"github.com/gofrs/uuid"
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-type ErrorUUIDGenerator struct{}
-
-func (e *ErrorUUIDGenerator) NewV4() (uuid.UUID, error) {
-	return uuid.UUID{}, fmt.Errorf("mock UUID generation error")
-}
 
 func TestCreateContentItem(t *testing.T) {
 	Convey("Successfully return without any errors", t, func() {
@@ -45,7 +40,7 @@ func TestCreateContentItem(t *testing.T) {
 			}
 
 			reader := bytes.NewReader(b)
-			result, err := CreateContentItem(reader, DefaultUUIDGenerator{})
+			result, err := CreateContentItem(reader)
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
 			So(result.ID, ShouldNotBeEmpty)
@@ -66,7 +61,7 @@ func TestCreateContentItem(t *testing.T) {
 	Convey("Return error when unable to read message", t, func() {
 		Convey("when the reader returns an error", func() {
 			reader := &ErrorReader{}
-			_, err := CreateContentItem(reader, DefaultUUIDGenerator{})
+			_, err := CreateContentItem(reader)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
 		})
@@ -76,7 +71,7 @@ func TestCreateContentItem(t *testing.T) {
 		Convey("when the JSON is invalid", func() {
 			b := `{"bundle_id": "123}`
 			reader := bytes.NewReader([]byte(b))
-			_, err := CreateContentItem(reader, DefaultUUIDGenerator{})
+			_, err := CreateContentItem(reader)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
 		})
@@ -101,9 +96,24 @@ func TestCreateContentItem(t *testing.T) {
 			}
 			}`
 			reader := bytes.NewReader([]byte(b))
-			_, err := CreateContentItem(reader, &ErrorUUIDGenerator{})
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "mock UUID generation error")
+
+			originalNewUUID := newUUID
+
+			newUUID = func() (uuid.UUID, error) {
+				return uuid.UUID{}, errors.New("simulated UUID generation failure")
+			}
+
+			defer func() {
+				newUUID = originalNewUUID
+			}()
+
+			item, err := CreateContentItem(reader)
+
+			Convey("Then an error should be returned and no item created", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "simulated UUID generation failure")
+				So(item, ShouldBeNil)
+			})
 		})
 	})
 }
