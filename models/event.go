@@ -9,52 +9,14 @@ import (
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
 
-// Action enum type representing the action
-type Action string
-
-// Define the possible values for the Action enum
-const (
-	ActionCreate Action = "CREATE"
-	ActionRead   Action = "READ"
-	ActionUpdate Action = "UPDATE"
-	ActionDelete Action = "DELETE"
-)
-
-// IsValid validates that the Action is a valid enum value
-func (a Action) IsValid() bool {
-	switch a {
-	case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
-		return true
-	default:
-		return false
-	}
-}
-
-// String returns the string value of the Action
-func (a Action) String() string {
-	return string(a)
-}
-
-// MarshalJSON marshals the Action to JSON
-func (a Action) MarshalJSON() ([]byte, error) {
-	if !a.IsValid() {
-		return nil, fmt.Errorf("invalid Action: %s", a)
-	}
-	return json.Marshal(string(a))
-}
-
-// UnmarshalJSON unmarshals a string to Action
-func (a *Action) UnmarshalJSON(data []byte) error {
-	var str string
-	if err := json.Unmarshal(data, &str); err != nil {
-		return err
-	}
-	converted := Action(str)
-	if !converted.IsValid() {
-		return fmt.Errorf("invalid Action: %s", str)
-	}
-	*a = converted
-	return nil
+// Event represents details of a specific change event forming part of the change and audit log for a bundle
+type Event struct {
+	CreatedAt   *time.Time   `bson:"created_at,omitempty" json:"created_at,omitempty"`
+	RequestedBy *RequestedBy `bson:"requested_by,omitempty" json:"requested_by,omitempty"`
+	Action      Action       `bson:"action," json:"action"`
+	Resource    string       `bson:"resource" json:"resource"`
+	ContentItem *ContentItem `bson:"content_item,omitempty" json:"content_item,omitempty"`
+	Bundle      *Bundle      `bson:"bundle,omitempty" json:"bundle,omitempty"`
 }
 
 // RequestedBy represents the user who made the request
@@ -63,26 +25,7 @@ type RequestedBy struct {
 	Email string `bson:"email,omitempty" json:"email,omitempty"`
 }
 
-// Data represents the state of a resource following a change action
-type Data struct {
-	DatasetID string `bson:"dataset_id" json:"dataset_id"`
-	EditionID string `bson:"edition_id" json:"edition_id"`
-	ItemID    string `bson:"item_id" json:"item_id"`
-	State     string `bson:"state" json:"state"`
-	URLPath   string `bson:"url_path" json:"url_path"`
-	Title     string `bson:"title,omitempty" json:"title,omitempty"`
-}
-
-// Event details a specific event
-type Event struct {
-	CreatedAt   time.Time   `bson:"created_at" json:"created_at"`
-	RequestedBy RequestedBy `bson:"requested_by" json:"requested_by"`
-	Action      Action      `bson:"action" json:"action"`
-	Resource    string      `bson:"resource" json:"resource"`
-	Data        *Data       `bson:"data,omitempty" json:"data,omitempty"`
-}
-
-// EventsList represents a list of events
+// EventsList represents the list of change events which form the change and audit log for a bundle
 type EventsList struct {
 	PaginationFields
 	Items *[]Event `bson:"items,omitempty" json:"items,omitempty"`
@@ -108,7 +51,7 @@ func CreateEvent(reader io.Reader) (*Event, error) {
 func ValidateEvent(event *Event) error {
 	var missingFields []string
 
-	if event.RequestedBy.ID == "" {
+	if event.RequestedBy != nil && event.RequestedBy.ID == "" {
 		missingFields = append(missingFields, "requested_by.id")
 	}
 
@@ -124,5 +67,53 @@ func ValidateEvent(event *Event) error {
 		return fmt.Errorf("missing mandatory fields: %v", missingFields)
 	}
 
+	return nil
+}
+
+// Action enum type representing the action taken by a user
+type Action string
+
+// Define the possible values for the Action enum
+const (
+	ActionCreate Action = "CREATE"
+	ActionRead   Action = "READ"
+	ActionUpdate Action = "UPDATE"
+	ActionDelete Action = "DELETE"
+)
+
+// String returns the string value of the Action
+func (a Action) String() string {
+	return string(a)
+}
+
+// IsValid validates that the Action is a valid enum value
+func (a Action) IsValid() bool {
+	switch a {
+	case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+// MarshalJSON marshals the Action to JSON
+func (a Action) MarshalJSON() ([]byte, error) {
+	if !a.IsValid() {
+		return nil, fmt.Errorf("invalid Action: %s", a)
+	}
+	return json.Marshal(string(a))
+}
+
+// UnmarshalJSON unmarshals a string to Action
+func (a *Action) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return fmt.Errorf("invalid JSON input for Action: %w", err)
+	}
+	converted := Action(str)
+	if !converted.IsValid() {
+		return fmt.Errorf("invalid Action: %s", str)
+	}
+	*a = converted
 	return nil
 }
