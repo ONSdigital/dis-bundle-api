@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -23,6 +24,8 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 		Find(ctx, filter, &bundles, mongodriver.Sort(sort), mongodriver.Offset(offset), mongodriver.Limit(limit))
 
 	if err != nil {
+		fmt.Println("FOUND AN ERROR")
+		fmt.Println(err)
 		return nil, 0, err
 	}
 

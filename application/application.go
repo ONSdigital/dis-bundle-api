@@ -29,5 +29,9 @@ func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
 }
 
 func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	return s.Datastore.ListBundles(ctx, offset, limit)
+	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	return results, totalCount, nil
 }

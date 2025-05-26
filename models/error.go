@@ -38,6 +38,9 @@ const (
 	CodeUnauthorized        Code = "unauthorized"
 	CodeForbidden           Code = "forbidden"
 	CodeConflict            Code = "conflict"
+	JSONMarshalError        Code = "JSONMarshalError"
+	JSONUnmarshalError      Code = "JSONUnmarshalError"
+	WriteResponseError      Code = "WriteResponseError"
 )
 
 // IsValid validates that the Code is a valid enum value

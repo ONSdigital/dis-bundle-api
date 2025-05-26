@@ -38,6 +38,72 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 	return api
 }
 
+// func writeErrorResponse(ctx context.Context, w http.ResponseWriter, errorResponse *models.Error, statusCode int) {
+// 	var jsonResponse []byte
+// 	var err error
+// 	w.Header().Set("Content-Type", "application/json")
+// 	// process custom headers
+// 	// if errorResponse.Headers != nil {
+// 	// 	for key := range errorResponse.Headers {
+// 	// 		w.Header().Set(key, errorResponse.Headers[key])
+// 	// 	}
+// 	// }
+// 	// w.WriteHeader(errorResponse.Status)
+// 	if statusCode == http.StatusInternalServerError {
+// 		code := models.CodeInternalServerError
+// 		jsonResponse, err = json.Marshal(models.Error{Code: &code, Description: "internal server error"})
+// 	} else {
+// 		jsonResponse, err = json.Marshal(errorResponse)
+// 	}
+// 	if err != nil {
+// 		code := models.JSONMarshalError
+// 		responseErr := models.Error{Code: &code, Description: "json marshal error"}
+// 		http.Error(w, responseErr.Description, http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	_, err = w.Write(jsonResponse)
+// 	if err != nil {
+// 		code := models.WriteResponseError
+// 		responseErr := models.Error{Code: &code, Description: "write response error"}
+// 		http.Error(w, responseErr.Description, http.StatusInternalServerError)
+// 		return
+// 	}
+// }
+
+// func writeSuccessResponse(w http.ResponseWriter, successResponse *models.SuccessResponse) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	// process custom headers
+// 	if successResponse.Headers != nil {
+// 		for key := range successResponse.Headers {
+// 			w.Header().Set(key, successResponse.Headers[key])
+// 		}
+// 	}
+// 	w.WriteHeader(successResponse.Status)
+
+// 	_, err := w.Write(successResponse.Body)
+// 	if err != nil {
+// 		code := models.WriteResponseError
+// 		responseErr := models.Error{Code: &code, Description: "write response error"}
+// 		http.Error(w, responseErr.Description, http.StatusInternalServerError)
+// 		return
+// 	}
+// }
+
+// type baseHandler func(ctx context.Context, w http.ResponseWriter, r *http.Request) (*models.SuccessResponse, *models.Error)
+
+// func contextAndErrors(h baseHandler) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, req *http.Request) {
+// 		ctx := req.Context()
+// 		response, err := h(ctx, w, req)
+// 		if err != nil {
+// 			writeErrorResponse(ctx, w, err, 500)
+// 			return
+// 		}
+// 		writeSuccessResponse(w, response)
+// 	}
+// }
+
 // get registers a GET http.HandlerFunc.
 func (api *BundleAPI) get(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodGet)
