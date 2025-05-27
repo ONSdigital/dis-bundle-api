@@ -31,7 +31,7 @@ type Config struct {
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	MongoConfig
-	AuthConfig
+	AuthConfig *authorisation.Config
 }
 
 var cfg *Config
@@ -78,15 +78,7 @@ func Get() (*Config, error) {
 				},
 			},
 		},
-		AuthConfig: AuthConfig{
-			Enabled:                        true,
-			PermissionsAPIURL:              "http://localhost:25400",
-			IdentityWebKeySetURL:           "http://localhost:25600",
-			PermissionsCacheUpdateInterval: time.Minute * 5,
-			PermissionsMaxCacheTime:        time.Minute * 15,
-			IdentityClientMaxRetries:       2,
-			ZebedeeURL:                     "http://localhost:8082",
-		},
+		AuthConfig: authorisation.NewDefaultConfig(),
 	}
 
 	return cfg, envconfig.Process("", cfg)

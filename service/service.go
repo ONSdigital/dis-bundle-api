@@ -135,7 +135,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
 	// Get Permissions
-	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, &cfg.AuthConfig)
+	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
 		return err
