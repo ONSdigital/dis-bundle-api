@@ -243,24 +243,3 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	}
 	return nil
 }
-
-// func getAuthorisationHandlers(ctx context.Context, cfg *config.Config) (permissions api.AuthHandler) {
-// 	if !cfg.EnablePermissionsAuth {
-// 		log.Info(ctx, "feature flag not enabled defaulting to nop auth impl", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
-// 		return &auth.NopHandler{}
-// 	}
-
-// 	log.Info(ctx, "feature flag enabled", log.Data{"feature": "ENABLE_PERMISSIONS_AUTH"})
-
-// 	authClient := auth.NewPermissionsClient(dphttp.NewClient())
-// 	authVerifier := auth.DefaultPermissionsVerifier()
-
-// 	// for checking caller permissions when we only have a user/service token
-// 	permissions = auth.NewHandler(
-// 		auth.NewPermissionsRequestBuilder(cfg.ZebedeeURL),
-// 		authClient,
-// 		authVerifier,
-// 	)
-
-// 	return permissions
-// }

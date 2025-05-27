@@ -46,10 +46,9 @@ require (
 
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.266.0
-	github.com/ONSdigital/dp-authorisation v0.5.0
 	github.com/ONSdigital/dp-authorisation/v2 v2.32.2
 	github.com/ONSdigital/dp-mongodb-in-memory v1.8.1
-	github.com/ONSdigital/dp-net/v3 v3.2.0 // indirect
+	github.com/ONSdigital/dp-net/v3 v3.2.0
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
