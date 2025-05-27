@@ -3,10 +3,10 @@ package pagination
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 
@@ -46,9 +46,9 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if offsetParameter != "" {
 		logData["offset"] = offsetParameter
-		offset, err = strconv.Atoi(offsetParameter)
+		offset, err := strconv.Atoi(offsetParameter)
 		if err != nil || offset < 0 {
-			err = errors.New("invalid query parameter")
+			err = errors.New("invalid query parameter: offset")
 			log.Error(r.Context(), "invalid query parameter: offset", err, logData)
 			return 0, 0, err
 		}
@@ -58,7 +58,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 		logData["limit"] = limitParameter
 		limit, err = strconv.Atoi(limitParameter)
 		if err != nil || limit < 0 {
-			err = errors.New("invalid query parameter")
+			err = errors.New("invalid query parameter: limit")
 			log.Error(r.Context(), "invalid query parameter: limit", err, logData)
 			return 0, 0, err
 		}
@@ -66,7 +66,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if limit > p.DefaultMaxLimit {
 		logData["max_limit"] = p.DefaultMaxLimit
-		err = errors.New("invalid query parameter")
+		err = errors.New("invalid query parameter: max_limit")
 		log.Error(r.Context(), "limit is greater than the maximum allowed", err, logData)
 		return 0, 0, err
 	}
@@ -96,27 +96,16 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 		offset, limit, err := p.getPaginationParameters(r)
 		if err != nil {
 			log.Error(r.Context(), "pagination parameters incorrect", err)
-			code := models.CodeInternalServerError
-			handleErr(w, code, "Unable to process request due to a malformed or invalid request body or query parameter", http.StatusBadRequest)
+			errArray := strings.Split(err.Error(), ":")
+			param := errArray[len(errArray)-1]
+			source := models.Source{Parameter: param}
+			code := models.CodeBadRequest
+			handleErr(w, r, code, "Unable to process request due to a malformed or invalid request body or query parameter", http.StatusBadRequest, &source)
 			return
 		}
 		list, totalCount, errBundle := paginatedHandler(w, r, limit, offset)
 		if errBundle != nil {
-			fmt.Println(err)
-			log.Error(r.Context(), "something went wrong", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadGateway)
-			code := models.CodeInternalServerError
-			newError := models.Error{
-				Code:        &code,
-				Description: "Error decoding json",
-			}
-			errBytes, err := json.Marshal(newError)
-			if err != nil {
-				fmt.Println("smething went wrong decoding errbundle")
-				fmt.Println(err)
-			}
-			http.Error(w, string(errBytes), http.StatusBadGateway)
+			handleErr(w, r, *errBundle.Code, errBundle.Description, http.StatusInternalServerError, errBundle.Source)
 			return
 		}
 
@@ -134,7 +123,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 	if err != nil {
 		log.Error(r.Context(), "api endpoint failed to marshal resource into bytes", err, logData)
 		code := models.CodeInternalServerError
-		handleErr(w, code, "internal error", http.StatusBadGateway)
+		handleErr(w, r, code, "	Failed to process the request due to an internal error", http.StatusBadGateway, nil)
 		return
 	}
 
@@ -147,21 +136,19 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 	if _, err = w.Write(b); err != nil {
 		log.Error(r.Context(), "api endpoint error writing response body", err, logData)
 		code := models.CodeInternalServerError
-		handleErr(w, code, "internal error", http.StatusBadGateway)
+		handleErr(w, r, code, "Failed to process the request due to an internal error", http.StatusBadGateway, nil)
 		return
 	}
 
 	log.Info(r.Context(), "api endpoint request successful", logData)
 }
 
-func handleErr(w http.ResponseWriter, code models.Code, description string, httpStatusCode int) {
+func handleErr(w http.ResponseWriter, r *http.Request, code models.Code, description string, httpStatusCode int, source *models.Source) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
-	err := models.Error{Code: &code, Description: description}
-	errBytes, errCheck := json.Marshal(err)
+	errBytes, errCheck := json.Marshal(models.Error{Code: &code, Description: description, Source: source})
 	if errCheck != nil {
-		fmt.Println("api endpoint error writing response body")
-		fmt.Println(err)
+		log.Error(r.Context(), "api endpoint error writing error body", errCheck)
 	}
 	http.Error(w, string(errBytes), httpStatusCode)
 }

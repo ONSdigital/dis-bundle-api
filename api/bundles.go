@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -13,11 +12,9 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 
 	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit)
 	if err != nil {
-		fmt.Println("AN ERROR WAS RETURNED")
-		fmt.Println(err)
 		code := models.CodeInternalServerError
 		log.Error(ctx, "failed to get bundles", err)
-		return nil, http.StatusInternalServerError, &models.Error{Code: &code, Description: "failed to get bundle"}
+		return nil, http.StatusInternalServerError, &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
 	}
 
 	return bundles, totalCount, nil
