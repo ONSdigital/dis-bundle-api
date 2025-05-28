@@ -105,7 +105,6 @@ func TestCheckAllBundleContentsAreApproved(t *testing.T) {
 					So(err, ShouldNotBeNil)
 					So(err.Error(), ShouldContainSubstring, "client is disconnected")
 				})
-
 			})
 		})
 	})
