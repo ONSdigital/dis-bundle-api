@@ -12,6 +12,8 @@ import (
 	serviceMock "github.com/ONSdigital/dis-bundle-api/service/mock"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storeMock "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
@@ -45,6 +47,15 @@ func TestRun(t *testing.T) {
 		cfg, err := config.Get()
 		So(err, ShouldBeNil)
 
+		authorisationMiddleware := &authorisationMock.MiddlewareMock{
+			RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+				return handlerFunc
+			},
+			CloseFunc: func(ctx context.Context) error {
+				return nil
+			},
+		}
+
 		hcMock := &serviceMock.HealthCheckerMock{
 			AddCheckFunc: func(string, healthcheck.Checker) error { return nil },
 			StartFunc:    func(context.Context) {},
@@ -64,6 +75,10 @@ func TestRun(t *testing.T) {
 				serverWg.Done()
 				return errServer
 			},
+		}
+
+		funcDoGetAuthOk := func(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+			return authorisationMiddleware, nil
 		}
 
 		funcDoGetMongoDBOk := func(context.Context, config.MongoConfig) (store.MongoDB, error) {
@@ -117,9 +132,10 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that all dependencies are successfully initialised", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetMongoDBFunc:     funcDoGetMongoDBOk,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckOk,
-				DoGetHTTPServerFunc:  funcDoGetHTTPServer,
+				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
+				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:              funcDoGetHTTPServer,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -174,9 +190,10 @@ func TestRun(t *testing.T) {
 
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetMongoDBFunc:     funcDoGetMongoDBOk,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckOk,
-				DoGetHTTPServerFunc:  funcDoGetFailingHTTPSerer,
+				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
+				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:              funcDoGetFailingHTTPSerer,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)

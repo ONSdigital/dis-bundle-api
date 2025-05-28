@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// ListBundles retrieves all bundles
+// ListBundles retrieves all bundles based on the provided offset and limit
 func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error) {
 	bundles = []*models.Bundle{}
 
@@ -31,7 +31,7 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 
 func buildListBundlesQuery() (filter, sort bson.M) {
 	filter = bson.M{}
-	sort = bson.M{"_id": 1}
+	sort = bson.M{"updated_at": -1}
 	return
 }
 
@@ -59,7 +59,7 @@ func buildGetBundleQuery(bundleID string) bson.M {
 func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 	now := time.Now()
 	bundle.CreatedAt = &now
-	collectionName := m.ActualCollectionName("BundlesCollection")
+	collectionName := m.ActualCollectionName(config.BundlesCollection)
 
 	_, err := m.Connection.Collection(collectionName).Insert(ctx, bundle)
 
@@ -70,7 +70,7 @@ func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 }
 
 func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
-	collectionName := m.ActualCollectionName("BundlesCollection")
+	collectionName := m.ActualCollectionName(config.BundlesCollection)
 	filter := bson.M{"_id": id}
 
 	updateData := bson.M{

@@ -21,6 +21,9 @@ var _ store.Storer = &StorerMock{}
 //
 //		// make and configure a mocked store.Storer
 //		mockedStorer := &StorerMock{
+//			CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
+//				panic("mock out the CheckAllBundleContentsAreApproved method")
+//			},
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
@@ -37,6 +40,9 @@ var _ store.Storer = &StorerMock{}
 //
 //	}
 type StorerMock struct {
+	// CheckAllBundleContentsAreApprovedFunc mocks the CheckAllBundleContentsAreApproved method.
+	CheckAllBundleContentsAreApprovedFunc func(ctx context.Context, bundleID string) (bool, error)
+
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
@@ -48,6 +54,13 @@ type StorerMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CheckAllBundleContentsAreApproved holds details about calls to the CheckAllBundleContentsAreApproved method.
+		CheckAllBundleContentsAreApproved []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// Checker holds details about calls to the Checker method.
 		Checker []struct {
 			// Ctx is the ctx argument value.
@@ -70,9 +83,46 @@ type StorerMock struct {
 			Limit int
 		}
 	}
-	lockChecker     sync.RWMutex
-	lockClose       sync.RWMutex
-	lockListBundles sync.RWMutex
+	lockCheckAllBundleContentsAreApproved sync.RWMutex
+	lockChecker                           sync.RWMutex
+	lockClose                             sync.RWMutex
+	lockListBundles                       sync.RWMutex
+}
+
+// CheckAllBundleContentsAreApproved calls CheckAllBundleContentsAreApprovedFunc.
+func (mock *StorerMock) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
+	if mock.CheckAllBundleContentsAreApprovedFunc == nil {
+		panic("StorerMock.CheckAllBundleContentsAreApprovedFunc: method is nil but Storer.CheckAllBundleContentsAreApproved was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockCheckAllBundleContentsAreApproved.Lock()
+	mock.calls.CheckAllBundleContentsAreApproved = append(mock.calls.CheckAllBundleContentsAreApproved, callInfo)
+	mock.lockCheckAllBundleContentsAreApproved.Unlock()
+	return mock.CheckAllBundleContentsAreApprovedFunc(ctx, bundleID)
+}
+
+// CheckAllBundleContentsAreApprovedCalls gets all the calls that were made to CheckAllBundleContentsAreApproved.
+// Check the length with:
+//
+//	len(mockedStorer.CheckAllBundleContentsAreApprovedCalls())
+func (mock *StorerMock) CheckAllBundleContentsAreApprovedCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockCheckAllBundleContentsAreApproved.RLock()
+	calls = mock.calls.CheckAllBundleContentsAreApproved
+	mock.lockCheckAllBundleContentsAreApproved.RUnlock()
+	return calls
 }
 
 // Checker calls CheckerFunc.

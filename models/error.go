@@ -10,9 +10,9 @@ import (
 
 // Error represents the details of a specific error
 type Error struct {
-	Code        *Code   `bson:"code,omitempty" json:"code,omitempty"`
+	Code        *Code   `bson:"code,omitempty"        json:"code,omitempty"`
 	Description string  `bson:"description,omitempty" json:"description,omitempty"`
-	Source      *Source `bson:"source,omitempty" json:"source,omitempty"`
+	Source      *Source `bson:"source,omitempty"      json:"source,omitempty"`
 }
 
 // ErrorList represents a list of errors
@@ -22,59 +22,9 @@ type ErrorList struct {
 
 // Source represents the details of which field or parameter the error relates to. Used to return validation errors to 4xx requests. Only one of the properties below can be returned in any single error.
 type Source struct {
-	Field     string `bson:"field,omitempty" json:"field,omitempty"`
+	Field     string `bson:"field,omitempty"     json:"field,omitempty"`
 	Parameter string `bson:"parameter,omitempty" json:"parameter,omitempty"`
-	Header    string `bson:"header,omitempty" json:"header,omitempty"`
-}
-
-// Code enum representing the error code
-type Code string
-
-// Define possible values for the Code enum
-const (
-	CodeInternalServerError Code = "internal_server_error"
-	CodeNotFound            Code = "not_found"
-	CodeBadRequest          Code = "bad_request"
-	CodeUnauthorized        Code = "unauthorized"
-	CodeForbidden           Code = "forbidden"
-	CodeConflict            Code = "conflict"
-)
-
-// IsValid validates that the Code is a valid enum value
-func (c Code) IsValid() bool {
-	switch c {
-	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict:
-		return true
-	default:
-		return false
-	}
-}
-
-// String returns the string value of the Code
-func (c Code) String() string {
-	return string(c)
-}
-
-// MarshalJSON marshals the Code to JSON
-func (c Code) MarshalJSON() ([]byte, error) {
-	if !c.IsValid() {
-		return nil, fmt.Errorf("invalid Code: %s", c)
-	}
-	return json.Marshal(string(c))
-}
-
-// UnmarshalJSON unmarshals a string to Code
-func (c *Code) UnmarshalJSON(data []byte) error {
-	var str string
-	if err := json.Unmarshal(data, &str); err != nil {
-		return err
-	}
-	converted := Code(str)
-	if !converted.IsValid() {
-		return fmt.Errorf("invalid Code: %s", str)
-	}
-	*c = converted
-	return nil
+	Header    string `bson:"header,omitempty"    json:"header,omitempty"`
 }
 
 func CreateError(reader io.Reader) (*Error, error) {
@@ -98,6 +48,10 @@ func ValidateError(e *Error) error {
 		return fmt.Errorf("error cannot be nil")
 	}
 
+	if e.Code != nil && !e.Code.IsValid() {
+		return fmt.Errorf("invalid error code: %s", e.Code.String())
+	}
+
 	err := fmt.Errorf("only one of Source.Field, Source.Parameter, Source.Header can be set")
 	if e.Source != nil {
 		count := 0
@@ -115,4 +69,35 @@ func ValidateError(e *Error) error {
 		}
 	}
 	return nil
+}
+
+// Code enum representing the error code
+type Code string
+
+// Define possible values for the Code enum
+const (
+	CodeInternalServerError Code = "internal_server_error"
+	CodeNotFound            Code = "not_found"
+	CodeBadRequest          Code = "bad_request"
+	CodeUnauthorized        Code = "unauthorized"
+	CodeForbidden           Code = "forbidden"
+	CodeConflict            Code = "conflict"
+	JSONMarshalError        Code = "JSONMarshalError"
+	JSONUnmarshalError      Code = "JSONUnmarshalError"
+	WriteResponseError      Code = "WriteResponseError"
+)
+
+// IsValid validates that the Code is a valid enum value
+func (c Code) IsValid() bool {
+	switch c {
+	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// String returns the string value of the Code
+func (c Code) String() string {
+	return string(c)
 }

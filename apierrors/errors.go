@@ -43,11 +43,12 @@ var (
 	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
 )
 
-// Grouping for error response handling
+// 404 Not Found
 var NotFoundMap = map[error]bool{
 	ErrBundleNotFound: true,
 }
 
+// 400 Bad Request
 var BadRequestMap = map[error]bool{
 	ErrInvalidBody:            true,
 	ErrMissingParameters:      true,
@@ -58,10 +59,12 @@ var BadRequestMap = map[error]bool{
 	ErrInvalidBundleState:     true,
 }
 
-var ConflictRequestMap = map[error]bool{
+// 409 Conflict
+var ConflictMap = map[error]bool{
 	ErrBundleAlreadyExists: true,
 }
 
+// 403 Forbidden
 var ForbiddenMap = map[error]bool{
 	ErrDeleteBundleForbidden:  true,
 	ErrExpectedStateOfCreated: true,
