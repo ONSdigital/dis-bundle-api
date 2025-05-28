@@ -15,6 +15,10 @@ import (
 
 var componentFlag = flag.Bool("component", false, "perform component tests")
 
+const mongoVersion = "4.4.8"
+const databaseName = "testing"
+const replicaSetName = "rs0"
+
 type ComponentTest struct {
 	MongoFeature *componenttest.MongoFeature
 }
@@ -26,10 +30,7 @@ func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 		panic(err)
 	}
 
-	apiFeature := componenttest.NewAPIFeature(bundleFeature.InitialiseService)
-
 	godogCtx.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		apiFeature.Reset()
 		if err := bundleFeature.Reset(); err != nil {
 			panic(err)
 		}
@@ -47,12 +48,16 @@ func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 	})
 
 	bundleFeature.RegisterSteps(godogCtx)
-	apiFeature.RegisterSteps(godogCtx)
 	authorizationFeature.RegisterSteps(godogCtx)
 }
 
 func (f *ComponentTest) InitializeTestSuite(ctx *godog.TestSuiteContext) {
-
+	ctx.BeforeSuite(func() {
+		f.MongoFeature = componenttest.NewMongoFeature(componenttest.MongoOptions{MongoVersion: mongoVersion, DatabaseName: databaseName, ReplicaSetName: replicaSetName})
+	})
+	ctx.AfterSuite(func() {
+		f.MongoFeature.Close()
+	})
 }
 
 func TestComponent(t *testing.T) {

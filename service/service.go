@@ -9,6 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -20,11 +21,12 @@ type Service struct {
 	Config                *config.Config
 	Server                HTTPServer
 	Router                *mux.Router
-	API                   *api.API
+	API                   *api.BundleAPI
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
 	stateMachineBundleAPI *application.StateMachineBundleAPI
+	AuthMiddleware        auth.Middleware
 }
 
 type BundleAPIStore struct {
@@ -78,6 +80,7 @@ func New(cfg *config.Config, serviceList *ExternalServiceList) *Service {
 		Config:      cfg,
 		ServiceList: serviceList,
 	}
+
 	return svc
 }
 
@@ -131,8 +134,15 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	sm := GetStateMachine(ctx, datastore)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
+	// Get Permissions
+	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
+	if err != nil {
+		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
+		return err
+	}
+
 	// Setup API
-	svc.API = api.Setup(ctx, r, &datastore, svc.stateMachineBundleAPI)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth)
 
 	svc.HealthCheck.Start(ctx)
 

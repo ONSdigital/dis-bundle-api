@@ -10,22 +10,27 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/service"
 	serviceMock "github.com/ONSdigital/dis-bundle-api/service/mock"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
 	componenttest "github.com/ONSdigital/dp-component-test"
 	"github.com/ONSdigital/dp-component-test/utils"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	"github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type BundleComponent struct {
-	ErrorFeature   componenttest.ErrorFeature
-	svc            *service.Service
-	errorChan      chan error
-	MongoClient    *mongo.Mongo
-	Config         *config.Config
-	HTTPServer     *http.Server
-	ServiceRunning bool
-	initialiser    service.Initialiser
+	ErrorFeature            componenttest.ErrorFeature
+	svc                     *service.Service
+	errorChan               chan error
+	MongoClient             *mongo.Mongo
+	Config                  *config.Config
+	HTTPServer              *http.Server
+	ServiceRunning          bool
+	initialiser             service.Initialiser
+	apiFeature              *componenttest.APIFeature
+	AuthorisationMiddleware authorisation.Middleware
 }
 
 func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
@@ -46,6 +51,16 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
+	fakePermissionsAPI := setupFakePermissionsAPI()
+	c.Config.AuthConfig.PermissionsAPIURL = fakePermissionsAPI.URL()
+
+	c.initialiser = &serviceMock.InitialiserMock{
+		DoGetMongoDBFunc:                 c.DoGetMongoDB,
+		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
+		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
+		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
+	}
+
 	mongodb := &mongo.Mongo{
 		MongoConfig: config.MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
@@ -61,9 +76,33 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		return nil, err
 	}
 
+	c.ServiceRunning = true
 	c.MongoClient = mongodb
+	c.apiFeature = componenttest.NewAPIFeature(c.InitialiseService)
 
 	return c, nil
+}
+
+func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
+	fakePermissionsAPI := authorisationtest.NewFakePermissionsAPI()
+	bundle := getPermissionsBundle()
+	fakePermissionsAPI.Reset()
+	if err := fakePermissionsAPI.UpdatePermissionsBundleResponse(bundle); err != nil {
+		log.Error(context.Background(), "failed to update permissions bundle response", err)
+	}
+	return fakePermissionsAPI
+}
+
+func getPermissionsBundle() *sdk.Bundle {
+	return &sdk.Bundle{
+		"bundles:read": { // role
+			"groups/role-admin": { // group
+				{
+					ID: "1", // policy
+				},
+			},
+		},
+	}
 }
 
 func (c *BundleComponent) Reset() error {
@@ -74,7 +113,6 @@ func (c *BundleComponent) Reset() error {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
 
-	// Resets back to Mocked Kafka
 	c.setInitialiserMock()
 
 	return nil
@@ -109,15 +147,26 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
+func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg *authorisation.Config) (authorisation.Middleware, error) {
+	middleware, err := authorisation.NewMiddlewareFromConfig(ctx, cfg, cfg.JWTVerificationPublicKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	c.AuthorisationMiddleware = middleware
+	return c.AuthorisationMiddleware, nil
+}
+
 func (c *BundleComponent) setInitialiserMock() {
 	c.initialiser = &serviceMock.InitialiserMock{
-		DoGetMongoDBFunc:     c.DoGetMongoDB,
-		DoGetHealthCheckFunc: c.DoGetHealthcheckOk,
-		DoGetHTTPServerFunc:  c.DoGetHTTPServer,
+		DoGetMongoDBFunc:                 c.DoGetMongoDB,
+		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
+		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
+		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
 	}
 }
+
 func (c *BundleComponent) Close() error {
-	// Closing Kafka
 	ctx := context.Background()
 
 	// Closing Mongo DB
