@@ -3,355 +3,191 @@ package models
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"testing"
-	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-const invalid = "INVALID"
+var fullyPopulatedBundle = Bundle{
+	ID:            "123",
+	BundleType:    BundleTypeManual,
+	CreatedBy:     &User{Email: "example@example.com"},
+	CreatedAt:     &today,
+	LastUpdatedBy: &User{Email: "example@example.com"},
+	PreviewTeams:  &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	ScheduledAt:   &tomorrow,
+	State:         &bundleStateDraft,
+	Title:         "Fully Populated Bundle",
+	UpdatedAt:     &today,
+	ManagedBy:     ManagedByWagtail,
+}
 
-func TestCreateBundle(t *testing.T) {
-	Convey("Successfully return without any errors", t, func() {
-		Convey("when the bundle has all fields", func() {
-			bundleID := "12345"
-			user := User{
-				Email: "example@example.com",
-			}
-			now := time.Now()
-			previewTeam := PreviewTeam{
-				ID: "team1",
-			}
-			state := BundleStateDraft
-			testBundle := Bundle{
-				ID:            bundleID,
-				BundleType:    BundleTypeManual,
-				CreatedBy:     &user,
-				CreatedAt:     &now,
-				LastUpdatedBy: &user,
-				PreviewTeams: &[]PreviewTeam{
-					previewTeam,
-				},
-				ScheduledAt: &now,
-				State:       &state,
-				Title:       "Test Bundle",
-				UpdatedAt:   &now,
-				ManagedBy:   ManagedByWagtail,
-			}
-			b, err := json.Marshal(testBundle)
-			if err != nil {
-				t.Logf("failed to marshal test data into bytes, error: %v", err)
-				t.FailNow()
-			}
-			reader := bytes.NewReader(b)
+var minimallyPopulatedBundle = Bundle{
+	ID:           "456",
+	BundleType:   BundleTypeManual,
+	PreviewTeams: &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	Title:        "Minimally Populated Bundle",
+	ManagedBy:    ManagedByWagtail,
+}
+
+func TestCreateBundle_Success(t *testing.T) {
+	Convey("Given a fully populated bundle", t, func() {
+		b, err := json.Marshal(fullyPopulatedBundle)
+		So(err, ShouldBeNil)
+
+		reader := bytes.NewReader(b)
+
+		Convey("When CreateBundle is called", func() {
 			bundle, err := CreateBundle(reader)
 			So(err, ShouldBeNil)
-			So(bundle, ShouldNotBeNil)
-			So(bundle.ID, ShouldEqual, bundleID)
-			So(bundle.BundleType, ShouldEqual, BundleTypeManual)
-			So(bundle.CreatedBy, ShouldEqual, &user)
-			So(bundle.CreatedAt.Equal(now), ShouldBeTrue)
-			So(bundle.LastUpdatedBy, ShouldEqual, &user)
-			So(bundle.PreviewTeams, ShouldEqual, &[]PreviewTeam{previewTeam})
-			So(bundle.ScheduledAt.Equal(now), ShouldBeTrue)
-			So(bundle.State, ShouldEqual, &state)
-			So(bundle.Title, ShouldEqual, "Test Bundle")
-			So(bundle.UpdatedAt.Equal(now), ShouldBeTrue)
-			So(bundle.ManagedBy, ShouldEqual, ManagedByWagtail)
+
+			Convey("Then it should return a bundle with the expected values", func() {
+				So(bundle.ID, ShouldEqual, fullyPopulatedBundle.ID)
+				So(bundle.BundleType, ShouldEqual, fullyPopulatedBundle.BundleType)
+				So(bundle.CreatedBy, ShouldResemble, fullyPopulatedBundle.CreatedBy)
+				So(bundle.CreatedAt.Equal(*fullyPopulatedBundle.CreatedAt), ShouldBeTrue)
+				So(bundle.LastUpdatedBy.Email, ShouldEqual, fullyPopulatedBundle.LastUpdatedBy.Email)
+				So(bundle.PreviewTeams, ShouldResemble, fullyPopulatedBundle.PreviewTeams)
+				So(bundle.ScheduledAt.Equal(*fullyPopulatedBundle.ScheduledAt), ShouldBeTrue)
+				So(bundle.State, ShouldEqual, fullyPopulatedBundle.State)
+				So(bundle.Title, ShouldEqual, fullyPopulatedBundle.Title)
+				So(bundle.UpdatedAt.Equal(*fullyPopulatedBundle.UpdatedAt), ShouldBeTrue)
+				So(bundle.ManagedBy, ShouldEqual, fullyPopulatedBundle.ManagedBy)
+			})
 		})
 	})
 
-	Convey("Return error when unable to read message", t, func() {
-		Convey("when the reader returns an error", func() {
-			reader := &ErrorReader{}
+	Convey("Given a minimally populated bundle", t, func() {
+		b, err := json.Marshal(minimallyPopulatedBundle)
+		So(err, ShouldBeNil)
+
+		reader := bytes.NewReader(b)
+
+		Convey("When CreateBundle is called", func() {
+			bundle, err := CreateBundle(reader)
+			So(err, ShouldBeNil)
+
+			Convey("Then it should return a bundle with the expected values", func() {
+				So(bundle, ShouldResemble, &minimallyPopulatedBundle)
+			})
+		})
+	})
+}
+
+func TestCreateBundle_Failure(t *testing.T) {
+	Convey("Given a reader that fails to read", t, func() {
+		reader := &ErrorReader{}
+		Convey("When CreateBundle is called", func() {
 			_, err := CreateBundle(reader)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
+			Convey("Then it should return an unable to read message error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
+			})
 		})
 	})
 
-	Convey("Return error when unable to parse json", t, func() {
-		Convey("when the json is invalid", func() {
-			b := `{"state":"invalid-body}`
-			reader := bytes.NewReader([]byte(b))
+	Convey("Given a reader with invalid json", t, func() {
+		b := `{"state":"invalid-body}`
+		reader := bytes.NewReader([]byte(b))
+		Convey("When CreateBundle is called", func() {
 			_, err := CreateBundle(reader)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
-		})
-	})
-}
-
-func TestMarshalJSONForBundle(t *testing.T) {
-	Convey("Given a bundle", t, func() {
-		bundleID := "12345"
-		user := User{
-			Email: "example@example.com",
-		}
-		now := time.Now()
-		previewTeam := PreviewTeam{
-			ID: "team1",
-		}
-		state := BundleStateDraft
-		testBundle := Bundle{
-			ID:            bundleID,
-			BundleType:    BundleTypeManual,
-			CreatedBy:     &user,
-			CreatedAt:     &now,
-			LastUpdatedBy: &user,
-			PreviewTeams: &[]PreviewTeam{
-				previewTeam,
-			},
-			ScheduledAt: &now,
-			State:       &state,
-			Title:       "Test Bundle",
-			UpdatedAt:   &now,
-			ManagedBy:   ManagedByWagtail,
-		}
-		Convey("when the bundle type is invalid", func() {
-			testBundle.BundleType = invalid
-			Convey("then it should return an error", func() {
-				_, err := json.Marshal(testBundle)
+			Convey("Then it should return an unable to parse json error", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid BundleType")
-			})
-		})
-		Convey("when the bundle state is invalid", func() {
-			state = invalid
-			testBundle.State = &state
-			Convey("then it should return an error", func() {
-				_, err := json.Marshal(testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid BundleState")
-			})
-		})
-		Convey("when the managed by is invalid", func() {
-			testBundle.ManagedBy = invalid
-			Convey("then it should return an error", func() {
-				_, err := json.Marshal(testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid ManagedBy")
+				So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
 			})
 		})
 	})
 }
 
-func TestUnmarshalJSON_InvalidBundleType(t *testing.T) {
-	Convey("Given invalid JSON for BundleState", t, func() {
-		invalidJSON := []byte(`123`) // Invalid JSON for a string
-		var bandleType BundleType
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := bandleType.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-			})
-		})
-	})
-
-	Convey("Given invalid JSON for BundleType", t, func() {
-		invalidJSON := []byte(`"INVALID"`) // Invalid value for ManagedBy
-		var bundleType BundleType
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := bundleType.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid BundleType: INVALID")
-			})
-		})
-	})
-}
-
-func TestUnmarshalJSON_InvalidBundleState(t *testing.T) {
-	Convey("Given invalid JSON for BundleState", t, func() {
-		invalidJSON := []byte(`123`) // Invalid JSON for a string
-		var bandleState BundleState
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := bandleState.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-			})
-		})
-	})
-
-	Convey("Given invalid JSON for BundleState", t, func() {
-		invalidJSON := []byte(`"INVALID"`) // Invalid value for ManagedBy
-		var bundleState BundleState
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := bundleState.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid BundleState: INVALID")
-			})
-		})
-	})
-}
-
-func TestUnmarshalJSON_InvalidManagedBy(t *testing.T) {
-	Convey("Given invalid JSON for ManagedBy", t, func() {
-		invalidJSON := []byte(`123`) // Invalid JSON for a string
-		var managedBy ManagedBy
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := managedBy.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-			})
-		})
-	})
-
-	Convey("Given invalid JSON for ManagedBy", t, func() {
-		invalidJSON := []byte(`"INVALID"`) // Invalid value for ManagedBy
-		var managedBy ManagedBy
-
-		Convey("When UnmarshalJSON is called", func() {
-			err := managedBy.UnmarshalJSON(invalidJSON)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "invalid ManagedBy: INVALID")
-			})
-		})
-	})
-}
-
-func TestValidateBundle(t *testing.T) {
-	Convey("Given a valid bundle", t, func() {
-		bundleID := "12345"
-		user := User{
-			Email: "example@example.com",
-		}
-		now := time.Now()
-		previewTeam := PreviewTeam{
-			ID: "team1",
-		}
-		state := BundleStateDraft
-		testBundle := Bundle{
-			ID:            bundleID,
-			BundleType:    BundleTypeManual,
-			CreatedBy:     &user,
-			CreatedAt:     &now,
-			LastUpdatedBy: &user,
-			PreviewTeams: &[]PreviewTeam{
-				previewTeam,
-			},
-			ScheduledAt: &now,
-			State:       &state,
-			Title:       "Test Bundle",
-			UpdatedAt:   &now,
-			ManagedBy:   ManagedByWagtail,
-		}
-
-		Convey("When Validate is called with a valid bundle", func() {
-			err := ValidateBundle(&testBundle)
+func TestValidateBundle_Success(t *testing.T) {
+	Convey("Given a minimally populated bundle", t, func() {
+		Convey("When ValidateBundle is called", func() {
+			err := ValidateBundle(&minimallyPopulatedBundle)
 
 			Convey("Then it should not return an error", func() {
 				So(err, ShouldBeNil)
 			})
 		})
+	})
+}
 
-		Convey("When Validate is called and BundleType is empty", func() {
-			testBundle.BundleType = ""
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
+func TestValidateBundle_Failure(t *testing.T) {
+	Convey("Given a bundle with missing mandatory fields (CreatedBy and LastUpdatedBy email only checked if field exists)", t, func() {
+		bundle := Bundle{
+			ID:            "",
+			BundleType:    "",
+			CreatedBy:     &User{Email: ""},
+			LastUpdatedBy: &User{Email: ""},
+			PreviewTeams:  &[]PreviewTeam{},
+			Title:         "",
+			ManagedBy:     "",
+		}
+
+		Convey("When ValidateBundle is called", func() {
+			err := ValidateBundle(&bundle)
+
+			Convey("Then it should return an error indicating the missing fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"bundle_type"}))
+				So(err.Error(), ShouldEqual, "missing mandatory fields: [id bundle_type created_by.email last_updated_by.email preview_teams title managed_by]")
 			})
 		})
+	})
 
-		Convey("When Validate is called and PreviewTeams is empty", func() {
-			testBundle.PreviewTeams = &[]PreviewTeam{}
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"preview_teams"}))
-			})
-		})
+	Convey("Given a bundle with invalid fields (State only checked if field exists)", t, func() {
+		bundle := fullyPopulatedBundle
+		bundle.BundleType = BundleType("invalid-type")
+		bundle.State = &bundleStateInvalid
+		bundle.ManagedBy = ManagedBy("invalid-managed-by")
 
-		Convey("When Validate is called and Title is empty", func() {
-			testBundle.Title = ""
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"title"}))
-			})
-		})
+		Convey("When ValidateBundle is called", func() {
+			err := ValidateBundle(&bundle)
 
-		Convey("When Validate is called and ManagedBy is empty", func() {
-			testBundle.ManagedBy = ""
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
+			Convey("Then it should return an error indicating the invalid fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"managed_by"}))
-			})
-		})
-
-		Convey("When Validate is called and all mandatory fields are empty", func() {
-			testBundle.BundleType = ""
-			testBundle.PreviewTeams = &[]PreviewTeam{}
-			testBundle.Title = ""
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"bundle_type", "preview_teams", "title"}))
-			})
-		})
-
-		Convey("When Validate is called and User fields are empty", func() {
-			testBundle.CreatedBy = &User{Email: ""}
-			testBundle.LastUpdatedBy = &User{Email: ""}
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"created_by", "last_updated_by"}))
-			})
-		})
-
-		Convey("When Validate is called and id is empty", func() {
-			testBundle.ID = ""
-			Convey("Then it should return an error", func() {
-				err := ValidateBundle(&testBundle)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, fmt.Sprintf("missing mandatory fields: %v", []string{"id"}))
+				So(err.Error(), ShouldEqual, "invalid fields: [bundle_type state managed_by]")
 			})
 		})
 	})
 }
 
-func TestBundleIdOmitEmpty(t *testing.T) {
-	Convey("Given a valid bundle with empty the non-mandatory fields", t, func() {
-		previewTeam := PreviewTeam{
-			ID: "team1",
-		}
-		testBundle := Bundle{
-			BundleType: BundleTypeManual,
-			PreviewTeams: &[]PreviewTeam{
-				previewTeam,
-			},
-			Title:     "Test Bundle",
-			ManagedBy: ManagedByWagtail,
-		}
+func TestBundleState_IsValid_Success(t *testing.T) {
+	Convey("Given a valid bundle state", t, func() {
+		state := BundleStateDraft
 
-		Convey("When marshaling to JSON", func() {
-			data, err := json.Marshal(testBundle)
+		Convey("When IsValid is called", func() {
+			valid := state.IsValid()
 
-			Convey("Then it should omit the ID field", func() {
-				So(err, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"created_by"`)
-				So(string(data), ShouldNotContainSubstring, `"created_at"`)
-				So(string(data), ShouldNotContainSubstring, `"last_updated_by"`)
-				So(string(data), ShouldNotContainSubstring, `"scheduled_at"`)
-				So(string(data), ShouldNotContainSubstring, `"state"`)
-				So(string(data), ShouldNotContainSubstring, `"updated_at"`)
+			Convey("Then it should return true", func() {
+				So(valid, ShouldBeTrue)
+			})
+		})
+	})
+}
+
+func TestBundleState_IsValid_Failure(t *testing.T) {
+	Convey("Given an invalid bundle state", t, func() {
+		state := BundleState("invalid-state")
+
+		Convey("When IsValid is called", func() {
+			valid := state.IsValid()
+
+			Convey("Then it should return false", func() {
+				So(valid, ShouldBeFalse)
+			})
+		})
+	})
+}
+
+func TestBundleState_String_Success(t *testing.T) {
+	Convey("Given a valid bundle state", t, func() {
+		state := BundleStateDraft
+
+		Convey("When String is called", func() {
+			str := state.String()
+
+			Convey("Then it should return the correct string representation", func() {
+				So(str, ShouldEqual, "DRAFT")
 			})
 		})
 	})
