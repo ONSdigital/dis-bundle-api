@@ -17,6 +17,7 @@ var (
 )
 
 var bundleStateDraft = BundleStateDraft
+var bundleStateInvalid = BundleState("Invalid")
 
 var fullyPopulatedEvent = Event{
 	CreatedAt: &today,
@@ -200,6 +201,20 @@ func TestValidateEvent_Failure(t *testing.T) {
 			})
 		})
 	})
+
+	Convey("Given an event with invalid fields", t, func() {
+		invalidEvent := fullyPopulatedEvent
+		invalidEvent.Action = Action("INVALID")
+
+		Convey("When ValidateEvent is called", func() {
+			err := ValidateEvent(&invalidEvent)
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "invalid fields: [action]")
+			})
+		})
+	})
 }
 
 func TestAction_IsValid_Success(t *testing.T) {
@@ -225,67 +240,6 @@ func TestAction_IsValid_Failure(t *testing.T) {
 
 		Convey("Then IsValid should return false", func() {
 			So(invalidAction.IsValid(), ShouldBeFalse)
-		})
-	})
-}
-
-func TestAction_MarshalJSON_Success(t *testing.T) {
-	Convey("When given a valid Action", t, func() {
-		validAction := ActionCreate
-
-		Convey("Then MarshalJSON should return the correct JSON representation", func() {
-			marshaledJSON, err := json.Marshal(validAction)
-			So(err, ShouldBeNil)
-			So(string(marshaledJSON), ShouldEqual, `"CREATE"`)
-		})
-	})
-}
-
-func TestAction_MarshalJSON_Failure(t *testing.T) {
-	Convey("When given an invalid Action", t, func() {
-		invalidAction := Action("INVALID")
-
-		Convey("Then MarshalJSON should return an error", func() {
-			_, err := json.Marshal(invalidAction)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "invalid Action")
-		})
-	})
-}
-
-func TestAction_UnmarshalJSON_Success(t *testing.T) {
-	Convey("When given a valid JSON string for an Action", t, func() {
-		validJSON := `"CREATE"`
-		var action Action
-
-		Convey("Then UnmarshalJSON should set the Action correctly", func() {
-			err := json.Unmarshal([]byte(validJSON), &action)
-			So(err, ShouldBeNil)
-			So(action, ShouldEqual, ActionCreate)
-		})
-	})
-}
-
-func TestAction_UnmarshalJSON_Failure(t *testing.T) {
-	Convey("When given an invalid JSON string for an Action that isn't valid", t, func() {
-		invalidAction := `"INVALID"`
-		var action Action
-
-		Convey("Then UnmarshalJSON should return an error", func() {
-			err := json.Unmarshal([]byte(invalidAction), &action)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "invalid Action")
-		})
-	})
-
-	Convey("When given a non-string JSON input", t, func() {
-		invalidJSON := `123`
-		var action Action
-
-		Convey("Then UnmarshalJSON should return an error", func() {
-			err := json.Unmarshal([]byte(invalidJSON), &action)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "invalid JSON input for Action:")
 		})
 	})
 }

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -11,17 +12,15 @@ import (
 )
 
 var (
-	bundleStateDraft                                     = models.BundleStateDraft
-	bundleStateInReview                                  = models.BundleStateInReview
-	bundleStateApproved                                  = models.BundleStateApproved
-	bundleStateUnknown                                   = models.BundleState("UNKNOWN")
-	bundleStatePublished                                 = models.BundleStatePublished
-	currentBundleWithStateDraft                          = &models.Bundle{State: &bundleStateDraft}
-	currentBundleWithStateInReview                       = &models.Bundle{State: &bundleStateInReview}
-	currentBundleWithStateInReviewAndContentsApproved    = &models.Bundle{State: &bundleStateInReview, Contents: []models.BundleContent{{State: Approved.String()}}}
-	currentBundleWithStateInReviewAndContentsNotApproved = &models.Bundle{State: &bundleStateInReview, Contents: []models.BundleContent{{State: Draft.String()}}}
-	currentBundleWithStateApproved                       = &models.Bundle{State: &bundleStateApproved}
-	currentBundleWithStateUnknown                        = &models.Bundle{State: &bundleStateUnknown}
+	bundleStateDraft               = models.BundleStateDraft
+	bundleStateInReview            = models.BundleStateInReview
+	bundleStateApproved            = models.BundleStateApproved
+	bundleStatePublished           = models.BundleStatePublished
+	bundleStateUnknown             = models.BundleState("UNKNOWN")
+	currentBundleWithStateDraft    = &models.Bundle{State: &bundleStateDraft}
+	currentBundleWithStateInReview = &models.Bundle{State: &bundleStateInReview}
+	currentBundleWithStateApproved = &models.Bundle{State: &bundleStateApproved}
+	currentBundleWithStateUnknown  = &models.Bundle{State: &bundleStateUnknown}
 
 	bundleUpdateWithStateDraft     = &models.Bundle{State: &bundleStateDraft}
 	bundleUpdateWithStateInReview  = &models.Bundle{State: &bundleStateInReview}
@@ -64,8 +63,8 @@ func getMockTransitions() []Transition {
 	}
 }
 
-func TestGetStateByName(t *testing.T) {
-	Convey("Given a state name", t, func() {
+func TestGetStateByName_Success(t *testing.T) {
+	Convey("Given a valid state name", t, func() {
 		Convey("When the state name is 'DRAFT'", func() {
 			state, found := getStateByName("DRAFT")
 
@@ -105,7 +104,11 @@ func TestGetStateByName(t *testing.T) {
 				So(state.Name, ShouldEqual, "PUBLISHED")
 			})
 		})
+	})
+}
 
+func TestGetStateByName_Failure(t *testing.T) {
+	Convey("Given an invalid state name", t, func() {
 		Convey("When the state name is 'UNKNOWN'", func() {
 			state, found := getStateByName("UNKNOWN")
 
@@ -123,7 +126,11 @@ func TestTransition_success(t *testing.T) {
 	states := getMockStates()
 	transitions := getMockTransitions()
 
-	mockedDatastore := &storetest.StorerMock{}
+	mockedDatastore := &storetest.StorerMock{
+		CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
+			return true, nil
+		},
+	}
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
 	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine)
@@ -137,7 +144,7 @@ func TestTransition_success(t *testing.T) {
 	})
 
 	Convey("When transitioning from 'IN_REVIEW' to 'APPROVED' with bundle contents APPROVED", t, func() {
-		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReviewAndContentsApproved, bundleUpdateWithStateApproved)
+		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved)
 
 		Convey("Then the transition should be successful", func() {
 			So(err, ShouldBeNil)
@@ -206,10 +213,32 @@ func TestTransition_failure(t *testing.T) {
 	})
 
 	Convey("When transitioning from 'IN_REVIEW' to 'APPROVED' with bundle contents not APPROVED", t, func() {
-		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReviewAndContentsNotApproved, bundleUpdateWithStateApproved)
-		Convey("Then the transition should fail", func() {
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "not all bundle contents are approved")
+		Convey("And CheckAllBundleContentsAreApproved returns false", func() {
+			stateMachineBundleAPI.Datastore.Backend = &storetest.StorerMock{
+				CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
+					return false, nil
+				},
+			}
+
+			Convey("Then the transition should fail", func() {
+				err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "not all bundle contents are approved")
+			})
+		})
+
+		Convey("And CheckAllBundleContentsAreApproved returns an error", func() {
+			stateMachineBundleAPI.Datastore.Backend = &storetest.StorerMock{
+				CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
+					return false, errors.New("datastore error")
+				},
+			}
+
+			Convey("Then the transition should fail with an error", func() {
+				err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "datastore error")
+			})
 		})
 	})
 

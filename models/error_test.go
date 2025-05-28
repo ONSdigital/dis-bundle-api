@@ -16,360 +16,156 @@ func (e *ErrorReader) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("mock read error")
 }
 
-func TestCodeIsValid(t *testing.T) {
-	Convey("Given a valid Code: CodeInternalServerError", t, func() {
-		code := CodeInternalServerError
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
+var internalServerErrorCode = CodeInternalServerError
+var invalidErrorCode = Code("invalid_code")
 
-	Convey("Given a valid Code: CodeNotFound", t, func() {
-		code := CodeNotFound
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
-
-	Convey("Given a valid Code: CodeBadRequest", t, func() {
-		code := CodeBadRequest
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
-
-	Convey("Given a valid Code: CodeUnauthorized", t, func() {
-		code := CodeUnauthorized
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
-
-	Convey("Given a valid Code: CodeForbidden", t, func() {
-		code := CodeForbidden
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
-
-	Convey("Given a valid Code: CodeConflict", t, func() {
-		code := CodeConflict
-		Convey("It should return true", func() {
-			So(code.IsValid(), ShouldBeTrue)
-		})
-	})
-
-	Convey("Given an invalid Code", t, func() {
-		code := Code("invalid_code")
-		Convey("It should return false", func() {
-			So(code.IsValid(), ShouldBeFalse)
-		})
-	})
+var exampleError = Error{
+	Code:        &internalServerErrorCode,
+	Description: "An example error occurred",
+	Source:      &Source{Field: "example_field"},
 }
 
-func TestCodeString(t *testing.T) {
-	Convey("Given a valid Code: CodeInternalServerError", t, func() {
-		code := CodeInternalServerError
-		Convey("It should return 'internal_server_error'", func() {
-			So(code.String(), ShouldEqual, "internal_server_error")
-		})
-	})
-
-	Convey("Given a valid Code: CodeNotFound", t, func() {
-		code := CodeNotFound
-		Convey("It should return 'not_found'", func() {
-			So(code.String(), ShouldEqual, "not_found")
-		})
-	})
-
-	Convey("Given a valid Code: CodeBadRequest", t, func() {
-		code := CodeBadRequest
-		Convey("It should return 'bad_request'", func() {
-			So(code.String(), ShouldEqual, "bad_request")
-		})
-	})
-
-	Convey("Given a valid Code: CodeUnauthorized", t, func() {
-		code := CodeUnauthorized
-		Convey("It should return 'unauthorized'", func() {
-			So(code.String(), ShouldEqual, "unauthorized")
-		})
-	})
-
-	Convey("Given a valid Code: CodeForbidden", t, func() {
-		code := CodeForbidden
-		Convey("It should return 'forbidden'", func() {
-			So(code.String(), ShouldEqual, "forbidden")
-		})
-	})
-
-	Convey("Given a valid Code: CodeConflict", t, func() {
-		code := CodeConflict
-		Convey("It should return 'conflict'", func() {
-			So(code.String(), ShouldEqual, "conflict")
-		})
-	})
+var allCodes = []Code{
+	CodeInternalServerError,
+	CodeNotFound,
+	CodeBadRequest,
+	CodeUnauthorized,
+	CodeForbidden,
+	CodeConflict,
 }
 
-func TestCodeMarshalJSON(t *testing.T) {
-	Convey("Given a valid Code: CodeInternalServerError", t, func() {
-		code := CodeInternalServerError
-		Convey("It should marshal to '\"internal_server_error\"'", func() {
-			data, err := code.MarshalJSON()
-			So(err, ShouldBeNil)
-			So(string(data), ShouldEqual, `"internal_server_error"`)
-		})
-	})
+func TestCreateError_Success(t *testing.T) {
+	Convey("Given a valid Error", t, func() {
+		data, err := json.Marshal(exampleError)
+		So(err, ShouldBeNil)
 
-	Convey("Given a valid Code: CodeNotFound", t, func() {
-		code := CodeNotFound
-		Convey("It should marshal to '\"not_found\"'", func() {
-			data, err := code.MarshalJSON()
-			So(err, ShouldBeNil)
-			So(string(data), ShouldEqual, `"not_found"`)
-		})
-	})
-
-	Convey("Given an invalid Code", t, func() {
-		code := Code("invalid_code")
-		Convey("It should return an error", func() {
-			data, err := code.MarshalJSON()
-			So(err, ShouldNotBeNil)
-			So(data, ShouldBeNil)
-			So(err.Error(), ShouldEqual, "invalid Code: invalid_code")
-		})
-	})
-}
-
-func TestCodeUnmarshalJSON(t *testing.T) {
-	Convey("Given a valid JSON string for Code: CodeInternalServerError", t, func() {
-		var code Code
-		data := []byte(`"internal_server_error"`)
-		Convey("It should unmarshal successfully", func() {
-			err := json.Unmarshal(data, &code)
-			So(err, ShouldBeNil)
-			So(code, ShouldEqual, CodeInternalServerError)
-		})
-	})
-
-	Convey("Given a valid JSON string for Code: CodeNotFound", t, func() {
-		var code Code
-		data := []byte(`"not_found"`)
-		Convey("It should unmarshal successfully", func() {
-			err := json.Unmarshal(data, &code)
-			So(err, ShouldBeNil)
-			So(code, ShouldEqual, CodeNotFound)
-		})
-	})
-
-	Convey("Given an invalid JSON string for Code", t, func() {
-		var code Code
-		data := []byte(`"invalid_code"`)
-		Convey("It should return an error", func() {
-			err := json.Unmarshal(data, &code)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, "invalid Code: invalid_code")
-		})
-	})
-
-	Convey("Given an invalid JSON for Code", t, func() {
-		var code Code
-		data := []byte(`123`) // Invalid JSON for a string
-		Convey("It should return a JSON unmarshal error", func() {
-			err := json.Unmarshal(data, &code)
-			So(err, ShouldNotBeNil)
-		})
-	})
-}
-
-func TestAllFieldsOmitEmpty(t *testing.T) {
-	Convey("Given an Error struct with all fields empty", t, func() {
-		err := Error{}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("All fields should be omitted", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldEqual, `{}`)
-			})
-		})
-	})
-
-	Convey("Given an Error struct with all fields set", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(err)
-
-			Convey("All fields should be present", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(string(data), ShouldContainSubstring, `"description":"Some description"`)
-				So(string(data), ShouldContainSubstring, `"source":{"field":"field_name"}`)
-			})
-		})
-	})
-}
-
-func TestErrorListOmitEmpty(t *testing.T) {
-	Convey("Given an ErrorList struct with an empty Errors slice", t, func() {
-		errList := ErrorList{
-			Errors: nil,
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(errList)
-
-			Convey("The 'errors' field should be omitted", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldNotContainSubstring, `"errors"`)
-			})
-		})
-	})
-
-	Convey("Given an ErrorList struct with a non-empty Errors slice", t, func() {
-		code := CodeInternalServerError
-		errList := ErrorList{
-			Errors: &[]Error{
-				{
-					Code:        &code,
-					Description: "Some description",
-					Source:      &Source{Field: "field_name"},
-				},
-			},
-		}
-
-		Convey("When marshaled to JSON", func() {
-			data, marshalErr := json.Marshal(errList)
-
-			Convey("The 'errors' field should be present", func() {
-				So(marshalErr, ShouldBeNil)
-				So(string(data), ShouldContainSubstring, `"errors":[{"code":"internal_server_error","description":"Some description","source":{"field":"field_name"}}]`)
-			})
-		})
-	})
-}
-
-func TestCreateError(t *testing.T) {
-	Convey("Given a valid Error struct", t, func() {
-		code := CodeInternalServerError
-		err := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
+		reader := bytes.NewReader(data)
 
 		Convey("When CreateError is called", func() {
-			data, err := json.Marshal(err)
-
-			if err != nil {
-				t.Logf("failed to marshal test data into bytes, error: %v", err)
-				t.FailNow()
-			}
-
-			reader := bytes.NewReader(data)
 			result, err := CreateError(reader)
 
-			Convey("Then there should be no error", func() {
+			Convey("Then it should return the Error without any error", func() {
 				So(err, ShouldBeNil)
 				So(result, ShouldNotBeNil)
-				So(result.Code, ShouldEqual, &code)
-				So(result.Description, ShouldEqual, "Some description")
-				So(result.Source, ShouldNotBeNil)
-				So(result.Source.Field, ShouldEqual, "field_name")
+				So(result.Code, ShouldEqual, &internalServerErrorCode)
+				So(result.Description, ShouldEqual, "An example error occurred")
+				So(result.Source.Field, ShouldEqual, "example_field")
 				So(result.Source.Parameter, ShouldEqual, "")
 				So(result.Source.Header, ShouldEqual, "")
 			})
 		})
 	})
+}
 
-	Convey("Return error when unable to read message", t, func() {
-		Convey("when the reader returns an error", func() {
-			reader := &ErrorReader{}
+func TestCreateError_Failure(t *testing.T) {
+	Convey("Given a reader that returns an error", t, func() {
+		reader := &ErrorReader{}
+
+		Convey("When CreateError is called", func() {
 			_, err := CreateError(reader)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
+
+			Convey("Then it should return an error indicating it was unable to read the message", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
+			})
 		})
 	})
 
-	Convey("Return error when unable to parse JSON", t, func() {
-		Convey("when the JSON is invalid", func() {
-			b := `{"code": "123}`
-			reader := bytes.NewReader([]byte(b))
+	Convey("Given a reader with invalid JSON", t, func() {
+		invalidJSON := `{"code": "123}`
+		reader := bytes.NewReader([]byte(invalidJSON))
+
+		Convey("When CreateError is called", func() {
 			_, err := CreateError(reader)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
+
+			Convey("Then it should return an error indicating it was unable to parse JSON", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())
+			})
 		})
 	})
 }
 
-func TestValidateError(t *testing.T) {
-	Convey("Given a valid Error struct", t, func() {
-		code := CodeInternalServerError
-		e := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Field: "field_name"},
-		}
-
+func TestValidateError_Success(t *testing.T) {
+	Convey("Given a valid Error", t, func() {
 		Convey("When ValidateError is called", func() {
-			err := ValidateError(&e)
+			err := ValidateError(&exampleError)
 
 			Convey("Then there should be no error", func() {
 				So(err, ShouldBeNil)
 			})
 		})
 	})
+}
 
-	Convey("Given a valid Error struct with two Source fields set", t, func() {
-		code := CodeInternalServerError
-		e := Error{
-			Code:        &code,
-			Description: "Some description",
-			Source:      &Source{Parameter: "param_name", Header: "header_name"},
-		}
-
+func TestValidateError_Failure(t *testing.T) {
+	Convey("Given an Error that is nil", t, func() {
 		Convey("When ValidateError is called", func() {
-			err := ValidateError(&e)
+			err := ValidateError(nil)
 
-			Convey("Then there should be an error", func() {
+			Convey("Then it should return an error indicating the error cannot be nil", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "only one of Source.Field, Source.Parameter, Source.Header can be set")
+				So(err.Error(), ShouldEqual, "error cannot be nil")
 			})
 		})
 	})
 
-	Convey("Given a valid Error struct with all Source fields set", t, func() {
-		code := CodeInternalServerError
-		e := Error{
-			Code:        &code,
-			Description: "Some description",
+	Convey("Given an Error with an invalid code", t, func() {
+		errorWithInvalidCode := Error{
+			Code:        &invalidErrorCode,
+			Description: "An error with an invalid code",
+			Source:      &Source{Field: "example_field"},
+		}
+
+		Convey("When ValidateError is called", func() {
+			err := ValidateError(&errorWithInvalidCode)
+
+			Convey("Then it should return an error indicating the code is invalid", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "invalid error code: invalid_code")
+			})
+		})
+	})
+
+	Convey("Given an Error with multiple Source fields set", t, func() {
+		errorWithMultipleSources := Error{
+			Code:        &internalServerErrorCode,
+			Description: "An error with multiple source fields",
 			Source:      &Source{Field: "field_name", Parameter: "param_name", Header: "header_name"},
 		}
 
 		Convey("When ValidateError is called", func() {
-			err := ValidateError(&e)
+			err := ValidateError(&errorWithMultipleSources)
 
-			Convey("Then there should be an error", func() {
+			Convey("Then it should return an error indicating only one Source field can be set", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "only one of Source.Field, Source.Parameter, Source.Header can be set")
 			})
 		})
 	})
+}
 
-	Convey("Given a nil Error", t, func() {
-		Convey("When ValidateError is called", func() {
-			err := ValidateError(nil)
+func TestCode_IsValid_Success(t *testing.T) {
+	Convey("Given a valid Code", t, func() {
+		for _, code := range allCodes {
+			Convey(fmt.Sprintf("When IsValid is called for code %s", code), func() {
+				valid := code.IsValid()
 
-			Convey("Then there should be an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "error cannot be nil")
+				Convey("Then it should return true", func() {
+					So(valid, ShouldBeTrue)
+				})
+			})
+		}
+	})
+}
+
+func TestCode_IsValid_Failure(t *testing.T) {
+	Convey("Given an invalid Code", t, func() {
+		Convey("When IsValid is called", func() {
+			valid := invalidErrorCode.IsValid()
+
+			Convey("Then it should return false", func() {
+				So(valid, ShouldBeFalse)
 			})
 		})
 	})

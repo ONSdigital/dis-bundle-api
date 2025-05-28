@@ -11,17 +11,17 @@ import (
 
 // Event represents details of a specific change event forming part of the change and audit log for a bundle
 type Event struct {
-	CreatedAt   *time.Time   `bson:"created_at,omitempty" json:"created_at,omitempty"`
+	CreatedAt   *time.Time   `bson:"created_at,omitempty"   json:"created_at,omitempty"`
 	RequestedBy *RequestedBy `bson:"requested_by,omitempty" json:"requested_by,omitempty"`
-	Action      Action       `bson:"action," json:"action"`
-	Resource    string       `bson:"resource" json:"resource"`
+	Action      Action       `bson:"action,"                json:"action"`
+	Resource    string       `bson:"resource"               json:"resource"`
 	ContentItem *ContentItem `bson:"content_item,omitempty" json:"content_item,omitempty"`
-	Bundle      *Bundle      `bson:"bundle,omitempty" json:"bundle,omitempty"`
+	Bundle      *Bundle      `bson:"bundle,omitempty"       json:"bundle,omitempty"`
 }
 
 // RequestedBy represents the user who made the request
 type RequestedBy struct {
-	ID    string `bson:"id" json:"id"`
+	ID    string `bson:"id"              json:"id"`
 	Email string `bson:"email,omitempty" json:"email,omitempty"`
 }
 
@@ -49,7 +49,7 @@ func CreateEvent(reader io.Reader) (*Event, error) {
 
 // ValidateEvent validates that an Event has all required fields and values
 func ValidateEvent(event *Event) error {
-	var missingFields []string
+	missingFields, invalidFields := []string{}, []string{}
 
 	if event.RequestedBy != nil && event.RequestedBy.ID == "" {
 		missingFields = append(missingFields, "requested_by.id")
@@ -59,12 +59,20 @@ func ValidateEvent(event *Event) error {
 		missingFields = append(missingFields, "action")
 	}
 
+	if event.Action != "" && !event.Action.IsValid() {
+		invalidFields = append(invalidFields, "action")
+	}
+
 	if event.Resource == "" {
 		missingFields = append(missingFields, "resource")
 	}
 
 	if len(missingFields) > 0 {
 		return fmt.Errorf("missing mandatory fields: %v", missingFields)
+	}
+
+	if len(invalidFields) > 0 {
+		return fmt.Errorf("invalid fields: %v", invalidFields)
 	}
 
 	return nil
@@ -94,26 +102,4 @@ func (a Action) IsValid() bool {
 	default:
 		return false
 	}
-}
-
-// MarshalJSON marshals the Action to JSON
-func (a Action) MarshalJSON() ([]byte, error) {
-	if !a.IsValid() {
-		return nil, fmt.Errorf("invalid Action: %s", a)
-	}
-	return json.Marshal(string(a))
-}
-
-// UnmarshalJSON unmarshals a string to Action
-func (a *Action) UnmarshalJSON(data []byte) error {
-	var str string
-	if err := json.Unmarshal(data, &str); err != nil {
-		return fmt.Errorf("invalid JSON input for Action: %w", err)
-	}
-	converted := Action(str)
-	if !converted.IsValid() {
-		return fmt.Errorf("invalid Action: %s", str)
-	}
-	*a = converted
-	return nil
 }

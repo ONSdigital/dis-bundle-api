@@ -23,8 +23,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "state": "DRAFT",
                     "title": "bundle-10",
                     "updated_at": "2025-04-20T15:30:00Z",
-                    "managed_by": "WAGTAIL",
-                    "contents": null
+                    "managed_by": "WAGTAIL"
                 },
                 {
                     "id": "6835899f001ff1868922562c",
@@ -44,8 +43,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "state": "DRAFT",
                     "title": "bundle-8",
                     "updated_at": "2025-04-12T10:30:00Z",
-                    "managed_by": "WAGTAIL",
-                    "contents": null
+                    "managed_by": "WAGTAIL"
                 }
             ]
             """
@@ -79,8 +77,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "state": "DRAFT",
                         "title": "bundle-10",
                         "updated_at": "2025-04-20T15:30:00Z",
-                        "managed_by": "WAGTAIL",
-                        "contents": null
+                        "managed_by": "WAGTAIL"
                     },
                     {
                         "id": "6835899f001ff1868922562c",
@@ -100,8 +97,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "state": "DRAFT",
                         "title": "bundle-8",
                         "updated_at": "2025-04-12T10:30:00Z",
-                        "managed_by": "WAGTAIL",
-                        "contents": null
+                        "managed_by": "WAGTAIL"
             }],
             "count": 2,
             "limit": 20,

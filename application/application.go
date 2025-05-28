@@ -19,13 +19,8 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineB
 	}
 }
 
-func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
-	for _, bundleContent := range contents {
-		if bundleContent.State != Approved.String() {
-			return false
-		}
-	}
-	return true
+func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
+	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
 
 func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {

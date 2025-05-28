@@ -6,6 +6,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type StateMachine struct {
@@ -84,8 +85,13 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 				}
 
 				if currentBundle.State.String() == InReview.String() && bundleUpdate.State.String() == Approved.String() {
-					allApproved := checkAllBundleContentsAreApproved(currentBundle.Contents)
-					if !allApproved {
+					allBundleContentsApproved, err := stateMachineBundleAPI.CheckAllBundleContentsAreApproved(ctx, currentBundle.ID)
+					if err != nil {
+						log.Error(ctx, "error checking if all bundle contents are approved", err, log.Data{"bundle_id": currentBundle.ID})
+						return err
+					}
+
+					if !allBundleContentsApproved {
 						return errors.New("not all bundle contents are approved")
 					}
 				}
