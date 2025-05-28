@@ -1,6 +1,8 @@
 package application
 
 import (
+	"context"
+
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 )
@@ -24,4 +26,12 @@ func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
 		}
 	}
 	return true
+}
+
+func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	return results, totalCount, nil
 }

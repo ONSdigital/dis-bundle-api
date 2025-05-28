@@ -5,12 +5,15 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 )
 
 type MongoConfig struct {
 	mongodriver.MongoDriverConfig
 }
+
+type AuthConfig = authorisation.Config
 
 // Config represents service configuration for dis-bundle-api
 type Config struct {
@@ -22,7 +25,13 @@ type Config struct {
 	OTExporterOTLPEndpoint     string        `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OTServiceName              string        `envconfig:"OTEL_SERVICE_NAME"`
 	OtelEnabled                bool          `envconfig:"OTEL_ENABLED"`
+	DefaultMaxLimit            int           `envconfig:"DEFAULT_MAXIMUM_LIMIT"`
+	DefaultLimit               int           `envconfig:"DEFAULT_LIMIT"`
+	DefaultOffset              int           `envconfig:"DEFAULT_OFFSET"`
+	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
+	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	MongoConfig
+	AuthConfig *authorisation.Config
 }
 
 var cfg *Config
@@ -49,6 +58,9 @@ func Get() (*Config, error) {
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
 		OtelEnabled:                false,
+		DefaultMaxLimit:            1000,
+		DefaultLimit:               20,
+		DefaultOffset:              0,
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",
@@ -66,6 +78,7 @@ func Get() (*Config, error) {
 				},
 			},
 		},
+		AuthConfig: authorisation.NewDefaultConfig(),
 	}
 
 	return cfg, envconfig.Process("", cfg)

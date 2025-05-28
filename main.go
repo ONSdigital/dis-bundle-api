@@ -21,13 +21,6 @@ var (
 	GitCommit string
 	// Version represents the version of the service that is running
 	Version string
-
-// TODO: remove below explainer before commiting
-/* NOTE: replace the above with the below to run code with for example vscode debugger.
-BuildTime string = "1601119818"
-GitCommit string = "6584b786caac36b6214ffe04bf62f058d4021538"
-Version   string = "v0.1.0"
-*/
 )
 
 func main() {
@@ -65,8 +58,6 @@ func run(ctx context.Context) error {
 	// blocks until an os interrupt or a fatal error occurs
 	select {
 	case err := <-svcErrors:
-		// TODO: call svc.Close(ctx) (or something specific)
-		//  if there are any service connections like Kafka that you need to shut down
 		return errors.Wrap(err, "service error received")
 	case sig := <-signals:
 		log.Info(ctx, "os signal received", log.Data{"signal": sig})
