@@ -82,7 +82,7 @@ func TestMongoCRUDForEvents(t *testing.T) {
 		So(err, ShouldBeNil)
 		defer mongoServer.Stop(ctx)
 
-		conn, err := mongoDriver.Open(getMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections))
+		conn, err := mongoDriver.Open(getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections))
 		So(err, ShouldBeNil)
 		So(conn, ShouldNotBeNil)
 
