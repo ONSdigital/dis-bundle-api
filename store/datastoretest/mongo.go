@@ -21,6 +21,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //
 //		// make and configure a mocked store.MongoDB
 //		mockedMongoDB := &MongoDBMock{
+//			CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
+//				panic("mock out the CheckAllBundleContentsAreApproved method")
+//			},
 //			CheckerFunc: func(contextMoqParam context.Context, checkState *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
@@ -37,6 +40,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //
 //	}
 type MongoDBMock struct {
+	// CheckAllBundleContentsAreApprovedFunc mocks the CheckAllBundleContentsAreApproved method.
+	CheckAllBundleContentsAreApprovedFunc func(ctx context.Context, bundleID string) (bool, error)
+
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(contextMoqParam context.Context, checkState *healthcheck.CheckState) error
 
@@ -48,6 +54,13 @@ type MongoDBMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CheckAllBundleContentsAreApproved holds details about calls to the CheckAllBundleContentsAreApproved method.
+		CheckAllBundleContentsAreApproved []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// Checker holds details about calls to the Checker method.
 		Checker []struct {
 			// ContextMoqParam is the contextMoqParam argument value.
@@ -70,9 +83,46 @@ type MongoDBMock struct {
 			Limit int
 		}
 	}
-	lockChecker     sync.RWMutex
-	lockClose       sync.RWMutex
-	lockListBundles sync.RWMutex
+	lockCheckAllBundleContentsAreApproved sync.RWMutex
+	lockChecker                           sync.RWMutex
+	lockClose                             sync.RWMutex
+	lockListBundles                       sync.RWMutex
+}
+
+// CheckAllBundleContentsAreApproved calls CheckAllBundleContentsAreApprovedFunc.
+func (mock *MongoDBMock) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
+	if mock.CheckAllBundleContentsAreApprovedFunc == nil {
+		panic("MongoDBMock.CheckAllBundleContentsAreApprovedFunc: method is nil but MongoDB.CheckAllBundleContentsAreApproved was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockCheckAllBundleContentsAreApproved.Lock()
+	mock.calls.CheckAllBundleContentsAreApproved = append(mock.calls.CheckAllBundleContentsAreApproved, callInfo)
+	mock.lockCheckAllBundleContentsAreApproved.Unlock()
+	return mock.CheckAllBundleContentsAreApprovedFunc(ctx, bundleID)
+}
+
+// CheckAllBundleContentsAreApprovedCalls gets all the calls that were made to CheckAllBundleContentsAreApproved.
+// Check the length with:
+//
+//	len(mockedMongoDB.CheckAllBundleContentsAreApprovedCalls())
+func (mock *MongoDBMock) CheckAllBundleContentsAreApprovedCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockCheckAllBundleContentsAreApproved.RLock()
+	calls = mock.calls.CheckAllBundleContentsAreApproved
+	mock.lockCheckAllBundleContentsAreApproved.RUnlock()
+	return calls
 }
 
 // Checker calls CheckerFunc.
