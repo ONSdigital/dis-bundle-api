@@ -8,13 +8,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// API provides a struct to wrap the api around
+// API provides a struct to wrap the API around
 type API struct {
 	Router                *mux.Router
 	stateMachineBundleAPI *application.StateMachineBundleAPI
 }
 
-// Setup function sets up the api and returns an api
+// Setup function sets up the API and returns an API
 func Setup(ctx context.Context, r *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI) *API {
 	api := &API{
 		Router:                r,
