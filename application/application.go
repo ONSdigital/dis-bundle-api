@@ -1,7 +1,8 @@
 package application
 
 import (
-	"github.com/ONSdigital/dis-bundle-api/models"
+	"context"
+
 	"github.com/ONSdigital/dis-bundle-api/store"
 )
 
@@ -17,11 +18,6 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineB
 	}
 }
 
-func checkAllBundleContentsAreApproved(contents []models.BundleContent) bool {
-	for _, bundleContent := range contents {
-		if bundleContent.State != Approved.String() {
-			return false
-		}
-	}
-	return true
+func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
+	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
