@@ -225,7 +225,6 @@ func TestBuildListBundlesQuery(t *testing.T) {
 		So(filter, ShouldResemble, expectedFilter)
 		So(sort, ShouldResemble, expectedSort)
 	})
-
 }
 
 func TestBuildGetBundleQuery(t *testing.T) {
