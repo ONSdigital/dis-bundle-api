@@ -31,6 +31,7 @@ var (
 	ErrInvalidBundleState     = errors.New("invalid bundle state")
 	ErrMissingBundleID        = errors.New("missing bundle ID")
 	ErrInvalidBundleReference = errors.New("invalid bundle reference")
+	ErrBundleEventNotFound    = errors.New("bundle event not found")
 
 	// Validation
 	ErrMissingParameters      = errors.New("missing required parameters in request")
