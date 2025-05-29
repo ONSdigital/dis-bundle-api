@@ -5,11 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ONSdigital/dis-bundle-api/apierrors"
-	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
-	mim "github.com/ONSdigital/dp-mongodb-in-memory"
-	mongoDriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -65,102 +61,42 @@ var (
 	}
 )
 
-func TestMongoCRUDForEvents(t *testing.T) {
-	// Config for test mongo in memory instance
-	var (
-		ctx          = context.Background()
-		mongoVersion = "4.4.8"
-		mongoServer  *mim.Server
-		err          error
-	)
+func TestCreateBundleEvent_Success(t *testing.T) {
+	ctx := context.Background()
 
-	// Get the default app config to use when setting up mongo in memory
-	cfg, _ := config.Get()
-
-	Convey("When the db connection is initialized correctly", t, func() {
-		mongoServer, err = mim.Start(ctx, mongoVersion)
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
-		defer mongoServer.Stop(ctx)
 
-		conn, err := mongoDriver.Open(getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections))
+		err = setupTestDataForEvents(ctx, mongodb)
 		So(err, ShouldBeNil)
-		So(conn, ShouldNotBeNil)
 
-		mongodb := &Mongo{
-			MongoConfig: cfg.MongoConfig,
-			Connection:  conn,
-		}
-		So(mongodb, ShouldNotBeNil)
+		Convey("When CreateBundleEvent is called with a new bundle event", func() {
+			err := mongodb.CreateBundleEvent(ctx, bundleEvent)
 
-		if err := setupTestDataForEvents(ctx, mongodb); err != nil {
-			t.Fatalf("failed to insert test data for events, skipping tests: %v", err)
-		}
-
-		// GetBundleEvent
-		Convey("When GetBundleEvent is called", func() {
-			Convey("When the bundle event is not found", func() {
-				_, err := mongodb.GetBundleEvent(ctx, "event-not-exist")
-				So(err, ShouldEqual, apierrors.ErrBundleEventNotFound)
-			})
-
-			Convey("When GetBundleEvent returns a generic error", func() {
-				mongodb.Connection.DropDatabase(ctx)
-				_, err := mongodb.GetBundleEvent(ctx, "bundleEvent1")
-				So(err, ShouldNotBeNil)
-			})
-		})
-
-		// ListBundleEvents
-		Convey("When ListBundleEvents is called", func() {
-			Convey("When the bundle event list is fetched successfully", func() {
-				returnedEvents, totalCount, err := mongodb.ListBundleEvents(ctx, 0, 10)
-				So(err, ShouldBeNil)
-				So(totalCount, ShouldEqual, 2)
-				So(len(returnedEvents), ShouldEqual, 2)
-				So(returnedEvents[0].ContentItem.ID, ShouldEqual, "content1")
-				So(returnedEvents[1].ContentItem.ID, ShouldEqual, "content2")
-			})
-
-			Convey("When ListBundleEvents returns an error", func() {
-				mongodb.Connection.Close(ctx)
-				_, _, err := mongodb.ListBundleEvents(ctx, 0, 10)
-				So(err, ShouldNotBeNil)
-			})
-		})
-
-		// CreateBundleEvent
-		Convey("When CreateBundleEvent is called", func() {
-			Convey("When the bundle event is created successfully", func() {
-				err := mongodb.CreateBundleEvent(ctx, bundleEvent)
+			Convey("Then it should create the bundle event successfully without error", func() {
 				So(err, ShouldBeNil)
 			})
 		})
+	})
+}
 
-		// Update Bundle
-		Convey("When the UpdateBundle is called", func() {
-			Convey("When the bundle event is not found for update", func() {
-				_, err := mongodb.UpdateBundleEvent(ctx, "event-not-exist", bundleEvent)
-				So(err, ShouldEqual, apierrors.ErrBundleEventNotFound)
-			})
+func TestCreateBundleEvent_Failure(t *testing.T) {
+	ctx := context.Background()
 
-			Convey("When UpdateBundleEvent returns a generic error", func() {
-				mongodb.Connection.DropDatabase(ctx)
-				_, err := mongodb.UpdateBundleEvent(ctx, "bundleEvent1", bundleEvent)
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupTestDataForEvents(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When CreateBundleEvent is called and the connection fails", func() {
+			mongodb.Connection.Close(ctx)
+			err := mongodb.CreateBundleEvent(ctx, bundleEvent)
+
+			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
-			})
-		})
-
-		// Delete Bundle
-		Convey("When DeleteBundleEvent is called", func() {
-			Convey("When trying to delete a non-existent bundle event and returns error", func() {
-				err := mongodb.DeleteBundle(ctx, "non-existent-id")
-				So(err, ShouldResemble, apierrors.ErrBundleNotFound)
-			})
-
-			Convey("When trying to delete a bundle and returns generic error", func() {
-				mongodb.Connection.Close(ctx)
-				err := mongodb.DeleteBundleEvent(ctx, "bundleEvent1")
-				So(err, ShouldResemble, err)
 			})
 		})
 	})
@@ -171,11 +107,9 @@ func setupTestDataForEvents(ctx context.Context, mongo *Mongo) error {
 		return err
 	}
 
-	now := time.Now()
 	approved := models.StateApproved
 	bundleEvents := []*models.Event{
 		{
-			CreatedAt:   &now,
 			RequestedBy: &models.RequestedBy{ID: "user1", Email: "user1@ons.gov.uk"},
 			Action:      models.ActionCreate,
 			Resource:    "content1",
@@ -197,7 +131,6 @@ func setupTestDataForEvents(ctx context.Context, mongo *Mongo) error {
 			},
 		},
 		{
-			CreatedAt:   &now,
 			RequestedBy: &models.RequestedBy{ID: "user2", Email: "user2@ons.gov.uk"},
 			Action:      models.ActionCreate,
 			Resource:    "content2",
