@@ -47,6 +47,7 @@ func (m *Mongo) GetBundle(ctx context.Context, bundleID string) (*models.Bundle,
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 			return nil, apierrors.ErrBundleNotFound
 		}
+		return nil, err
 	}
 	return &result, nil
 }
