@@ -45,7 +45,8 @@ var (
 
 // 404 Not Found
 var NotFoundMap = map[error]bool{
-	ErrBundleNotFound: true,
+	ErrBundleNotFound:      true,
+	ErrBundleEventNotFound: true,
 }
 
 // 400 Bad Request
