@@ -156,4 +156,15 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
+
+	_, err = api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
+	if err != nil {
+		code := models.CodeInternalServerError
+		log.Error(ctx, "failed to create bundle in the database", err)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to create bundle in the database",
+		}, http.StatusInternalServerError)
+		return
+	}
 }
