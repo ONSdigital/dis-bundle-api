@@ -30,6 +30,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CloseFunc: func(contextMoqParam context.Context) error {
 //				panic("mock out the Close method")
 //			},
+//			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+//				panic("mock out the CreateBundle method")
+//			},
 //			ListBundlesFunc: func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
 //			},
@@ -48,6 +51,9 @@ type MongoDBMock struct {
 
 	// CloseFunc mocks the Close method.
 	CloseFunc func(contextMoqParam context.Context) error
+
+	// CreateBundleFunc mocks the CreateBundle method.
+	CreateBundleFunc func(ctx context.Context, bundle *models.Bundle) error
 
 	// ListBundlesFunc mocks the ListBundles method.
 	ListBundlesFunc func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error)
@@ -73,6 +79,13 @@ type MongoDBMock struct {
 			// ContextMoqParam is the contextMoqParam argument value.
 			ContextMoqParam context.Context
 		}
+		// CreateBundle holds details about calls to the CreateBundle method.
+		CreateBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Bundle is the bundle argument value.
+			Bundle *models.Bundle
+		}
 		// ListBundles holds details about calls to the ListBundles method.
 		ListBundles []struct {
 			// Ctx is the ctx argument value.
@@ -86,6 +99,7 @@ type MongoDBMock struct {
 	lockCheckAllBundleContentsAreApproved sync.RWMutex
 	lockChecker                           sync.RWMutex
 	lockClose                             sync.RWMutex
+	lockCreateBundle                      sync.RWMutex
 	lockListBundles                       sync.RWMutex
 }
 
@@ -190,6 +204,42 @@ func (mock *MongoDBMock) CloseCalls() []struct {
 	mock.lockClose.RLock()
 	calls = mock.calls.Close
 	mock.lockClose.RUnlock()
+	return calls
+}
+
+// CreateBundle calls CreateBundleFunc.
+func (mock *MongoDBMock) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
+	if mock.CreateBundleFunc == nil {
+		panic("MongoDBMock.CreateBundleFunc: method is nil but MongoDB.CreateBundle was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Bundle *models.Bundle
+	}{
+		Ctx:    ctx,
+		Bundle: bundle,
+	}
+	mock.lockCreateBundle.Lock()
+	mock.calls.CreateBundle = append(mock.calls.CreateBundle, callInfo)
+	mock.lockCreateBundle.Unlock()
+	return mock.CreateBundleFunc(ctx, bundle)
+}
+
+// CreateBundleCalls gets all the calls that were made to CreateBundle.
+// Check the length with:
+//
+//	len(mockedMongoDB.CreateBundleCalls())
+func (mock *MongoDBMock) CreateBundleCalls() []struct {
+	Ctx    context.Context
+	Bundle *models.Bundle
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Bundle *models.Bundle
+	}
+	mock.lockCreateBundle.RLock()
+	calls = mock.calls.CreateBundle
+	mock.lockCreateBundle.RUnlock()
 	return calls
 }
 

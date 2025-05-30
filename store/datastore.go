@@ -18,6 +18,7 @@ type Datastore struct {
 type dataMongoDB interface {
 	ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error)
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
+	CreateBundle(ctx context.Context, bundle *models.Bundle) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
 }
@@ -40,4 +41,8 @@ func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int) ([]*mod
 
 func (ds *Datastore) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
 	return ds.Backend.CheckAllBundleContentsAreApproved(ctx, bundleID)
+}
+
+func (ds *Datastore) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
+	return ds.Backend.CreateBundle(ctx, bundle)
 }
