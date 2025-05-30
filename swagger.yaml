@@ -261,6 +261,8 @@ paths:
           $ref: "#/responses/ForbiddenError"
         404:
           $ref: "#/responses/NotFound"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/contents:
@@ -354,6 +356,8 @@ paths:
           $ref: "#/responses/ForbiddenError"
         404:
           $ref: "#/responses/NotFound"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/state:
@@ -386,6 +390,8 @@ paths:
               type: string
           schema:
             $ref: "#/definitions/Bundle"
+        400:
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
