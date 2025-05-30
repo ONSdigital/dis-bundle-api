@@ -35,10 +35,20 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles",
 		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundles)),
 	)
+
+	api.post(
+		"/bundles",
+		authMiddleware.Require("bundles:create", api.createBundle),
+	)
 	return api
 }
 
 // get registers a GET http.HandlerFunc.
 func (api *BundleAPI) get(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodGet)
+}
+
+// post registers a POST http.HandlerFunc.
+func (api *BundleAPI) post(path string, handler http.HandlerFunc) {
+	api.Router.HandleFunc(path, handler).Methods(http.MethodPost)
 }

@@ -19,3 +19,9 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 
 	return bundles, totalCount, nil
 }
+
+func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	log.Info(ctx, "createBundle: creating a new bundle")
+}
