@@ -24,4 +24,14 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	log.Info(ctx, "createBundle: creating a new bundle")
+
+	bundle, err := models.CreateBundle(r.Body)
+	if err != nil {
+		code := models.CodeBadRequest
+		log.Error(ctx, "failed to create bundle from request body", err)
+		models.HandleErr(w, r, code, "Invalid request body", http.StatusBadRequest, nil)
+		return
+	}
+
+	log.Info(ctx, "createBundle: created bundle from request body", log.Data{"bundle": bundle})
 }
