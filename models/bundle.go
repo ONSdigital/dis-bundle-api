@@ -49,6 +49,7 @@ type BundleContent struct {
 	URLPath   string `bson:"url_path" json:"url_path"`
 }
 
+// CreateBundle creates a new Bundle from the provided reader
 func CreateBundle(reader io.Reader) (*Bundle, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
@@ -65,6 +66,7 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 	return &bundle, nil
 }
 
+// ValidateBundle checks that the Bundle has all mandatory fields and valid values
 func ValidateBundle(bundle *Bundle) error {
 	missingFields, invalidFields := []string{}, []string{}
 

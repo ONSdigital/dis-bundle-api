@@ -90,7 +90,7 @@ const (
 // IsValid validates that the Code is a valid enum value
 func (c Code) IsValid() bool {
 	switch c {
-	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict:
+	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, JSONMarshalError, JSONUnmarshalError, WriteResponseError:
 		return true
 	default:
 		return false
