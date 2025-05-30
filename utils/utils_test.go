@@ -28,7 +28,7 @@ var codebadRequest = models.CodeBadRequest
 func TestHandleBundleAPIErr_Success(t *testing.T) {
 	Convey("Given a valid error object and HTTP status code", t, func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/test", nil)
+		r := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 		errInfo := &models.Error{
 			Code:        &codebadRequest,
 			Description: "Invalid request",
@@ -53,7 +53,7 @@ func TestHandleBundleAPIErr_Success(t *testing.T) {
 func TestHandleBundleAPIErr_Failure(t *testing.T) {
 	Convey("Given an invalid error object", t, func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/test", nil)
+		r := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 
 		Convey("When HandleBundleAPIErr is called", func() {
 			HandleBundleAPIErr(w, r, nil, http.StatusBadRequest)
@@ -73,7 +73,7 @@ func TestHandleBundleAPIErr_Failure(t *testing.T) {
 
 	Convey("Given a response write that fails during encoding", t, func() {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/test", nil)
+		r := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 		errInfo := &models.Error{
 			Code:        &codebadRequest,
 			Description: "Invalid request",
