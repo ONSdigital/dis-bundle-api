@@ -11,6 +11,7 @@ import (
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
@@ -98,14 +99,19 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 			log.Error(r.Context(), "pagination parameters incorrect", err)
 			errArray := strings.Split(err.Error(), ":")
 			param := errArray[len(errArray)-1]
-			source := models.Source{Parameter: param}
+
 			code := models.CodeBadRequest
-			handleErr(w, r, code, "Unable to process request due to a malformed or invalid request body or query parameter", http.StatusBadRequest, &source)
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+				Source:      &models.Source{Parameter: param},
+			}
+			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
 			return
 		}
 		list, totalCount, errBundle := paginatedHandler(w, r, limit, offset)
 		if errBundle != nil {
-			handleErr(w, r, *errBundle.Code, errBundle.Description, http.StatusInternalServerError, errBundle.Source)
+			utils.HandleBundleAPIErr(w, r, errBundle, http.StatusInternalServerError)
 			return
 		}
 
@@ -123,7 +129,11 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 	if err != nil {
 		log.Error(r.Context(), "api endpoint failed to marshal resource into bytes", err, logData)
 		code := models.CodeInternalServerError
-		handleErr(w, r, code, "	Failed to process the request due to an internal error", http.StatusBadGateway, nil)
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to process the request due to an internal error",
+		}
+		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadGateway)
 		return
 	}
 
@@ -136,19 +146,13 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 	if _, err = w.Write(b); err != nil {
 		log.Error(r.Context(), "api endpoint error writing response body", err, logData)
 		code := models.CodeInternalServerError
-		handleErr(w, r, code, "Failed to process the request due to an internal error", http.StatusBadGateway, nil)
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to process the request due to an internal error",
+		}
+		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadGateway)
 		return
 	}
 
 	log.Info(r.Context(), "api endpoint request successful", logData)
-}
-
-func handleErr(w http.ResponseWriter, r *http.Request, code models.Code, description string, httpStatusCode int, source *models.Source) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatusCode)
-	errBytes, errCheck := json.Marshal(models.Error{Code: &code, Description: description, Source: source})
-	if errCheck != nil {
-		log.Error(r.Context(), "api endpoint error writing error body", errCheck)
-	}
-	http.Error(w, string(errBytes), httpStatusCode)
 }
