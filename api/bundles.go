@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -80,6 +81,36 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			Code:        &code,
 			Description: "A bundle with the same title already exists",
 		}, http.StatusConflict)
+		return
+	}
+
+	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
+		code := models.CodeBadRequest
+		log.Error(ctx, "scheduled_at is required for scheduled bundles", nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "scheduled_at is required for scheduled bundles",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	if bundle.BundleType == models.BundleTypeManual && bundle.ScheduledAt != nil {
+		code := models.CodeBadRequest
+		log.Error(ctx, "scheduled_at should not be set for manual bundles", nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "scheduled_at should not be set for manual bundles",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
+		code := models.CodeBadRequest
+		log.Error(ctx, "scheduled_at cannot be in the past", nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "scheduled_at cannot be in the past",
+		}, http.StatusBadRequest)
 		return
 	}
 }
