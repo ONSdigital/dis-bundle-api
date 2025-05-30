@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -58,6 +59,27 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			Code:        &code,
 			Description: "Failed to transition bundle state",
 		}, http.StatusBadRequest)
+		return
+	}
+
+	_, err = api.stateMachineBundleAPI.GetBundleByTitle(ctx, bundle.Title)
+	if err != nil {
+		if err != apierrors.ErrBundleNotFound {
+			code := models.CodeInternalServerError
+			log.Error(ctx, "failed to check existing bundle by title", err)
+			utils.HandleBundleAPIErr(w, r, &models.Error{
+				Code:        &code,
+				Description: "Failed to check existing bundle by title",
+			}, http.StatusInternalServerError)
+			return
+		}
+	} else {
+		code := models.CodeConflict
+		log.Error(ctx, "bundle with the same title already exists", nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "A bundle with the same title already exists",
+		}, http.StatusConflict)
 		return
 	}
 }
