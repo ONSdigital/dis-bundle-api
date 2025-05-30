@@ -377,3 +377,56 @@ func TestDeleteBundle_Failure(t *testing.T) {
 		})
 	})
 }
+
+// Test GetBundleByTitle
+func TestGetBundleByTitle_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetBundleByTitle is called with an existing bundle title", func() {
+			bundle, err := mongodb.GetBundleByTitle(ctx, "Scheduled Bundle 1")
+
+			Convey("Then it should return the correct bundle without error", func() {
+				So(err, ShouldBeNil)
+				So(bundle.ID, ShouldEqual, "bundle1")
+				So(bundle.Title, ShouldEqual, "Scheduled Bundle 1")
+			})
+		})
+	})
+}
+
+func TestGetBundleByTitle_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetBundleByTitle is called with a non-existent bundle title", func() {
+			_, err := mongodb.GetBundleByTitle(ctx, "non-existent-title")
+
+			Convey("Then it should return a bundle not found error", func() {
+				So(err, ShouldEqual, apierrors.ErrBundleNotFound)
+			})
+		})
+
+		Convey("When GetBundleByTitle is called and the connection fails", func() {
+			mongodb.Connection.Close(ctx)
+			_, err := mongodb.GetBundleByTitle(ctx, "Scheduled Bundle 1")
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldNotEqual, apierrors.ErrBundleNotFound)
+			})
+		})
+	})
+}

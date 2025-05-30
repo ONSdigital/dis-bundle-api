@@ -33,6 +33,9 @@ var _ store.Storer = &StorerMock{}
 //			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 //				panic("mock out the CreateBundle method")
 //			},
+//			GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
+//				panic("mock out the GetBundleByTitle method")
+//			},
 //			ListBundlesFunc: func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
 //			},
@@ -54,6 +57,9 @@ type StorerMock struct {
 
 	// CreateBundleFunc mocks the CreateBundle method.
 	CreateBundleFunc func(ctx context.Context, bundle *models.Bundle) error
+
+	// GetBundleByTitleFunc mocks the GetBundleByTitle method.
+	GetBundleByTitleFunc func(ctx context.Context, title string) (*models.Bundle, error)
 
 	// ListBundlesFunc mocks the ListBundles method.
 	ListBundlesFunc func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error)
@@ -86,6 +92,13 @@ type StorerMock struct {
 			// Bundle is the bundle argument value.
 			Bundle *models.Bundle
 		}
+		// GetBundleByTitle holds details about calls to the GetBundleByTitle method.
+		GetBundleByTitle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Title is the title argument value.
+			Title string
+		}
 		// ListBundles holds details about calls to the ListBundles method.
 		ListBundles []struct {
 			// Ctx is the ctx argument value.
@@ -100,6 +113,7 @@ type StorerMock struct {
 	lockChecker                           sync.RWMutex
 	lockClose                             sync.RWMutex
 	lockCreateBundle                      sync.RWMutex
+	lockGetBundleByTitle                  sync.RWMutex
 	lockListBundles                       sync.RWMutex
 }
 
@@ -240,6 +254,42 @@ func (mock *StorerMock) CreateBundleCalls() []struct {
 	mock.lockCreateBundle.RLock()
 	calls = mock.calls.CreateBundle
 	mock.lockCreateBundle.RUnlock()
+	return calls
+}
+
+// GetBundleByTitle calls GetBundleByTitleFunc.
+func (mock *StorerMock) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
+	if mock.GetBundleByTitleFunc == nil {
+		panic("StorerMock.GetBundleByTitleFunc: method is nil but Storer.GetBundleByTitle was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Title string
+	}{
+		Ctx:   ctx,
+		Title: title,
+	}
+	mock.lockGetBundleByTitle.Lock()
+	mock.calls.GetBundleByTitle = append(mock.calls.GetBundleByTitle, callInfo)
+	mock.lockGetBundleByTitle.Unlock()
+	return mock.GetBundleByTitleFunc(ctx, title)
+}
+
+// GetBundleByTitleCalls gets all the calls that were made to GetBundleByTitle.
+// Check the length with:
+//
+//	len(mockedStorer.GetBundleByTitleCalls())
+func (mock *StorerMock) GetBundleByTitleCalls() []struct {
+	Ctx   context.Context
+	Title string
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Title string
+	}
+	mock.lockGetBundleByTitle.RLock()
+	calls = mock.calls.GetBundleByTitle
+	mock.lockGetBundleByTitle.RUnlock()
 	return calls
 }
 

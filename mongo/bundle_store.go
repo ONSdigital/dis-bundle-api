@@ -110,3 +110,21 @@ func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
 	log.Info(ctx, "bundle deleted", log.Data{"_id": id})
 	return nil
 }
+
+// GetBundleByTitle retrieves a bundle by its title
+func (m *Mongo) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
+	filter := bson.M{"title": title}
+
+	var result models.Bundle
+	err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).
+		FindOne(ctx, filter, &result)
+
+	if err != nil {
+		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
+			return nil, apierrors.ErrBundleNotFound
+		}
+		return nil, err
+	}
+
+	return &result, nil
+}
