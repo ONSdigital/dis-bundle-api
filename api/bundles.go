@@ -167,4 +167,36 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		}, http.StatusInternalServerError)
 		return
 	}
+
+	event := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    entityData.UserID,
+			Email: entityData.UserID,
+		},
+		Action:   models.ActionCreate,
+		Resource: "/bundles",
+		Bundle:   bundle,
+	}
+
+	err = models.ValidateEvent(event)
+	if err != nil {
+		code := models.CodeInternalServerError
+		log.Error(ctx, "failed to validate event", err)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to validate event",
+		}, http.StatusInternalServerError)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
+	if err != nil {
+		code := models.CodeInternalServerError
+		log.Error(ctx, "failed to create bundle event", err)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to create bundle event",
+		}, http.StatusInternalServerError)
+		return
+	}
 }

@@ -20,6 +20,7 @@ type dataMongoDB interface {
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	CreateBundle(ctx context.Context, bundle *models.Bundle) error
 	GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error)
+	CreateBundleEvent(ctx context.Context, event *models.Event) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
 }
@@ -50,4 +51,8 @@ func (ds *Datastore) CreateBundle(ctx context.Context, bundle *models.Bundle) er
 
 func (ds *Datastore) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
 	return ds.Backend.GetBundleByTitle(ctx, title)
+}
+
+func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
+	return ds.Backend.CreateBundleEvent(ctx, event)
 }
