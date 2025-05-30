@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
-	"github.com/ONSdigital/log.go/v2/log"
 )
 
 // Error represents the details of a specific error
@@ -71,16 +69,6 @@ func ValidateError(e *Error) error {
 		}
 	}
 	return nil
-}
-
-func HandleErr(w http.ResponseWriter, r *http.Request, code Code, description string, httpStatusCode int, source *Source) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(httpStatusCode)
-	errBytes, errCheck := json.Marshal(Error{Code: &code, Description: description, Source: source})
-	if errCheck != nil {
-		log.Error(r.Context(), "api endpoint error writing error body", errCheck)
-	}
-	http.Error(w, string(errBytes), httpStatusCode)
 }
 
 // Code enum representing the error code

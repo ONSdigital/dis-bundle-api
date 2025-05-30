@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
@@ -29,7 +30,10 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code := models.CodeBadRequest
 		log.Error(ctx, "failed to create bundle from request body", err)
-		models.HandleErr(w, r, code, "Invalid request body", http.StatusBadRequest, nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Invalid request body",
+		}, http.StatusBadRequest)
 		return
 	}
 
@@ -39,7 +43,10 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code := models.CodeBadRequest
 		log.Error(ctx, "failed to validate bundle", err)
-		models.HandleErr(w, r, code, "Invalid bundle data", http.StatusBadRequest, nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Invalid bundle data",
+		}, http.StatusBadRequest)
 		return
 	}
 
@@ -47,7 +54,10 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code := models.CodeBadRequest
 		log.Error(ctx, "failed to transition bundle state", err)
-		models.HandleErr(w, r, code, "Failed to transition bundle state", http.StatusBadRequest, nil)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to transition bundle state",
+		}, http.StatusBadRequest)
 		return
 	}
 }
