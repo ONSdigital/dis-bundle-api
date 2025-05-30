@@ -11,7 +11,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-// errorWriter simulates a failure when writing to the response body.
+// errorWriter simulates a failure when writing to the response body
 type errorWriter struct {
 	http.ResponseWriter
 }
