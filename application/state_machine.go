@@ -71,6 +71,14 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 
 	match := false
 
+	if currentBundle == nil {
+		if bundleUpdate.State.String() == models.BundleStateDraft.String() {
+			return nil
+		} else {
+			return errors.New("bundle state must be DRAFT when creating a new bundle")
+		}
+	}
+
 	for state, transitions := range sm.transitions {
 		if state == bundleUpdate.State.String() {
 			for i := range transitions {

@@ -42,4 +42,12 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		models.HandleErr(w, r, code, "Invalid bundle data", http.StatusBadRequest, nil)
 		return
 	}
+
+	err = api.stateMachineBundleAPI.StateMachine.Transition(ctx, api.stateMachineBundleAPI, nil, bundle)
+	if err != nil {
+		code := models.CodeBadRequest
+		log.Error(ctx, "failed to transition bundle state", err)
+		models.HandleErr(w, r, code, "Failed to transition bundle state", http.StatusBadRequest, nil)
+		return
+	}
 }
