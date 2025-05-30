@@ -34,4 +34,12 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info(ctx, "createBundle: created bundle from request body", log.Data{"bundle": bundle})
+
+	err = models.ValidateBundle(bundle)
+	if err != nil {
+		code := models.CodeBadRequest
+		log.Error(ctx, "failed to validate bundle", err)
+		models.HandleErr(w, r, code, "Invalid bundle data", http.StatusBadRequest, nil)
+		return
+	}
 }
