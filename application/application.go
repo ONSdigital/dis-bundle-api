@@ -36,7 +36,11 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	if err != nil {
 		return nil, err
 	}
-	return bundle, nil
+	createdBundle, err := s.Datastore.GetBundle(ctx, bundle.ID)
+	if err != nil {
+		return nil, err
+	}
+	return createdBundle, nil
 }
 
 func (s *StateMachineBundleAPI) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {

@@ -36,6 +36,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
 //				panic("mock out the CreateBundleEvent method")
 //			},
+//			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+//				panic("mock out the GetBundle method")
+//			},
 //			GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
 //				panic("mock out the GetBundleByTitle method")
 //			},
@@ -63,6 +66,9 @@ type MongoDBMock struct {
 
 	// CreateBundleEventFunc mocks the CreateBundleEvent method.
 	CreateBundleEventFunc func(ctx context.Context, event *models.Event) error
+
+	// GetBundleFunc mocks the GetBundle method.
+	GetBundleFunc func(ctx context.Context, bundleID string) (*models.Bundle, error)
 
 	// GetBundleByTitleFunc mocks the GetBundleByTitle method.
 	GetBundleByTitleFunc func(ctx context.Context, title string) (*models.Bundle, error)
@@ -105,6 +111,13 @@ type MongoDBMock struct {
 			// Event is the event argument value.
 			Event *models.Event
 		}
+		// GetBundle holds details about calls to the GetBundle method.
+		GetBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// GetBundleByTitle holds details about calls to the GetBundleByTitle method.
 		GetBundleByTitle []struct {
 			// Ctx is the ctx argument value.
@@ -127,6 +140,7 @@ type MongoDBMock struct {
 	lockClose                             sync.RWMutex
 	lockCreateBundle                      sync.RWMutex
 	lockCreateBundleEvent                 sync.RWMutex
+	lockGetBundle                         sync.RWMutex
 	lockGetBundleByTitle                  sync.RWMutex
 	lockListBundles                       sync.RWMutex
 }
@@ -304,6 +318,42 @@ func (mock *MongoDBMock) CreateBundleEventCalls() []struct {
 	mock.lockCreateBundleEvent.RLock()
 	calls = mock.calls.CreateBundleEvent
 	mock.lockCreateBundleEvent.RUnlock()
+	return calls
+}
+
+// GetBundle calls GetBundleFunc.
+func (mock *MongoDBMock) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
+	if mock.GetBundleFunc == nil {
+		panic("MongoDBMock.GetBundleFunc: method is nil but MongoDB.GetBundle was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockGetBundle.Lock()
+	mock.calls.GetBundle = append(mock.calls.GetBundle, callInfo)
+	mock.lockGetBundle.Unlock()
+	return mock.GetBundleFunc(ctx, bundleID)
+}
+
+// GetBundleCalls gets all the calls that were made to GetBundle.
+// Check the length with:
+//
+//	len(mockedMongoDB.GetBundleCalls())
+func (mock *MongoDBMock) GetBundleCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockGetBundle.RLock()
+	calls = mock.calls.GetBundle
+	mock.lockGetBundle.RUnlock()
 	return calls
 }
 
