@@ -30,3 +30,19 @@ func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit i
 func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
 	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
+
+func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (*models.Bundle, error) {
+	err := s.Datastore.CreateBundle(ctx, bundle)
+	if err != nil {
+		return nil, err
+	}
+	return bundle, nil
+}
+
+func (s *StateMachineBundleAPI) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
+	bundle, err := s.Datastore.GetBundleByTitle(ctx, title)
+	if err != nil {
+		return nil, err
+	}
+	return bundle, nil
+}
