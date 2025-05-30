@@ -21,10 +21,3 @@ func NewAuthHandlerMock() *AuthHandlerMock {
 		},
 	}
 }
-
-func (c *PermissionCheckCalls) checkPermissions(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		c.Calls++
-		h.ServeHTTP(w, r)
-	}
-}
