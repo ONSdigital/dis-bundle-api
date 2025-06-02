@@ -74,7 +74,7 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, newAuthMiddlwareMock())
 }
 
-func TestGetBundlesReturnsOK(t *testing.T) {
+func TestGetBundles_Success(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now().UTC()
@@ -155,6 +155,10 @@ func TestGetBundlesReturnsOK(t *testing.T) {
 		So(actualBundles, ShouldResemble, customBundles)
 		So(count, ShouldEqual, len(customBundles))
 	})
+}
+
+func TestGetBundles_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("get bundles with internal error from datastore", t, func() {
 		r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
@@ -187,7 +191,6 @@ func TestGetBundlesReturnsOK(t *testing.T) {
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
-		// Serve the actual request through the router
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		So(w.Code, ShouldEqual, http.StatusInternalServerError)
