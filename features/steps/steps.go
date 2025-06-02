@@ -25,6 +25,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^I should receive a JSON response with (\d+) item$`, c.iShouldReceiveAJSONResponseWithItems)
 	ctx.Step(`^the first bundle in the response should have title "([^"]*)"$`, c.theJSONResponseShouldContain)
+	// ctx.Step(`^an internal server error is returned$`, c.anInternalServerErrorIsReturned)
 }
 
 func (c *BundleComponent) thereAreNoBundles() error {
@@ -145,3 +146,7 @@ func (c *BundleComponent) theJSONResponseShouldContain(expectedTitle string) err
 	}
 	return nil
 }
+
+// func (c *BundleComponent) anInternalServerErrorIsReturned() error {
+// 	return nil
+// }

@@ -174,4 +174,23 @@ func TestGetBundlesReturnsOK(t *testing.T) {
 		So(errResp, ShouldNotBeNil)
 		So(errResp.Description, ShouldEqual, "Failed to process the request due to an internal error")
 	})
+
+	Convey("GET /bundles returns 500 on internal error", t, func() {
+		r := httptest.NewRequest(http.MethodGet, "/bundles", nil)
+		w := httptest.NewRecorder()
+
+		mockedDatastore := &storetest.StorerMock{
+			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+				return nil, 0, errors.New("something broke inside")
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+		// Serve the actual request through the router
+		bundleAPI.Router.ServeHTTP(w, r)
+
+		So(w.Code, ShouldEqual, http.StatusInternalServerError)
+		So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
+	})
 }

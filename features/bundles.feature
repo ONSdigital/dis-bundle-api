@@ -146,8 +146,8 @@ Feature: List Bundles functionality - GET /Bundles
             """
         And the response header "ETag" should not be empty
         And the response header "Cache-Control" should be "no-store"
-    
-    Scenario: GET /bundles?limit=1
+
+    Scenario: GET /bundles?limit=1&offset=1
         Given I am an admin user
         When I GET "/bundles?limit=1"
         Then the HTTP status code should be "200"
@@ -184,40 +184,40 @@ Feature: List Bundles functionality - GET /Bundles
             }
             """
 
-Scenario: GET /bundles with invalid offset
-    Given I am an admin user
-    When I GET "/bundles?offset=invalid"
-    Then the HTTP status code should be "400"
-    And I should receive the following JSON response:
-        """
-        {
-            "code": "bad_request",
-            "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-            "source": {
-                "parameter": " offset"
+    Scenario: GET /bundles with invalid offset
+        Given I am an admin user
+        When I GET "/bundles?offset=invalid"
+        Then the HTTP status code should be "400"
+        And I should receive the following JSON response:
+            """
+            {
+                "code": "bad_request",
+                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                "source": {
+                    "parameter": " offset"
+                }
             }
-        }
-        """
+            """
 
-Scenario: GET /bundles with invalid limit
-    Given I am an admin user
-    When I GET "/bundles?limit=invalid"
-    Then the HTTP status code should be "400"
-    And I should receive the following JSON response:
-        """
-        {
-            "code": "bad_request",
-            "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-            "source": {
-                "parameter": " limit"
+    Scenario: GET /bundles with invalid limit
+        Given I am an admin user
+        When I GET "/bundles?limit=invalid"
+        Then the HTTP status code should be "400"
+        And I should receive the following JSON response:
+            """
+            {
+                "code": "bad_request",
+                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                "source": {
+                    "parameter": " limit"
+                }
             }
-        }
-        """
+            """
 
-Scenario: GET /bundles with no authentication
-    Given I am not authenticated
-    When I GET "/bundles"
-    Then the HTTP status code should be "401"
-    And the response body should be empty
+    Scenario: GET /bundles with no authentication
+        Given I am not authenticated
+        When I GET "/bundles"
+        Then the HTTP status code should be "401"
+        And the response body should be empty
 
 
