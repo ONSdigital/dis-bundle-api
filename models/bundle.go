@@ -22,6 +22,7 @@ type Bundle struct {
 	Title         string         `bson:"title"                     json:"title"`
 	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
 	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
+	ETag          string         `bson:"e_tag,omitempty"           json:"e_tag,omitempty"`
 }
 
 // Bundles represents a list of bundles

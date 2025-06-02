@@ -1,6 +1,8 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/dp-authorisation/v2/jwt"
+	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	permsdk "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
@@ -157,7 +160,20 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
 
-	_, err = api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
+	etag, err := generateEtag(bundle)
+	if err != nil {
+		code := models.CodeInternalServerError
+		log.Error(ctx, "failed to generate ETag for bundle", err)
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to generate ETag for bundle",
+		}, http.StatusInternalServerError)
+		return
+	}
+
+	bundle.ETag = etag
+
+	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
 		code := models.CodeInternalServerError
 		log.Error(ctx, "failed to create bundle in the database", err)
@@ -199,4 +215,44 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		}, http.StatusInternalServerError)
 		return
 	}
+
+	err = writeResponse(ctx, w, createdBundle)
+	if err != nil {
+		log.Error(ctx, "failed to write response", err)
+		code := models.CodeInternalServerError
+		utils.HandleBundleAPIErr(w, r, &models.Error{
+			Code:        &code,
+			Description: "Failed to write response",
+		}, http.StatusInternalServerError)
+		return
+	}
+}
+
+func writeResponse(ctx context.Context, w http.ResponseWriter, bundle *models.Bundle) error {
+	b, err := json.Marshal(bundle)
+	if err != nil {
+		return err
+	}
+	dpresponse.SetETag(w, bundle.ETag)
+	w.Header().Set("Cache-Control", "no-store")
+	location := "/bundles/" + bundle.ID
+	w.Header().Set("Location", location)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(b)
+	if err != nil {
+		return err
+	}
+	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
+	return nil
+}
+
+func generateEtag(bundle *models.Bundle) (string, error) {
+	b, err := json.Marshal(bundle)
+	if err != nil {
+		return "", err
+	}
+	etag := dpresponse.GenerateETag(b, false)
+	etag = strings.Trim(etag, `"`)
+	return etag, nil
 }
