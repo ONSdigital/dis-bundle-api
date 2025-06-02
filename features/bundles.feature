@@ -72,6 +72,7 @@ Feature: List Bundles functionality - GET /Bundles
         Given I am an admin user
         When I GET "/bundles"
         Then the HTTP status code should be "200"
+        And the response header "Content-Type" should be "application/json"
         Then I should receive the following JSON response:
             """
             {
