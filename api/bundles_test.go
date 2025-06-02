@@ -77,123 +77,129 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 func TestGetBundles_Success(t *testing.T) {
 	t.Parallel()
 
-	now := time.Now().UTC()
-	oneDayLater := now.Add(24 * time.Hour)
-	twoDaysLater := now.Add(48 * time.Hour)
-
-	defaultBundles := []*models.Bundle{
-		{
-			ID:            "bundle1",
-			BundleType:    models.BundleTypeScheduled,
-			CreatedBy:     &models.User{Email: "creator@example.com"},
-			CreatedAt:     &now,
-			LastUpdatedBy: &models.User{Email: "updater@example.com"},
-			PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
-			ScheduledAt:   &oneDayLater,
-			State:         ptrBundleState(models.BundleStatePublished),
-			Title:         "Scheduled Bundle 1",
-			UpdatedAt:     &now,
-			ManagedBy:     models.ManagedByDataAdmin,
-		},
-		{
-			ID:            "bundle2",
-			BundleType:    models.BundleTypeManual,
-			CreatedBy:     &models.User{Email: "creator2@example.com"},
-			CreatedAt:     &now,
-			LastUpdatedBy: &models.User{Email: "updater2@example.com"},
-			PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
-			ScheduledAt:   &twoDaysLater,
-			State:         ptrBundleState(models.BundleStateDraft),
-			Title:         "Manual Bundle 2",
-			UpdatedAt:     &now,
-			ManagedBy:     models.ManagedByWagtail,
-		},
-	}
-
-	Convey("get bundles with default offset and limit", t, func() {
-		r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
-		w := httptest.NewRecorder()
-
-		mockedDatastore := &storetest.StorerMock{
-			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-				return defaultBundles, len(defaultBundles), nil
+	Convey("Given a GET request to /bundles", t, func() {
+		now := time.Now().UTC()
+		oneDayLater := now.Add(24 * time.Hour)
+		twoDaysLater := now.Add(48 * time.Hour)
+		defaultBundles := []*models.Bundle{
+			{
+				ID:            "bundle1",
+				BundleType:    models.BundleTypeScheduled,
+				CreatedBy:     &models.User{Email: "creator@example.com"},
+				CreatedAt:     &now,
+				LastUpdatedBy: &models.User{Email: "updater@example.com"},
+				PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+				ScheduledAt:   &oneDayLater,
+				State:         ptrBundleState(models.BundleStatePublished),
+				Title:         "Scheduled Bundle 1",
+				UpdatedAt:     &now,
+				ManagedBy:     models.ManagedByDataAdmin,
+			},
+			{
+				ID:            "bundle2",
+				BundleType:    models.BundleTypeManual,
+				CreatedBy:     &models.User{Email: "creator2@example.com"},
+				CreatedAt:     &now,
+				LastUpdatedBy: &models.User{Email: "updater2@example.com"},
+				PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
+				ScheduledAt:   &twoDaysLater,
+				State:         ptrBundleState(models.BundleStateDraft),
+				Title:         "Manual Bundle 2",
+				UpdatedAt:     &now,
+				ManagedBy:     models.ManagedByWagtail,
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		Convey("When offset and limit values are default", func() {
+			r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
+			w := httptest.NewRecorder()
 
-		results, count, errResp := bundleAPI.getBundles(w, r, 10, 0)
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+					return defaultBundles, len(defaultBundles), nil
+				},
+			}
 
-		actualBundles, ok := results.([]*models.Bundle)
-		So(ok, ShouldBeTrue)
-		So(errResp, ShouldBeNil)
-		So(actualBundles, ShouldResemble, defaultBundles)
-		So(count, ShouldEqual, len(defaultBundles))
-	})
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
-	Convey("get bundles with custom offset and limit", t, func() {
-		r := httptest.NewRequest("GET", "http://localhost:29800/bundles?offset=1&limit=1", http.NoBody)
-		w := httptest.NewRecorder()
+			results, count, errResp := bundleAPI.getBundles(w, r, 10, 0)
+			actualBundles, ok := results.([]*models.Bundle)
+			Convey("Then success chould be returnd with default values", func() {
+				So(ok, ShouldBeTrue)
+				So(errResp, ShouldBeNil)
+				So(actualBundles, ShouldResemble, defaultBundles)
+				So(count, ShouldEqual, len(defaultBundles))
+			})
+		})
 
-		customBundles := defaultBundles[1:]
+		Convey("When offset and limit values are custom", func() {
+			r := httptest.NewRequest("GET", "http://localhost:29800/bundles?offset=1&limit=1", http.NoBody)
+			w := httptest.NewRecorder()
+			customBundles := defaultBundles[1:]
 
-		mockedDatastore := &storetest.StorerMock{
-			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-				So(offset, ShouldEqual, 1)
-				So(limit, ShouldEqual, 1)
-				return customBundles, len(customBundles), nil
-			},
-		}
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+					So(offset, ShouldEqual, 1)
+					So(limit, ShouldEqual, 1)
+					return customBundles, len(customBundles), nil
+				},
+			}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
-		results, count, err := bundleAPI.getBundles(w, r, 1, 1)
-
-		actualBundles, ok := results.([]*models.Bundle)
-		So(ok, ShouldBeTrue)
-		So(err, ShouldBeNil)
-		So(actualBundles, ShouldResemble, customBundles)
-		So(count, ShouldEqual, len(customBundles))
+			results, count, err := bundleAPI.getBundles(w, r, 1, 1)
+			actualBundles, ok := results.([]*models.Bundle)
+			Convey("Then success chould be returnd with custom pagination values", func() {
+				So(ok, ShouldBeTrue)
+				So(err, ShouldBeNil)
+				So(actualBundles, ShouldResemble, customBundles)
+				So(count, ShouldEqual, len(customBundles))
+			})
+		})
 	})
 }
 
 func TestGetBundles_Failure(t *testing.T) {
 	t.Parallel()
+	Convey("Given a GET request to /bundles", t, func() {
+		Convey("When response returns an internal error from datastore", func() {
+			r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
+			w := httptest.NewRecorder()
 
-	Convey("get bundles with internal error from datastore", t, func() {
-		r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
-		w := httptest.NewRecorder()
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+					return nil, 0, errors.New("database failure")
+				},
+			}
 
-		mockedDatastore := &storetest.StorerMock{
-			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-				return nil, 0, errors.New("database failure")
-			},
-		}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+			results, errCode, errResp := bundleAPI.getBundles(w, r, 10, 0)
+			Convey("Then 500 should be returned", func() {
+				So(errCode, ShouldEqual, http.StatusInternalServerError)
+				So(results, ShouldBeNil)
+				So(results, ShouldBeNil)
+				So(errResp, ShouldNotBeNil)
+				So(errResp.Description, ShouldEqual, "Failed to process the request due to an internal error")
+			})
+		})
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		Convey("When response returns an random internal error", func() {
+			r := httptest.NewRequest(http.MethodGet, "/bundles", http.NoBody)
+			w := httptest.NewRecorder()
 
-		results, _, errResp := bundleAPI.getBundles(w, r, 10, 0)
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+					return nil, 0, errors.New("something broke inside")
+				},
+			}
 
-		So(results, ShouldBeNil)
-		So(errResp, ShouldNotBeNil)
-		So(errResp.Description, ShouldEqual, "Failed to process the request due to an internal error")
-	})
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
-	Convey("GET /bundles returns 500 on internal error", t, func() {
-		r := httptest.NewRequest(http.MethodGet, "/bundles", http.NoBody)
-		w := httptest.NewRecorder()
-
-		mockedDatastore := &storetest.StorerMock{
-			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-				return nil, 0, errors.New("something broke inside")
-			},
-		}
-
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-
-		bundleAPI.Router.ServeHTTP(w, r)
-
-		So(w.Code, ShouldEqual, http.StatusInternalServerError)
-		So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
+			bundleAPI.Router.ServeHTTP(w, r)
+			Convey("Then 500 should be returned", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+				So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
+			})
+		})
 	})
 }

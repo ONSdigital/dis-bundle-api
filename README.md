@@ -23,21 +23,20 @@ To run `make lint-api-spec` you require the Node version specified in [`.nvmrc`]
 
 ### Configuration
 
-| Environment variable         | Default                | Description                                                                                                        |
-| ---------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| BIND_ADDR                    | :29800                 | The host and port to bind to                                                                                       |
-| GRACEFUL_SHUTDOWN_TIMEOUT    | 5s                     | The graceful shutdown timeout in seconds (`time.Duration` format)                                                  |
-| HEALTHCHECK_INTERVAL         | 30s                    | Time between self-healthchecks (`time.Duration` format)                                                            |
-| HEALTHCHECK_CRITICAL_TIMEOUT | 90s                    | Time to wait until an unhealthy dependent propagates its state to make this app unhealthy (`time.Duration` format) |
-| OTEL_EXPORTER_OTLP_ENDPOINT  | localhost:4317         | Endpoint for OpenTelemetry service                                                                                 |
-| OTEL_SERVICE_NAME            | dis-bundle-api         | Label of service for OpenTelemetry service                                                                         |
-| OTEL_BATCH_TIMEOUT           | 5s                     | Timeout for OpenTelemetry                                                                                          |
-| OTEL_ENABLED                 | false                  | Feature flag to enable OpenTelemetry                                                                               |
-| ENABLE_PERMISSIONS_AUTH      | true                   | Feature flag to enable auth                                                                                        |
-| ZEBEDEE_URL                  | http://localhost:29500 | Zebedee URL                                                                                                        |
-| DefaultMaxLimit              | 1000                   | Default number of maximum bundles returned                                                                         |
-| DefaultLimit                 | 20                     | Default number of bundles returned                                                                                 |
-| DefaultOffset                | 0                      | Default offset                                                                                                     |
+| Environment variable         | Default               | Description                                                                                                        |
+| ---------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| BIND_ADDR                    | :29800                | The host and port to bind to                                                                                       |
+| GRACEFUL_SHUTDOWN_TIMEOUT    | 5s                    | The graceful shutdown timeout in seconds (`time.Duration` format)                                                  |
+| HEALTHCHECK_INTERVAL         | 30s                   | Time between self-healthchecks (`time.Duration` format)                                                            |
+| HEALTHCHECK_CRITICAL_TIMEOUT | 90s                   | Time to wait until an unhealthy dependent propagates its state to make this app unhealthy (`time.Duration` format) |
+| OTEL_EXPORTER_OTLP_ENDPOINT  | localhost:4317        | Endpoint for OpenTelemetry service                                                                                 |
+| OTEL_SERVICE_NAME            | dis-bundle-api        | Label of service for OpenTelemetry service                                                                         |
+| OTEL_BATCH_TIMEOUT           | 5s                    | Timeout for OpenTelemetry                                                                                          |
+| OTEL_ENABLED                 | false                 | Feature flag to enable OpenTelemetry                                                                               |
+| ZEBEDEE_URL                  | http://localhost:8082 | Zebedee URL                                                                                                        |
+| DefaultMaxLimit              | 1000                  | Default number of maximum bundles returned                                                                         |
+| DefaultLimit                 | 20                    | Default number of bundles returned                                                                                 |
+| DefaultOffset                | 0                     | Default offset                                                                                                     |
 
 ## Contributing
 
