@@ -22,8 +22,8 @@ func getTestMongoDB(ctx context.Context) (*Mongo, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	conn, err := mongoDriver.Open(getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections))
+	config := getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections)
+	conn, err := mongoDriver.Open(config)
 	if err != nil {
 		return nil, err
 	}

@@ -7,17 +7,18 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// ListBundles retrieves all bundles based on the provided offset and limit
-func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error) {
+// ListBundles retrieves all bundles based on the provided offset, limit, and BundleFilters
+func (m *Mongo) ListBundles(ctx context.Context, offset, limit int, filters *filters.Bundlefilters) (bundles []*models.Bundle, totalCount int, err error) {
 	bundles = []*models.Bundle{}
 
-	filter, sort := buildListBundlesQuery()
+	filter, sort := buildListBundlesQuery(filters)
 
 	totalCount, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).
 		Find(ctx, filter, &bundles, mongodriver.Sort(sort), mongodriver.Offset(offset), mongodriver.Limit(limit))
@@ -29,10 +30,20 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 	return bundles, totalCount, nil
 }
 
-func buildListBundlesQuery() (filter, sort bson.M) {
+// buildListBundlesQuery Builds the MongoDB filter query based on the supplied BundleFilters value
+func buildListBundlesQuery(filters *filters.Bundlefilters) (filter, sort bson.M) {
 	filter = bson.M{}
 	sort = bson.M{"updated_at": -1}
-	return
+
+	if filters == nil {
+		return filter, sort
+	}
+
+	if filters.PublishDate != nil {
+		filter["scheduled_at"] = buildDateTimeFilter(*filters.PublishDate)
+	}
+
+	return filter, sort
 }
 
 // GetBundle retrieves a single bundle by ID
