@@ -176,7 +176,7 @@ func TestGetBundlesReturnsOK(t *testing.T) {
 	})
 
 	Convey("GET /bundles returns 500 on internal error", t, func() {
-		r := httptest.NewRequest(http.MethodGet, "/bundles", nil)
+		r := httptest.NewRequest(http.MethodGet, "/bundles", http.NoBody)
 		w := httptest.NewRecorder()
 
 		mockedDatastore := &storetest.StorerMock{

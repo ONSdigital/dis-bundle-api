@@ -25,7 +25,6 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^I should receive a JSON response with (\d+) item$`, c.iShouldReceiveAJSONResponseWithItems)
 	ctx.Step(`^the first bundle in the response should have title "([^"]*)"$`, c.theJSONResponseShouldContain)
-	// ctx.Step(`^an internal server error is returned$`, c.anInternalServerErrorIsReturned)
 }
 
 func (c *BundleComponent) thereAreNoBundles() error {
@@ -115,14 +114,18 @@ func (c *BundleComponent) iShouldReceiveAJSONResponseWithItems(expectedCount int
 	var body struct {
 		Items []map[string]interface{} `json:"items"`
 	}
-	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
 
+	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if err = json.Unmarshal(bodyBytes, &body); err != nil {
 		return fmt.Errorf("failed to parse JSON response: %w", err)
 	}
 	if len(body.Items) != expectedCount {
 		return fmt.Errorf("expected %d items, got %d", expectedCount, len(body.Items))
 	}
+
 	return nil
 }
 
@@ -134,7 +137,9 @@ func (c *BundleComponent) theJSONResponseShouldContain(expectedTitle string) err
 	}
 
 	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
-
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
 	if err = json.Unmarshal(bodyBytes, &body); err != nil {
 		return fmt.Errorf("failed to parse JSON response: %w", err)
 	}
@@ -146,7 +151,3 @@ func (c *BundleComponent) theJSONResponseShouldContain(expectedTitle string) err
 	}
 	return nil
 }
-
-// func (c *BundleComponent) anInternalServerErrorIsReturned() error {
-// 	return nil
-// }
