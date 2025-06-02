@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 )
@@ -17,7 +18,7 @@ type Datastore struct {
 }
 
 type dataMongoDB interface {
-	ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error)
+	ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error)
 	ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error)
 	GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error)
 	UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error)
@@ -42,8 +43,8 @@ type Storer interface {
 	dataMongoDB
 }
 
-func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	return ds.Backend.ListBundles(ctx, offset, limit)
+func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+	return ds.Backend.ListBundles(ctx, offset, limit, filters)
 }
 
 func (ds *Datastore) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {

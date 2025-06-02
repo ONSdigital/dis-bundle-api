@@ -49,6 +49,13 @@ var (
 	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
 )
 
+// Error messages for responses
+var (
+	ErrorDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrorDescriptionNotFound         = "The requested resource does not exist"
+	ErrorDescriptionInternalError    = "Failed to process the request due to an internal error"
+)
+
 // 404 Not Found
 var NotFoundMap = map[error]bool{
 	ErrBundleNotFound:      true,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
@@ -36,7 +37,7 @@ func TestListBundles(t *testing.T) {
 		}
 
 		mockedDatastore := &storetest.StorerMock{
-			ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+			ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
 				return expectedBundles, len(expectedBundles), nil
 			},
 		}
@@ -46,7 +47,11 @@ func TestListBundles(t *testing.T) {
 		}
 
 		Convey("When ListBundles is called", func() {
-			results, totalCount, err := stateMachine.ListBundles(ctx, 0, 10)
+			now := time.Now()
+			filters := filters.BundleFilters{
+				PublishDate: &now,
+			}
+			results, totalCount, err := stateMachine.ListBundles(ctx, 0, 10, &filters)
 
 			Convey("Then it should return the expected bundles without error", func() {
 				So(err, ShouldBeNil)

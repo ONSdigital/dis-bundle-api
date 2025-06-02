@@ -15,8 +15,9 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
-// PaginatedHandler is a func type for an endpoint that returns a list of values that we want to paginate
-type PaginatedHandler func(w http.ResponseWriter, r *http.Request, limit int, offset int) (list interface{}, totalCount int, errBundles *models.Error)
+// TPaginatedHandler is a func type for an endpoint that returns a list of values that we want to paginate
+type TPaginatedHandler[TItem any] func(w http.ResponseWriter, r *http.Request, limit int, offset int) (successResult *models.PaginationSuccessResult[TItem], errorResult *models.ErrorResult[models.Error])
+type PaginatedHandler func(w http.ResponseWriter, r *http.Request, limit int, offset int) (items any, totalCount int, eventErrors *models.Error)
 
 type PaginatedResponse struct {
 	Items                   interface{} `json:"items"`
@@ -92,33 +93,59 @@ func listLength(list interface{}) int {
 }
 
 // Paginate wraps a http endpoint to return a paginated list from the list returned by the provided function
+func Paginate[TItem any](p *Paginator, paginatedHandler TPaginatedHandler[TItem]) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		offset, limit, err := p.getPaginationParameters(r)
+		if err != nil {
+			p.handlePaginationError(w, r, err)
+			return
+		}
+
+		successResult, errorResult := paginatedHandler(w, r, limit, offset)
+		if errorResult != nil {
+			utils.HandleBundleAPIErr(w, r, errorResult.HTTPStatusCode, errorResult.Error)
+			return
+		}
+
+		renderedPage := renderPage(successResult.Result.Items, offset, limit, successResult.Result.TotalCount)
+
+		returnPaginatedResults(w, r, renderedPage)
+	}
+}
+
 func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		offset, limit, err := p.getPaginationParameters(r)
 		if err != nil {
-			log.Error(r.Context(), "pagination parameters incorrect", err)
-			errArray := strings.Split(err.Error(), ":")
-			param := errArray[len(errArray)-1]
-
-			code := models.CodeBadRequest
-			errInfo := &models.Error{
-				Code:        &code,
-				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
-				Source:      &models.Source{Parameter: param},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-			return
-		}
-		list, totalCount, errBundle := paginatedHandler(w, r, limit, offset)
-		if errBundle != nil {
-			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errBundle)
+			p.handlePaginationError(w, r, err)
 			return
 		}
 
-		renderedPage := renderPage(list, offset, limit, totalCount)
+		items, totalCount, requestError := paginatedHandler(w, r, limit, offset)
+		if requestError != nil {
+			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, requestError)
+			return
+		}
 
+		renderedPage := renderPage(items, offset, limit, totalCount)
 		returnPaginatedResults(w, r, renderedPage)
 	}
+}
+
+func (p *Paginator) handlePaginationError(w http.ResponseWriter, r *http.Request, err error) {
+	log.Error(r.Context(), "pagination parameters incorrect", err)
+
+	errArray := strings.Split(err.Error(), ":")
+	param := errArray[len(errArray)-1]
+	code := models.CodeBadRequest
+
+	errInfo := &models.Error{
+		Code:        &code,
+		Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+		Source:      &models.Source{Parameter: param},
+	}
+
+	utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 }
 
 func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list PaginatedResponse) {
