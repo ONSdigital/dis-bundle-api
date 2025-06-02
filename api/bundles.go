@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -11,7 +10,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
-	"github.com/ONSdigital/dp-authorisation/v2/jwt"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	permsdk "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -138,23 +136,13 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(authToken, ".") {
 		entityData, err = api.authMiddleware.Parse(authToken)
 		if err != nil {
-			if errors.Is(err, jwt.ErrPublickeysEmpty) {
-				log.Error(ctx, "authorisation failed: no public keys available for JWT validation", err)
-				code := models.CodeInternalServerError
-				utils.HandleBundleAPIErr(w, r, &models.Error{
-					Code:        &code,
-					Description: "No public keys available for JWT validation",
-				}, http.StatusInternalServerError)
-				return
-			} else {
-				log.Error(ctx, "authorisation failed: unable to parse jwt", err)
-				code := models.CodeUnauthorized
-				utils.HandleBundleAPIErr(w, r, &models.Error{
-					Code:        &code,
-					Description: "Authorization failed: unable to parse JWT",
-				}, http.StatusUnauthorized)
-				return
-			}
+			code := models.CodeInternalServerError
+			log.Error(ctx, "failed to parse auth token", err)
+			utils.HandleBundleAPIErr(w, r, &models.Error{
+				Code:        &code,
+				Description: "Failed to parse auth token",
+			}, http.StatusInternalServerError)
+			return
 		}
 	}
 
