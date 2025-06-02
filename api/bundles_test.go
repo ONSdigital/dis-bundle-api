@@ -124,7 +124,7 @@ func TestGetBundles_Success(t *testing.T) {
 
 			results, count, errResp := bundleAPI.getBundles(w, r, 10, 0)
 			actualBundles, ok := results.([]*models.Bundle)
-			Convey("Then success chould be returnd with default values", func() {
+			Convey("Then default values should be returned with no error", func() {
 				So(ok, ShouldBeTrue)
 				So(errResp, ShouldBeNil)
 				So(actualBundles, ShouldResemble, defaultBundles)
@@ -149,7 +149,7 @@ func TestGetBundles_Success(t *testing.T) {
 
 			results, count, err := bundleAPI.getBundles(w, r, 1, 1)
 			actualBundles, ok := results.([]*models.Bundle)
-			Convey("Then success chould be returnd with custom pagination values", func() {
+			Convey("Then custom paginated values should be returned with no error", func() {
 				So(ok, ShouldBeTrue)
 				So(err, ShouldBeNil)
 				So(actualBundles, ShouldResemble, customBundles)
@@ -162,7 +162,7 @@ func TestGetBundles_Success(t *testing.T) {
 func TestGetBundles_Failure(t *testing.T) {
 	t.Parallel()
 	Convey("Given a GET request to /bundles", t, func() {
-		Convey("When response returns an internal error from datastore", func() {
+		Convey("When the datastore returns an internal error", func() {
 			r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
 			w := httptest.NewRecorder()
 
@@ -174,7 +174,7 @@ func TestGetBundles_Failure(t *testing.T) {
 
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 			results, errCode, errResp := bundleAPI.getBundles(w, r, 10, 0)
-			Convey("Then 500 should be returned", func() {
+			Convey("Then the status code should be 500", func() {
 				So(errCode, ShouldEqual, http.StatusInternalServerError)
 				So(results, ShouldBeNil)
 				So(results, ShouldBeNil)
@@ -196,7 +196,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
 			bundleAPI.Router.ServeHTTP(w, r)
-			Convey("Then 500 should be returned", func() {
+			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
 			})
