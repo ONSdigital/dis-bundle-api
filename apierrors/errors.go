@@ -14,6 +14,7 @@ func (e ErrInvalidPatch) Error() string {
 var (
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 	ErrUnableToParseJSON   = errors.New("failed to parse json body")
+	ErrUnableToParseTime   = errors.New("failed to parse time from json body")
 )
 
 // Core errors for dis-bundle-api

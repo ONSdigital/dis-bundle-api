@@ -41,14 +41,28 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundle, err := models.CreateBundle(r.Body)
 	if err != nil {
-		log.Error(ctx, "failed to create bundle from request body", err)
-		code := models.ErrInvalidParameters
-		e := models.Error{
-			Code:        &code,
-			Description: ErrDescription,
+		if err != apierrors.ErrUnableToParseTime {
+			log.Error(ctx, "failed to create bundle from request body", err)
+			code := models.ErrInvalidParameters
+			e := models.Error{
+				Code:        &code,
+				Description: ErrDescription,
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusBadRequest)
+			return
+		} else {
+			log.Error(ctx, "invalid time format in request body", err)
+			code := models.ErrInvalidParameters
+			e := models.Error{
+				Code:        &code,
+				Description: "Invalid time format in request body",
+				Source: &models.Source{
+					Field: "scheduled_at",
+				},
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusBadRequest)
+			return
 		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusBadRequest)
-		return
 	}
 
 	log.Info(ctx, "createBundle: created bundle from request body", log.Data{"bundle": bundle})

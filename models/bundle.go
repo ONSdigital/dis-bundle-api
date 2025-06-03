@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -61,6 +62,9 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 
 	err = json.Unmarshal(b, &bundle)
 	if err != nil {
+		if strings.Contains(err.Error(), "parsing time") {
+			return nil, errs.ErrUnableToParseTime
+		}
 		return nil, errs.ErrUnableToParseJSON
 	}
 
