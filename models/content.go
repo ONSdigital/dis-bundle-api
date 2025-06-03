@@ -2,7 +2,9 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
+	"strconv"
 	"strings"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -131,6 +133,11 @@ func ValidateContentItem(contentItem *ContentItem) []*Error {
 	return nil
 }
 
+func (ci *ContentItem) VersionIdString() string {
+	versionId := strconv.Itoa(ci.Metadata.VersionID)
+	return versionId
+}
+
 // ContentType enum represents the type of content
 type ContentType string
 
@@ -161,6 +168,8 @@ type State string
 const (
 	StateApproved  State = "APPROVED"
 	StatePublished State = "PUBLISHED"
+	StateDraft     State = "DRAFT"
+	StateInReview  State = "IN_REVIEW"
 )
 
 // IsValid validates that the State is a valid enum value
@@ -176,4 +185,25 @@ func (s State) IsValid() bool {
 // String returns the string value of the State
 func (s State) String() string {
 	return string(s)
+}
+
+func GetMatchingStateForBundleState(bundleState BundleState) (*State, error) {
+	str := bundleState.String()
+	var state State
+	switch str {
+	case StateApproved.String():
+		state = StateApproved
+		return &state, nil
+	case StatePublished.String():
+		state = StatePublished
+		return &state, nil
+	case StateDraft.String():
+		state = StateDraft
+		return &state, nil
+	case StateInReview.String():
+		state = StateInReview
+		return &state, nil
+	default:
+		return nil, errors.New("not found state")
+	}
 }

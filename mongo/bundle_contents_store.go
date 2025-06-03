@@ -47,3 +47,36 @@ func (m *Mongo) CheckContentItemExistsByDatasetEditionVersion(ctx context.Contex
 
 	return count > 0, nil
 }
+
+func (m *Mongo) GetContentsForBundle(ctx context.Context, bundleID string) ([]models.ContentItem, error) {
+	filter := bson.M{
+		"bundle_id": bundleID,
+	}
+
+	var bundles []models.ContentItem
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).Find(ctx, filter, &bundles)
+	if err != nil {
+		return nil, err
+	}
+
+	return bundles, nil
+}
+
+func (m *Mongo) UpdateBundleContentItemState(ctx context.Context, contentItemID string, state models.BundleState) error {
+	filter := bson.M{"id": contentItemID}
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"state": state,
+		},
+	}
+
+	collectionName := m.ActualCollectionName(config.BundlesCollection)
+
+	_, err := m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

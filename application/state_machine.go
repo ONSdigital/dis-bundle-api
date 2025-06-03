@@ -2,107 +2,97 @@ package application
 
 import (
 	"context"
-	"errors"
+	"fmt"
+
+	"slices"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/log.go/v2/log"
 )
 
+type TransitionHandler func(ctx context.Context, api *StateMachineBundleAPI, bundle *models.Bundle, targetState models.BundleState) *models.Error
+
+type StateMachineTransition struct {
+	sourceState       models.BundleState
+	targetState       models.BundleState
+	transitionHandler TransitionHandler
+}
+
+func CreateStateMachineTransition(sourceState, targetState models.BundleState, transitionHandler TransitionHandler) StateMachineTransition {
+	return StateMachineTransition{
+		sourceState:       sourceState,
+		targetState:       targetState,
+		transitionHandler: transitionHandler,
+	}
+}
+
 type StateMachine struct {
-	states      map[string]State
-	transitions map[string][]string
-	datastore   store.Datastore
-	ctx         context.Context
+	states             map[string]models.BundleState
+	transitions        map[models.BundleState][]models.BundleState
+	transitionHandlers []StateMachineTransition
+	datastore          store.Datastore
+	ctx                context.Context
 }
 
 type Transition struct {
 	Label               string
-	TargetState         State
-	AllowedSourceStates []string
+	TargetState         models.BundleState
+	AllowedSourceStates []models.BundleState
 }
 
-type State struct {
-	Name string
-}
-
-func (s State) String() string {
-	return s.Name
-}
-
-func getStateByName(stateName string) (*State, bool) {
-	switch stateName {
-	case "DRAFT":
-		return &Draft, true
-	case "IN_REVIEW":
-		return &InReview, true
-	case "APPROVED":
-		return &Approved, true
-	case "PUBLISHED":
-		return &Published, true
-	default:
-		return nil, false
-	}
-}
-
-func NewStateMachine(ctx context.Context, states []State, transitions []Transition, datastore store.Datastore) *StateMachine {
-	statesMap := make(map[string]State)
+func NewStateMachine(ctx context.Context, states []models.BundleState, transitions []Transition, datastore store.Datastore, transitionHandlers []StateMachineTransition) *StateMachine {
+	statesMap := make(map[string]models.BundleState)
 	for _, state := range states {
 		statesMap[state.String()] = state
 	}
 
-	transitionsMap := make(map[string][]string)
+	transitionsMap := make(map[models.BundleState][]models.BundleState)
 	for _, transition := range transitions {
-		transitionsMap[transition.TargetState.String()] = transition.AllowedSourceStates
+		transitionsMap[transition.TargetState] = transition.AllowedSourceStates
 	}
 
 	StateMachine := &StateMachine{
-		states:      statesMap,
-		transitions: transitionsMap,
-		datastore:   datastore,
-		ctx:         ctx,
+		states:             statesMap,
+		transitions:        transitionsMap,
+		datastore:          datastore,
+		ctx:                ctx,
+		transitionHandlers: transitionHandlers,
 	}
 
 	return StateMachine
 }
 
-func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, currentBundle, bundleUpdate *models.Bundle) error {
-	var valid bool
+func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState models.BundleState) *models.Error {
+	allowedTransitions, exists := sm.transitions[targetState]
+	if !exists {
+		return models.CreateModelError(models.CodeBadRequest, fmt.Sprintf("incorrect state value: no transitions found for state %s", targetState))
+	}
 
-	match := false
+	if !sm.canTransitionFromCurrentState(allowedTransitions, bundle) {
+		return models.CreateModelError(models.CodeBadRequest, fmt.Sprintf("state %s not allowed to transition to %s", bundle.State, targetState))
+	}
 
-	for state, transitions := range sm.transitions {
-		if state == bundleUpdate.State.String() {
-			for i := range transitions {
-				if currentBundle.State.String() != transitions[i] {
-					continue
-				}
-				match = true
+	transitionHandler, err := sm.getTransitionHandler(bundle, targetState)
 
-				_, valid = getStateByName(state)
-				if !valid {
-					return errors.New("incorrect state value")
-				}
+	if err != nil {
+		return models.CreateModelError(models.CodeBadRequest, err.Error())
+	}
 
-				if currentBundle.State.String() == InReview.String() && bundleUpdate.State.String() == Approved.String() {
-					allBundleContentsApproved, err := stateMachineBundleAPI.CheckAllBundleContentsAreApproved(ctx, currentBundle.ID)
-					if err != nil {
-						log.Error(ctx, "error checking if all bundle contents are approved", err, log.Data{"bundle_id": currentBundle.ID})
-						return err
-					}
+	handler := *transitionHandler
+	handlerErr := handler(ctx, stateMachineBundleAPI, bundle, targetState)
+	return handlerErr
+}
 
-					if !allBundleContentsApproved {
-						return errors.New("not all bundle contents are approved")
-					}
-				}
-				break
-			}
+func (sm *StateMachine) canTransitionFromCurrentState(allowedTransitions []models.BundleState, currentBundle *models.Bundle) bool {
+	return slices.Contains(allowedTransitions, *currentBundle.State)
+}
+
+func (sm *StateMachine) getTransitionHandler(bundle *models.Bundle, targetState models.BundleState) (*TransitionHandler, error) {
+	for _, transition := range sm.transitionHandlers {
+		if transition.sourceState == *bundle.State && transition.targetState == targetState {
+			return &transition.transitionHandler, nil
 		}
 	}
 
-	if !match {
-		return errors.New("state not allowed to transition")
-	}
-
-	return nil
+	return nil, fmt.Errorf("could not find a matching state machine transition handler for updating %s to %s", bundle.State, targetState)
 }

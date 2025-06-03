@@ -8,6 +8,8 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/api"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/datasets"
+	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
@@ -41,26 +43,26 @@ var stateMachineInit sync.Once
 func GetListTransitions() []application.Transition {
 	draftTransition := application.Transition{
 		Label:               "DRAFT",
-		TargetState:         application.Draft,
-		AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
+		TargetState:         models.BundleStateDraft,
+		AllowedSourceStates: []models.BundleState{"IN_REVIEW", "APPROVED"},
 	}
 
 	inReviewTransition := application.Transition{
 		Label:               "IN_REVIEW",
-		TargetState:         application.InReview,
-		AllowedSourceStates: []string{"DRAFT", "APPROVED"},
+		TargetState:         models.BundleStateInReview,
+		AllowedSourceStates: []models.BundleState{"DRAFT", "APPROVED"},
 	}
 
 	approvedTransition := application.Transition{
 		Label:               "APPROVED",
-		TargetState:         application.Approved,
-		AllowedSourceStates: []string{"IN_REVIEW"},
+		TargetState:         models.BundleStateApproved,
+		AllowedSourceStates: []models.BundleState{"IN_REVIEW"},
 	}
 
 	publishedTransition := application.Transition{
 		Label:               "PUBLISHED",
-		TargetState:         application.Published,
-		AllowedSourceStates: []string{"APPROVED"},
+		TargetState:         models.BundleStatePublished,
+		AllowedSourceStates: []models.BundleState{"APPROVED"},
 	}
 
 	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
@@ -68,9 +70,9 @@ func GetListTransitions() []application.Transition {
 
 func GetStateMachine(ctx context.Context, datastore store.Datastore) *application.StateMachine {
 	stateMachineInit.Do(func() {
-		states := []application.State{application.Draft, application.InReview, application.Approved, application.Published}
+		states := []models.BundleState{models.BundleStateApproved, models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished}
 		transitions := GetListTransitions()
-		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore)
+		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore, application.GetTransitionHandlers())
 	})
 
 	return stateMachine
@@ -132,12 +134,13 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
+	// Get Dataset API Client
+	apiClient := svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+	svc.datasetAPIClient = apiClient
+
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
-
-	// Get Dataset API Client
-	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, datasets.CreateDatasetsApiClient(apiClient, datasetAPISDK.Headers{}))
 
 	// Get Permissions
 	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
