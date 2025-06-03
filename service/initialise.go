@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ONSdigital/dis-bundle-api/auth"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/mongo"
 	"github.com/ONSdigital/dis-bundle-api/store"
@@ -32,6 +33,8 @@ func NewServiceList(initialiser Initialiser) *ExternalServiceList {
 
 // Init implements the Initialiser interface to initialise dependencies
 type Init struct{}
+
+var _ Initialiser = (*Init)(nil)
 
 // GetHTTPServer creates an http server
 func (e *ExternalServiceList) GetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
@@ -106,14 +109,11 @@ func (e *Init) DoGetHealthClient(name, url string) *health.Client {
 	return health.NewClient(name, url)
 }
 
-func (e *ExternalServiceList) GetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+func (e *ExternalServiceList) GetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (auth.AuthorisationMiddleware, error) {
 	return e.Init.DoGetAuthorisationMiddleware(ctx, authorisationConfig)
 }
 
 // DoGetAuthorisationMiddleware creates authorisation middleware for the given config
-func (e *Init) DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
-	if authorisationConfig.Enabled {
-		return authorisation.NewMiddlewareFromConfig(ctx, authorisationConfig, nil)
-	}
-	return authorisation.NewFeatureFlaggedMiddleware(ctx, authorisationConfig, nil)
+func (e *Init) DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (auth.AuthorisationMiddleware, error) {
+	return auth.CreateAuthorisationMiddlewareFromConfig(ctx, authorisationConfig, false)
 }

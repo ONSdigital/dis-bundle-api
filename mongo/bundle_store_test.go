@@ -2,12 +2,15 @@ package mongo
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -565,4 +568,44 @@ func TestCheckBundleExists_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func (m *Mongo) TestUpdateBundleState(ctx context.Context, bundleID string, state models.BundleState) error {
+	bundle, err := m.GetBundle(ctx, bundleID)
+
+	if err != nil {
+		return err
+	}
+	bundle.State = &state
+	filter := bson.M{"id": bundleID}
+
+	etag, err := getEtagForBundle(bundle)
+	if err != nil {
+		return err
+	}
+	updateData := bson.M{
+		"$set": bson.M{
+			"e_tag": etag,
+			"state": state,
+		},
+	}
+
+	collectionName := m.ActualCollectionName(config.BundlesCollection)
+
+	_, err = m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestGetETagForBundle(bundle *models.Bundle) (*string, error) {
+	bundleUpdateJSON, err := json.Marshal(&bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	etag := dpresponse.GenerateETag(bundleUpdateJSON, false)
+	return &etag, nil
 }

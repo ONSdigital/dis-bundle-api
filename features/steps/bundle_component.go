@@ -3,9 +3,13 @@ package steps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/api"
+	"github.com/ONSdigital/dis-bundle-api/auth"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/mongo"
 	"github.com/ONSdigital/dis-bundle-api/service"
@@ -24,6 +28,14 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+var mockDatasetVersions = []*datasetAPIModels.Version{
+	{ID: "1"},
+	{ID: "2"},
+	{ID: "inreview-version", State: "IN_REVIEW"},
+	{ID: "approved-version", State: "APPROVED"},
+	{ID: "published-version", State: "PUBLISHED"},
+}
+
 type BundleComponent struct {
 	ErrorFeature            componenttest.ErrorFeature
 	svc                     *service.Service
@@ -35,7 +47,8 @@ type BundleComponent struct {
 	initialiser             service.Initialiser
 	datasetAPIClient        datasetAPISDK.Clienter
 	apiFeature              *componenttest.APIFeature
-	AuthorisationMiddleware authorisation.Middleware
+	AuthorisationMiddleware auth.AuthorisationMiddleware
+	DatasetApiVersions      []*datasetAPIModels.Version
 }
 
 func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
@@ -85,7 +98,7 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c.ServiceRunning = true
 	c.MongoClient = mongodb
 	c.apiFeature = componenttest.NewAPIFeature(c.InitialiseService)
-
+	c.DatasetApiVersions = mockDatasetVersions
 	return c, nil
 }
 
@@ -101,21 +114,21 @@ func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
 
 func getPermissionsBundle() *permissionsSDK.Bundle {
 	return &permissionsSDK.Bundle{
-		"bundles:read": { // role
+		api.AuthRoleBundlesRead: { // role
 			"groups/role-admin": { // group
 				{
 					ID: "1", // policy
 				},
 			},
 		},
-		"bundles:create": {
+		api.AuthRoleBundlesCreate: {
 			"groups/role-admin": {
 				{
 					ID: "1",
 				},
 			},
 		},
-		"bundles:update": {
+		api.AuthRoleBundlesUpdate: {
 			"groups/role-admin": {
 				{
 					ID: "1",
@@ -170,6 +183,16 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+			versionVersion, err := strconv.Atoi(versionID)
+			if err != nil {
+				return datasetAPIModels.Version{}, err
+			}
+			for _, version := range c.DatasetApiVersions {
+				if version.DatasetID == datasetID && version.Edition == editionID && version.Version == versionVersion {
+					return *version, nil
+				}
+			}
+
 			if datasetID == "dataset-not-found" {
 				return datasetAPIModels.Version{}, errors.New("dataset not found")
 			}
@@ -179,15 +202,31 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 			if versionID == "404" {
 				return datasetAPIModels.Version{}, errors.New("version not found")
 			}
-			return datasetAPIModels.Version{}, nil
+
+			return datasetAPIModels.Version{}, errors.New("version not found")
+		},
+		PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+			versionVersion, err := strconv.Atoi(versionID)
+			if err != nil {
+				return err
+			}
+			for _, version := range c.DatasetApiVersions {
+				if version.DatasetID == datasetID && version.Edition == editionID && version.Version == versionVersion {
+					version.State = state
+					return nil
+				}
+			}
+
+			return fmt.Errorf("version %s not found for dataset %s edition %s", versionID, datasetID, editionID)
 		},
 	}
 	c.datasetAPIClient = datasetAPIClient
 	return c.datasetAPIClient
 }
 
-func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg *authorisation.Config) (authorisation.Middleware, error) {
-	middleware, err := authorisation.NewMiddlewareFromConfig(ctx, cfg, cfg.JWTVerificationPublicKeys)
+func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg *authorisation.Config) (auth.AuthorisationMiddleware, error) {
+	cfg.Enabled = true
+	middleware, err := auth.CreateAuthorisationMiddlewareFromConfig(ctx, cfg, true)
 	if err != nil {
 		return nil, err
 	}

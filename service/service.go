@@ -8,6 +8,9 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/api"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/datasets"
+	"github.com/ONSdigital/dis-bundle-api/events"
+	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
@@ -38,38 +41,10 @@ type BundleAPIStore struct {
 var stateMachine *application.StateMachine
 var stateMachineInit sync.Once
 
-func GetListTransitions() []application.Transition {
-	draftTransition := application.Transition{
-		Label:               "DRAFT",
-		TargetState:         application.Draft,
-		AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
-	}
-
-	inReviewTransition := application.Transition{
-		Label:               "IN_REVIEW",
-		TargetState:         application.InReview,
-		AllowedSourceStates: []string{"DRAFT", "APPROVED"},
-	}
-
-	approvedTransition := application.Transition{
-		Label:               "APPROVED",
-		TargetState:         application.Approved,
-		AllowedSourceStates: []string{"IN_REVIEW"},
-	}
-
-	publishedTransition := application.Transition{
-		Label:               "PUBLISHED",
-		TargetState:         application.Published,
-		AllowedSourceStates: []string{"APPROVED"},
-	}
-
-	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
-}
-
 func GetStateMachine(ctx context.Context, datastore store.Datastore) *application.StateMachine {
 	stateMachineInit.Do(func() {
-		states := []application.State{application.Draft, application.InReview, application.Approved, application.Published}
-		transitions := GetListTransitions()
+		states := []models.BundleState{models.BundleStateApproved, models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished}
+		transitions := application.GetListTransitions()
 		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore)
 	})
 
@@ -132,12 +107,12 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
+	// Get Dataset API Client
+	apiClient := svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+	svc.datasetAPIClient = apiClient
+
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
-
-	// Get Dataset API Client
-	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
 
 	// Get Permissions
 	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
@@ -145,6 +120,12 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
 		return err
 	}
+
+	//Create events manager
+	em := events.CreateBundleEventsManager(datastore, auth)
+
+	//Create state machine bundle API
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, datasets.CreateDatasetsApiClient(apiClient), em)
 
 	// Setup API
 	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, svc.datasetAPIClient, auth)

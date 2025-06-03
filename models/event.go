@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -32,6 +33,26 @@ type EventBundle struct {
 	Title         string         `bson:"title"                     json:"title"`
 	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
 	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
+}
+
+func CreateEventBundle(bundle *Bundle) (*EventBundle, error) {
+	if bundle == nil {
+		return nil, errors.New("bundle is nil")
+	}
+
+	return &EventBundle{
+		ID:            bundle.ID,
+		BundleType:    bundle.BundleType,
+		CreatedBy:     bundle.CreatedBy,
+		CreatedAt:     bundle.CreatedAt,
+		LastUpdatedBy: bundle.LastUpdatedBy,
+		PreviewTeams:  bundle.PreviewTeams,
+		ScheduledAt:   bundle.ScheduledAt,
+		State:         bundle.State,
+		Title:         bundle.Title,
+		UpdatedAt:     bundle.UpdatedAt,
+		ManagedBy:     bundle.ManagedBy,
+	}, nil
 }
 
 // RequestedBy represents the user who made the request

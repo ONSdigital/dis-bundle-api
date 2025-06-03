@@ -1,24 +1,29 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
+	"github.com/ONSdigital/dis-bundle-api/auth"
+	authmocks "github.com/ONSdigital/dis-bundle-api/auth/mocks"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
-	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/gorilla/mux"
@@ -29,55 +34,55 @@ func ptrBundleState(state models.BundleState) *models.BundleState {
 	return &state
 }
 
-func newAuthMiddlwareMock() *authorisationMock.MiddlewareMock {
-	return &authorisationMock.MiddlewareMock{
+func newAuthMiddlwareMock() *authmocks.AuthorisationMiddlewareMock {
+	parsefunc := func(token string) (*permissionsSDK.EntityData, error) {
+		if token == "test-auth-token" {
+			return &permissionsSDK.EntityData{
+				UserID: "User123",
+			}, nil
+		}
+		return nil, errors.New("authorisation header not found")
+	}
+
+	return &authmocks.AuthorisationMiddlewareMock{
 		RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 			return handlerFunc
 		},
-		ParseFunc: func(token string) (*permissionsSDK.EntityData, error) {
-			if token == "test-auth-token" {
-				return &permissionsSDK.EntityData{
-					UserID: "User123",
-				}, nil
+		ParseFunc: parsefunc,
+		GetJWTEntityDataFunc: func(r *http.Request) (*permissionsSDK.EntityData, *models.Error) {
+			JWTEntityData, err := parsefunc(strings.TrimPrefix(r.Header.Get(utils.HeaderAuthorization), auth.TokenBearerPrefix))
+			if err != nil {
+				return nil, models.CreateModelError(models.CodeInternalServerError, apierrors.ErrorDescriptionUserIdentityParseFailed)
 			}
-			return nil, errors.New("authorisation header not found")
+
+			return JWTEntityData, nil
+
 		},
 	}
 }
 
-func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
+func GetBundleAPIWithMocksUsingHandler(datastore store.Datastore, handler *application.TransitionHandler) *BundleAPI {
 	ctx := context.Background()
 	cfg := &config.Config{}
 	r := mux.NewRouter()
 
-	mockStates := []application.State{
-		application.Draft,
-		application.InReview,
-		application.Approved,
-		application.Published,
+	mockStates := []models.BundleState{
+		models.BundleStateDraft,
+		models.BundleStateInReview,
+		models.BundleStateApproved,
+		models.BundleStatePublished,
 	}
 
+	transitionHandler := application.UpdateBundleState
+
+	if handler != nil {
+		transitionHandler = *handler
+	}
 	mockTransitions := []application.Transition{
-		{
-			Label:               "DRAFT",
-			TargetState:         application.Draft,
-			AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
-		},
-		{
-			Label:               "IN_REVIEW",
-			TargetState:         application.InReview,
-			AllowedSourceStates: []string{"DRAFT", "APPROVED"},
-		},
-		{
-			Label:               "APPROVED",
-			TargetState:         application.Approved,
-			AllowedSourceStates: []string{"IN_REVIEW"},
-		},
-		{
-			Label:               "PUBLISHED",
-			TargetState:         application.Published,
-			AllowedSourceStates: []string{"APPROVED"},
-		},
+		application.CreateTransition("DRAFT", models.BundleStateDraft, []models.BundleState{"IN_REVIEW", "APPROVED"}, transitionHandler),
+		application.CreateTransition("IN_REVIEW", models.BundleStateInReview, []models.BundleState{"DRAFT", "APPROVED"}, transitionHandler),
+		application.CreateTransition("APPROVED", models.BundleStateApproved, []models.BundleState{"IN_REVIEW"}, transitionHandler),
+		application.CreateTransition("PUBLISHED", models.BundleStatePublished, []models.BundleState{"APPROVED"}, transitionHandler),
 	}
 
 	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
@@ -87,6 +92,10 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 	}
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, mockDatasetAPIClient, newAuthMiddlwareMock())
+}
+
+func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
+	return GetBundleAPIWithMocksUsingHandler(datastore, nil)
 }
 
 func TestGetBundles_Success(t *testing.T) {
@@ -354,8 +363,7 @@ func TestGetBundle_Success(t *testing.T) {
 			mockStore := &storetest.StorerMock{
 				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 					return validBundle, nil
-				},
-			}
+				}}
 
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
 			bundleAPI.Router.ServeHTTP(rec, req)
@@ -470,7 +478,7 @@ func TestGetBundle_Failure(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/protected-id", http.NoBody)
 			rec := httptest.NewRecorder()
 
-			authMiddleware := &authorisationMock.MiddlewareMock{
+			authMiddleware := &authmocks.AuthorisationMiddlewareMock{
 				RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 					return func(w http.ResponseWriter, r *http.Request) {
 						http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
@@ -487,4 +495,193 @@ func TestGetBundle_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPutBundle_Success(t *testing.T) {
+	t.Parallel()
+	scheduledAt := time.Date(2025, 4, 25, 9, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2025, 3, 10, 11, 20, 0, 0, time.UTC)
+	updatedAt := time.Date(2025, 3, 25, 14, 30, 0, 0, time.UTC)
+	state := models.BundleStateApproved
+
+	bundleId := "valid-bundle-id"
+	validBundle := &models.Bundle{
+		ID:          bundleId,
+		Title:       bundleId,
+		ETag:        "12345-etag",
+		ManagedBy:   models.ManagedByWagtail,
+		BundleType:  models.BundleTypeScheduled,
+		CreatedAt:   &createdAt,
+		UpdatedAt:   &updatedAt,
+		ScheduledAt: &scheduledAt,
+		State:       &state,
+		CreatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		LastUpdatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		PreviewTeams: &[]models.PreviewTeam{
+			{
+				ID: "c78d457e-98de-11ec-b909-0242ac120002",
+			},
+		},
+	}
+
+	var mockHandler application.TransitionHandler = func(ctx context.Context, api *application.StateMachineBundleAPI, r *http.Request, bundle *models.Bundle, targetState models.BundleState) *models.Error {
+
+		return nil
+	}
+
+	Convey("Given a PUT /bundles/{bundle-id}/state request", t, func() {
+		Convey("With a valid bundle ID + request body", func() {
+			req := createUpdateBundleStateRequest(bundleId, validBundle.ETag, models.BundleStatePublished)
+			rec := httptest.NewRecorder()
+
+			mockStore := &storetest.StorerMock{
+				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+					if id == validBundle.ID {
+						return validBundle, nil
+					}
+
+					return nil, nil
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocksUsingHandler(store.Datastore{Backend: mockStore}, &mockHandler)
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be success", func() {
+				So(rec.Code, ShouldEqual, http.StatusOK)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(rec.Body).Decode(&errResp)
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+func TestPutBundle_Failure(t *testing.T) {
+	t.Parallel()
+	scheduledAt := time.Date(2025, 4, 25, 9, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2025, 3, 10, 11, 20, 0, 0, time.UTC)
+	updatedAt := time.Date(2025, 3, 25, 14, 30, 0, 0, time.UTC)
+	state := models.BundleStateApproved
+
+	bundleId := "valid-bundle-id"
+	validBundle := &models.Bundle{
+		ID:          bundleId,
+		Title:       bundleId,
+		ETag:        "12345-etag",
+		ManagedBy:   models.ManagedByWagtail,
+		BundleType:  models.BundleTypeScheduled,
+		CreatedAt:   &createdAt,
+		UpdatedAt:   &updatedAt,
+		ScheduledAt: &scheduledAt,
+		State:       &state,
+		CreatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		LastUpdatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		PreviewTeams: &[]models.PreviewTeam{
+			{
+				ID: "c78d457e-98de-11ec-b909-0242ac120002",
+			},
+		},
+	}
+	mockStore := &storetest.StorerMock{
+		GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+			if id == validBundle.ID {
+				return validBundle, nil
+			}
+
+			return nil, nil
+		},
+	}
+
+	var stateHandler application.TransitionHandler = func(ctx context.Context, api *application.StateMachineBundleAPI, r *http.Request, bundle *models.Bundle, targetState models.BundleState) *models.Error {
+		return nil
+	}
+
+	bundleAPI := GetBundleAPIWithMocksUsingHandler(store.Datastore{Backend: mockStore}, &stateHandler)
+
+	Convey("Given a PUT /bundles/{bundle-id}/state request", t, func() {
+		Convey("Where the ETag does not match", func() {
+			req := createUpdateBundleStateRequest(bundleId, "not a valid etag", models.BundleStatePublished)
+			rec := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be error", func() {
+				So(rec.Code, ShouldEqual, http.StatusConflict)
+				verifyResponseMatchesError(*rec, models.CodeConflict, errs.ErrorDescriptionETagMismatch)
+			})
+		})
+
+		Convey("When the bundle is not found", func() {
+			req := createUpdateBundleStateRequest("missing-bundle-id", validBundle.ETag, models.BundleStatePublished)
+			rec := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be error", func() {
+				So(rec.Code, ShouldEqual, http.StatusNotFound)
+				verifyResponseMatchesError(*rec, models.CodeNotFound, errs.ErrorDescriptionNotFound)
+			})
+		})
+
+		Convey("When the state handler errors", func() {
+			req := createUpdateBundleStateRequest(bundleId, validBundle.ETag, models.BundleStatePublished)
+			rec := httptest.NewRecorder()
+
+			stateErrorCode := models.CodeInternalServerError
+			stateErrorDescription := "state handler error"
+			var stateHandler application.TransitionHandler = func(ctx context.Context, api *application.StateMachineBundleAPI, r *http.Request, bundle *models.Bundle, targetState models.BundleState) *models.Error {
+				return models.CreateModelError(stateErrorCode, stateErrorDescription)
+			}
+
+			bundleAPI := GetBundleAPIWithMocksUsingHandler(store.Datastore{Backend: mockStore}, &stateHandler)
+
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be error", func() {
+				So(rec.Code, ShouldEqual, stateErrorCode.HttpStatusCode())
+				verifyResponseMatchesError(*rec, stateErrorCode, stateErrorDescription)
+			})
+		})
+	})
+}
+
+func createUpdateBundleStateRequest(bundleId, etag string, state models.BundleState) *http.Request {
+	requestBody := models.UpdateBundleStateRequest{
+		State: state,
+	}
+	b, err := json.Marshal(requestBody)
+	if err != nil {
+		panic("failed to marshal update bundle state request")
+	}
+
+	reader := bytes.NewReader(b)
+	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/bundles/%s/state", bundleId), reader)
+	req.Header.Add(utils.HeaderIfMatch, etag)
+	return req
+}
+
+func verifyResponseMatchesError(rec httptest.ResponseRecorder, code models.Code, description string) {
+	var errResp models.ErrorList
+	err := json.NewDecoder(rec.Body).Decode(&errResp)
+
+	So(err, ShouldBeNil)
+	expectedErrResp := models.ErrorList{
+		Errors: []*models.Error{
+			{
+				Code:        &code,
+				Description: description,
+			},
+		},
+	}
+	So(errResp, ShouldResemble, expectedErrResp)
 }

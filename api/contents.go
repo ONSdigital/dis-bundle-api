@@ -2,14 +2,15 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/datasets"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -70,12 +71,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var authHeaders datasetAPISDK.Headers
-	if r.Header.Get("X-Florence-Token") != "" {
-		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
-	} else {
-		authHeaders.ServiceToken = r.Header.Get("Authorization")
-	}
+	authHeaders := datasets.CreateAuthHeaders(r)
 
 	_, err = api.datasetAPIClient.GetVersion(ctx, authHeaders, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
@@ -160,15 +156,10 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logdata)
-		code := models.CodeInternalServerError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: "Failed to get user identity from JWT",
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+	JWTEntityData, entityDataErr := api.authMiddleware.GetJWTEntityData(r)
+	if entityDataErr != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", errors.New(entityDataErr.Description), logdata)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, entityDataErr)
 		return
 	}
 

@@ -47,14 +47,23 @@ var _ store.MongoDB = &MongoDBMock{}
 //			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 //				panic("mock out the GetBundle method")
 //			},
+//			GetContentsForBundleFunc: func(ctx context.Context, bundleID string) ([]models.ContentItem, error) {
+//				panic("mock out the GetContentsForBundle method")
+//			},
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 //				panic("mock out the ListBundleEvents method")
 //			},
 //			ListBundlesFunc: func(ctx context.Context, offset int, limit int, filtersMoqParam *filters.BundleFilters) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
 //			},
+//			UpdateBundleContentItemStateFunc: func(ctx context.Context, contentItemID string, state models.BundleState) error {
+//				panic("mock out the UpdateBundleContentItemState method")
+//			},
 //			UpdateBundleETagFunc: func(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
 //				panic("mock out the UpdateBundleETag method")
+//			},
+//			UpdateBundleStateFunc: func(ctx context.Context, bundleID string, state models.BundleState) error {
+//				panic("mock out the UpdateBundleState method")
 //			},
 //		}
 //
@@ -87,14 +96,23 @@ type MongoDBMock struct {
 	// GetBundleFunc mocks the GetBundle method.
 	GetBundleFunc func(ctx context.Context, bundleID string) (*models.Bundle, error)
 
+	// GetContentsForBundleFunc mocks the GetContentsForBundle method.
+	GetContentsForBundleFunc func(ctx context.Context, bundleID string) ([]models.ContentItem, error)
+
 	// ListBundleEventsFunc mocks the ListBundleEvents method.
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
 
 	// ListBundlesFunc mocks the ListBundles method.
 	ListBundlesFunc func(ctx context.Context, offset int, limit int, filtersMoqParam *filters.BundleFilters) ([]*models.Bundle, int, error)
 
+	// UpdateBundleContentItemStateFunc mocks the UpdateBundleContentItemState method.
+	UpdateBundleContentItemStateFunc func(ctx context.Context, contentItemID string, state models.BundleState) error
+
 	// UpdateBundleETagFunc mocks the UpdateBundleETag method.
 	UpdateBundleETagFunc func(ctx context.Context, bundleID string, email string) (*models.Bundle, error)
+
+	// UpdateBundleStateFunc mocks the UpdateBundleState method.
+	UpdateBundleStateFunc func(ctx context.Context, bundleID string, state models.BundleState) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -156,6 +174,13 @@ type MongoDBMock struct {
 			// BundleID is the bundleID argument value.
 			BundleID string
 		}
+		// GetContentsForBundle holds details about calls to the GetContentsForBundle method.
+		GetContentsForBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// ListBundleEvents holds details about calls to the ListBundleEvents method.
 		ListBundleEvents []struct {
 			// Ctx is the ctx argument value.
@@ -182,6 +207,15 @@ type MongoDBMock struct {
 			// FiltersMoqParam is the filtersMoqParam argument value.
 			FiltersMoqParam *filters.BundleFilters
 		}
+		// UpdateBundleContentItemState holds details about calls to the UpdateBundleContentItemState method.
+		UpdateBundleContentItemState []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ContentItemID is the contentItemID argument value.
+			ContentItemID string
+			// State is the state argument value.
+			State models.BundleState
+		}
 		// UpdateBundleETag holds details about calls to the UpdateBundleETag method.
 		UpdateBundleETag []struct {
 			// Ctx is the ctx argument value.
@@ -190,6 +224,15 @@ type MongoDBMock struct {
 			BundleID string
 			// Email is the email argument value.
 			Email string
+		}
+		// UpdateBundleState holds details about calls to the UpdateBundleState method.
+		UpdateBundleState []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+			// State is the state argument value.
+			State models.BundleState
 		}
 	}
 	lockCheckAllBundleContentsAreApproved             sync.RWMutex
@@ -200,9 +243,12 @@ type MongoDBMock struct {
 	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
+	lockGetContentsForBundle                          sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
+	lockUpdateBundleContentItemState                  sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
+	lockUpdateBundleState                             sync.RWMutex
 }
 
 // CheckAllBundleContentsAreApproved calls CheckAllBundleContentsAreApprovedFunc.
@@ -497,6 +543,42 @@ func (mock *MongoDBMock) GetBundleCalls() []struct {
 	return calls
 }
 
+// GetContentsForBundle calls GetContentsForBundleFunc.
+func (mock *MongoDBMock) GetContentsForBundle(ctx context.Context, bundleID string) ([]models.ContentItem, error) {
+	if mock.GetContentsForBundleFunc == nil {
+		panic("MongoDBMock.GetContentsForBundleFunc: method is nil but MongoDB.GetContentsForBundle was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockGetContentsForBundle.Lock()
+	mock.calls.GetContentsForBundle = append(mock.calls.GetContentsForBundle, callInfo)
+	mock.lockGetContentsForBundle.Unlock()
+	return mock.GetContentsForBundleFunc(ctx, bundleID)
+}
+
+// GetContentsForBundleCalls gets all the calls that were made to GetContentsForBundle.
+// Check the length with:
+//
+//	len(mockedMongoDB.GetContentsForBundleCalls())
+func (mock *MongoDBMock) GetContentsForBundleCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockGetContentsForBundle.RLock()
+	calls = mock.calls.GetContentsForBundle
+	mock.lockGetContentsForBundle.RUnlock()
+	return calls
+}
+
 // ListBundleEvents calls ListBundleEventsFunc.
 func (mock *MongoDBMock) ListBundleEvents(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 	if mock.ListBundleEventsFunc == nil {
@@ -593,6 +675,46 @@ func (mock *MongoDBMock) ListBundlesCalls() []struct {
 	return calls
 }
 
+// UpdateBundleContentItemState calls UpdateBundleContentItemStateFunc.
+func (mock *MongoDBMock) UpdateBundleContentItemState(ctx context.Context, contentItemID string, state models.BundleState) error {
+	if mock.UpdateBundleContentItemStateFunc == nil {
+		panic("MongoDBMock.UpdateBundleContentItemStateFunc: method is nil but MongoDB.UpdateBundleContentItemState was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ContentItemID string
+		State         models.BundleState
+	}{
+		Ctx:           ctx,
+		ContentItemID: contentItemID,
+		State:         state,
+	}
+	mock.lockUpdateBundleContentItemState.Lock()
+	mock.calls.UpdateBundleContentItemState = append(mock.calls.UpdateBundleContentItemState, callInfo)
+	mock.lockUpdateBundleContentItemState.Unlock()
+	return mock.UpdateBundleContentItemStateFunc(ctx, contentItemID, state)
+}
+
+// UpdateBundleContentItemStateCalls gets all the calls that were made to UpdateBundleContentItemState.
+// Check the length with:
+//
+//	len(mockedMongoDB.UpdateBundleContentItemStateCalls())
+func (mock *MongoDBMock) UpdateBundleContentItemStateCalls() []struct {
+	Ctx           context.Context
+	ContentItemID string
+	State         models.BundleState
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ContentItemID string
+		State         models.BundleState
+	}
+	mock.lockUpdateBundleContentItemState.RLock()
+	calls = mock.calls.UpdateBundleContentItemState
+	mock.lockUpdateBundleContentItemState.RUnlock()
+	return calls
+}
+
 // UpdateBundleETag calls UpdateBundleETagFunc.
 func (mock *MongoDBMock) UpdateBundleETag(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
 	if mock.UpdateBundleETagFunc == nil {
@@ -630,5 +752,45 @@ func (mock *MongoDBMock) UpdateBundleETagCalls() []struct {
 	mock.lockUpdateBundleETag.RLock()
 	calls = mock.calls.UpdateBundleETag
 	mock.lockUpdateBundleETag.RUnlock()
+	return calls
+}
+
+// UpdateBundleState calls UpdateBundleStateFunc.
+func (mock *MongoDBMock) UpdateBundleState(ctx context.Context, bundleID string, state models.BundleState) error {
+	if mock.UpdateBundleStateFunc == nil {
+		panic("MongoDBMock.UpdateBundleStateFunc: method is nil but MongoDB.UpdateBundleState was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+		State    models.BundleState
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+		State:    state,
+	}
+	mock.lockUpdateBundleState.Lock()
+	mock.calls.UpdateBundleState = append(mock.calls.UpdateBundleState, callInfo)
+	mock.lockUpdateBundleState.Unlock()
+	return mock.UpdateBundleStateFunc(ctx, bundleID, state)
+}
+
+// UpdateBundleStateCalls gets all the calls that were made to UpdateBundleState.
+// Check the length with:
+//
+//	len(mockedMongoDB.UpdateBundleStateCalls())
+func (mock *MongoDBMock) UpdateBundleStateCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+	State    models.BundleState
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+		State    models.BundleState
+	}
+	mock.lockUpdateBundleState.RLock()
+	calls = mock.calls.UpdateBundleState
+	mock.lockUpdateBundleState.RUnlock()
 	return calls
 }

@@ -170,3 +170,43 @@ func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, e
 	}
 	return count > 0, nil
 }
+
+func (m *Mongo) UpdateBundleState(ctx context.Context, bundleID string, state models.BundleState) error {
+	bundle, err := m.GetBundle(ctx, bundleID)
+
+	if err != nil {
+		return err
+	}
+	bundle.State = &state
+	filter := bson.M{"id": bundleID}
+
+	etag, err := getEtagForBundle(bundle)
+	if err != nil {
+		return err
+	}
+	updateData := bson.M{
+		"$set": bson.M{
+			"e_tag": etag,
+			"state": state,
+		},
+	}
+
+	collectionName := m.ActualCollectionName(config.BundlesCollection)
+
+	_, err = m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getEtagForBundle(bundle *models.Bundle) (*string, error) {
+	bundleUpdateJSON, err := json.Marshal(&bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	etag := dpresponse.GenerateETag(bundleUpdateJSON, false)
+	return &etag, nil
+}

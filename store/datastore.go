@@ -28,6 +28,9 @@ type dataMongoDB interface {
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
+	GetContentsForBundle(ctx context.Context, bundleID string) ([]models.ContentItem, error)
+	UpdateBundleState(ctx context.Context, bundleID string, state models.BundleState) error
+	UpdateBundleContentItemState(ctx context.Context, contentItemID string, state models.BundleState) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
 }
@@ -77,4 +80,16 @@ func (ds *Datastore) CheckContentItemExistsByDatasetEditionVersion(ctx context.C
 
 func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
 	return ds.Backend.CreateBundleEvent(ctx, event)
+}
+
+func (ds *Datastore) GetBundleContentItems(ctx context.Context, bundleID string) ([]models.ContentItem, error) {
+	return ds.Backend.GetContentsForBundle(ctx, bundleID)
+}
+
+func (ds *Datastore) UpdateBundleState(ctx context.Context, bundleID string, state models.BundleState) error {
+	return ds.Backend.UpdateBundleState(ctx, bundleID, state)
+}
+
+func (ds *Datastore) UpdateBundleContentItemState(ctx context.Context, contentItemID string, state models.BundleState) error {
+	return ds.Backend.UpdateBundleContentItemState(ctx, contentItemID, state)
 }

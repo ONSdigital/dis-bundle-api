@@ -11,6 +11,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
+	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	"github.com/cucumber/godog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -20,6 +21,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
+	ctx.Step(`^I have these dataset versions:$`, c.iHaveTheseDatasetVersions)
 	ctx.Step(`^I am an admin user$`, c.adminJWTToken)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
@@ -30,16 +32,35 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+	// ctx.Step(`^bundle "([^"]*)" should have this state "([^"]*)"`, func() {
+
+	// })
+
+	// ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, func() {
+
+	// })
+
+	// ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, func() {
+
+	// })
+
+	// ctx.Step(`^these content items should have these states:$`, func() {
+
+	// })
+
+	// ctx.Step(`^these dataset versions should have these states:$`, func() {
+
+	// })
 }
 
 func (c *BundleComponent) adminJWTToken() error {
-	err := c.apiFeature.ISetTheHeaderTo("Authorization", authorisationtest.AdminJWTToken)
-	return err
+	c.apiFeature.ISetTheHeaderTo("Authorization", authorisationtest.AdminJWTToken)
+	return nil
 }
 
 func (c *BundleComponent) iAmNotAuthenticated() error {
-	err := c.apiFeature.ISetTheHeaderTo("Authorization", "")
-	return err
+	c.apiFeature.ISetTheHeaderTo("Authorization", "")
+	return nil
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -64,6 +85,7 @@ func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error 
 func (c *BundleComponent) putBundleInDatabase(ctx context.Context, collectionName string, bundle models.Bundle) error {
 	// Set the etag (json omitted)
 	bundle.ETag = "etag-" + bundle.ID
+
 	update := bson.M{
 		"$set": bundle,
 		"$setOnInsert": bson.M{
@@ -112,6 +134,21 @@ func (c *BundleComponent) iHaveTheseContentItems(contentItemsJSON *godog.DocStri
 			return err
 		}
 	}
+	return nil
+}
+
+func (c *BundleComponent) iHaveTheseDatasetVersions(contentItemsJSON *godog.DocString) error {
+	versions := []datasetAPIModels.Version{}
+
+	err := json.Unmarshal([]byte(contentItemsJSON.Content), &versions)
+	if err != nil {
+		return err
+	}
+
+	for _, version := range versions {
+		c.DatasetApiVersions = append(c.DatasetApiVersions, &version)
+	}
+
 	return nil
 }
 
