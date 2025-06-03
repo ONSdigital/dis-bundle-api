@@ -122,6 +122,127 @@ func ValidateBundle(bundle *Bundle) error {
 	return nil
 }
 
+func GetBundleErrors(bundle *Bundle) ErrorList {
+	var errorList ErrorList
+	var errs []Error
+	code := ErrInvalidParameters
+
+	if bundle.ID == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Bundle ID is required",
+			Source: &Source{
+				Field: "/id",
+			},
+		})
+	}
+
+	if bundle.BundleType == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Bundle type is required",
+			Source: &Source{
+				Field: "/bundle_type",
+			},
+		})
+	}
+
+	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: fmt.Sprintf("Invalid bundle type: %s", bundle.BundleType),
+			Source: &Source{
+				Field: "/bundle_type",
+			},
+		})
+	}
+
+	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Created by email is required",
+			Source: &Source{
+				Field: "/created_by/email",
+			},
+		})
+	}
+
+	if bundle.LastUpdatedBy != nil && bundle.LastUpdatedBy.Email == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Last updated by email is required",
+			Source: &Source{
+				Field: "/last_updated_by/email",
+			},
+		})
+	}
+
+	if len(*bundle.PreviewTeams) == 0 {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "At least one preview team is required",
+			Source: &Source{
+				Field: "/preview_teams",
+			},
+		})
+	} else {
+		for i, team := range *bundle.PreviewTeams {
+			if team.ID == "" {
+				errs = append(errs, Error{
+					Code:        &code,
+					Description: fmt.Sprintf("Preview team ID is required at index %d", i),
+					Source: &Source{
+						Field: fmt.Sprintf("/preview_teams/%d", i),
+					},
+				})
+			}
+		}
+	}
+
+	if bundle.State != nil && !bundle.State.IsValid() {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: fmt.Sprintf("Invalid bundle state: %s", bundle.State),
+			Source: &Source{
+				Field: "/state",
+			},
+		})
+	}
+
+	if bundle.Title == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Title is required",
+			Source: &Source{
+				Field: "/title",
+			},
+		})
+	}
+
+	if bundle.ManagedBy == "" {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: "Managed by is required",
+			Source: &Source{
+				Field: "/managed_by",
+			},
+		})
+	}
+
+	if bundle.ManagedBy != "" && !bundle.ManagedBy.IsValid() {
+		errs = append(errs, Error{
+			Code:        &code,
+			Description: fmt.Sprintf("Invalid managed by value: %s", bundle.ManagedBy),
+			Source: &Source{
+				Field: "/managed_by",
+			},
+		})
+	}
+
+	errorList.Errors = &errs
+	return errorList
+}
+
 // BundleType enum type representing the type of the bundle
 type BundleType string
 

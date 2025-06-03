@@ -15,6 +15,10 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+var (
+	ErrDescription = "Unable to process request due to a malformed or invalid request body or query parameter."
+)
+
 func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, offset int) (bundles any, errCode int, errBundles *models.Error) {
 	ctx := r.Context()
 
@@ -35,11 +39,11 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundle, err := models.CreateBundle(r.Body)
 	if err != nil {
-		code := models.CodeBadRequest
+		code := models.ErrInvalidParameters
 		log.Error(ctx, "failed to create bundle from request body", err)
 		utils.HandleBundleAPIErr(w, r, &models.Error{
 			Code:        &code,
-			Description: "Invalid request body",
+			Description: ErrDescription,
 		}, http.StatusBadRequest)
 		return
 	}
@@ -48,12 +52,9 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	err = models.ValidateBundle(bundle)
 	if err != nil {
-		code := models.CodeBadRequest
+		bundleErrs := models.GetBundleErrors(bundle)
 		log.Error(ctx, "failed to validate bundle", err)
-		utils.HandleBundleAPIErr(w, r, &models.Error{
-			Code:        &code,
-			Description: "Invalid bundle data",
-		}, http.StatusBadRequest)
+		utils.HandleBundleAPIErrors(w, r, bundleErrs, http.StatusBadRequest)
 		return
 	}
 
