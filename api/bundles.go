@@ -41,7 +41,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundle, err := models.CreateBundle(r.Body)
 	if err != nil {
-		if err != apierrors.ErrUnableToParseTime {
+		if err == apierrors.ErrUnableToParseJSON {
 			log.Error(ctx, "failed to create bundle from request body", err)
 			code := models.ErrInvalidParameters
 			e := models.Error{
@@ -50,7 +50,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			}
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusBadRequest)
 			return
-		} else {
+		} else if err == apierrors.ErrUnableToParseTime {
 			log.Error(ctx, "invalid time format in request body", err)
 			code := models.ErrInvalidParameters
 			e := models.Error{
@@ -61,6 +61,15 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 				},
 			}
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusBadRequest)
+			return
+		} else {
+			log.Error(ctx, "failed to read request body", err)
+			code := models.CodeInternalServerError
+			e := models.Error{
+				Code:        &code,
+				Description: ErrInternalErrorDescription,
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -146,20 +155,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
 
-	etag, err := generateEtag(bundle)
-	if err != nil {
-		log.Error(ctx, "failed to generate ETag for bundle", err)
-		code := models.CodeInternalServerError
-		e := models.Error{
-			Code:        &code,
-			Description: ErrInternalErrorDescription,
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: &[]models.Error{e}}, http.StatusInternalServerError)
-		return
-	}
-
-	bundle.ETag = etag
-
 	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
 		log.Error(ctx, "failed to create bundle in the database", err)
@@ -236,16 +231,6 @@ func writeResponse(ctx context.Context, w http.ResponseWriter, bundle *models.Bu
 	}
 	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
 	return nil
-}
-
-func generateEtag(bundle *models.Bundle) (string, error) {
-	b, err := json.Marshal(bundle)
-	if err != nil {
-		return "", err
-	}
-	etag := dpresponse.GenerateETag(b, false)
-	etag = strings.Trim(etag, `"`)
-	return etag, nil
 }
 
 func validateScheduledAt(ctx context.Context, bundle *models.Bundle, w http.ResponseWriter, r *http.Request) bool {

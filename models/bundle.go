@@ -8,6 +8,7 @@ import (
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
+	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 )
 
 // Bundle represents the response body when retrieving a bundle
@@ -73,6 +74,12 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 		return nil, err
 	}
 	bundle.ID = id.String()
+
+	etag, err := generateEtag(&bundle)
+	if err != nil {
+		return nil, err
+	}
+	bundle.ETag = etag
 
 	return &bundle, nil
 }
@@ -251,6 +258,16 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 
 	errorList.Errors = &errs
 	return errorList
+}
+
+func generateEtag(bundle *Bundle) (string, error) {
+	b, err := json.Marshal(bundle)
+	if err != nil {
+		return "", err
+	}
+	etag := dpresponse.GenerateETag(b, false)
+	etag = strings.Trim(etag, `"`)
+	return etag, nil
 }
 
 // BundleType enum type representing the type of the bundle
