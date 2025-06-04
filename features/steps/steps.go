@@ -114,6 +114,10 @@ func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collecti
 	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
 	if err != nil {
 		return fmt.Errorf("failed to insert event: %w", err)
+	}
+	return nil
+}
+
 func (c *BundleComponent) theResponseBodyShouldBeEmpty() error {
 	if c.apiFeature.HTTPResponse == nil || c.apiFeature.HTTPResponse.Body == nil {
 		return fmt.Errorf("response or body is nil")
