@@ -43,7 +43,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("Then it should return a bundle with the expected values", func() {
-				So(bundle.ID, ShouldEqual, fullyPopulatedBundle.ID)
+				So(bundle.ID, ShouldNotBeEmpty)
 				So(bundle.BundleType, ShouldEqual, fullyPopulatedBundle.BundleType)
 				So(bundle.CreatedBy, ShouldResemble, fullyPopulatedBundle.CreatedBy)
 				So(bundle.CreatedAt.Equal(*fullyPopulatedBundle.CreatedAt), ShouldBeTrue)
@@ -69,7 +69,17 @@ func TestCreateBundle_Success(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("Then it should return a bundle with the expected values", func() {
-				So(bundle, ShouldResemble, &minimallyPopulatedBundle)
+				So(bundle.ID, ShouldNotBeEmpty)
+				So(bundle.BundleType, ShouldEqual, minimallyPopulatedBundle.BundleType)
+				So(bundle.CreatedBy, ShouldBeNil)
+				So(bundle.CreatedAt, ShouldBeNil)
+				So(bundle.LastUpdatedBy, ShouldBeNil)
+				So(bundle.PreviewTeams, ShouldResemble, minimallyPopulatedBundle.PreviewTeams)
+				So(bundle.ScheduledAt, ShouldBeNil)
+				So(bundle.State, ShouldBeNil)
+				So(bundle.Title, ShouldEqual, minimallyPopulatedBundle.Title)
+				So(bundle.UpdatedAt, ShouldBeNil)
+				So(bundle.ManagedBy, ShouldEqual, minimallyPopulatedBundle.ManagedBy)
 			})
 		})
 	})

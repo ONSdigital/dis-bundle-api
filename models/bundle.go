@@ -68,6 +68,12 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 		return nil, errs.ErrUnableToParseJSON
 	}
 
+	id, err := newUUID()
+	if err != nil {
+		return nil, err
+	}
+	bundle.ID = id.String()
+
 	return &bundle, nil
 }
 
