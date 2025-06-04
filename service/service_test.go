@@ -14,6 +14,7 @@ import (
 	storeMock "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
@@ -89,6 +90,10 @@ func TestRun(t *testing.T) {
 			return hcMock, nil
 		}
 
+		funcDoGetDatasetAPIClientOk := func(datasetAPIURL string) *datasetAPISDK.Client {
+			return &datasetAPISDK.Client{}
+		}
+
 		funcDoGetHTTPServer := func(string, http.Handler) service.HTTPServer {
 			return serverMock
 		}
@@ -113,7 +118,7 @@ func TestRun(t *testing.T) {
 			})
 		})
 
-		Convey("Given that initialising Helthcheck returns an error", func() {
+		Convey("Given that initialising Healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetMongoDBFunc:     funcDoGetMongoDBOk,
 				DoGetHealthCheckFunc: funcDoGetHealthcheckErr,
@@ -134,6 +139,7 @@ func TestRun(t *testing.T) {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
 				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
 				DoGetHTTPServerFunc:              funcDoGetHTTPServer,
 				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
 			}
@@ -192,6 +198,7 @@ func TestRun(t *testing.T) {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
 				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
 				DoGetHTTPServerFunc:              funcDoGetFailingHTTPSerer,
 				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
 			}
