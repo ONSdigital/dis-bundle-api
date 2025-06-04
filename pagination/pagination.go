@@ -16,7 +16,7 @@ import (
 )
 
 // PaginatedHandler is a func type for an endpoint that returns a list of values that we want to paginate
-type PaginatedHandler func(w http.ResponseWriter, r *http.Request, limit int, offset int) (list interface{}, totalCount int, errBundles *models.Error)
+type PaginatedHandler[TItem any] func(w http.ResponseWriter, r *http.Request, limit int, offset int) (successResult *models.PaginationSuccessResult[TItem], errorResult *models.ErrorResult[models.Error])
 
 type PaginatedResponse struct {
 	Items                   interface{} `json:"items"`
@@ -92,7 +92,7 @@ func listLength(list interface{}) int {
 }
 
 // Paginate wraps a http endpoint to return a paginated list from the list returned by the provided function
-func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.ResponseWriter, r *http.Request) {
+func Paginate[TItem any](p *Paginator, paginatedHandler PaginatedHandler[TItem]) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		offset, limit, err := p.getPaginationParameters(r)
 		if err != nil {
@@ -109,13 +109,14 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
 			return
 		}
-		list, totalCount, errBundle := paginatedHandler(w, r, limit, offset)
-		if errBundle != nil {
-			utils.HandleBundleAPIErr(w, r, errBundle, http.StatusInternalServerError)
+
+		successResult, errorResult := paginatedHandler(w, r, limit, offset)
+		if errorResult != nil {
+			utils.HandleBundleAPIErr(w, r, errorResult.Error, errorResult.HTTPStatusCode)
 			return
 		}
 
-		renderedPage := renderPage(list, offset, limit, totalCount)
+		renderedPage := renderPage(successResult.Result.Items, offset, limit, successResult.Result.TotalCount)
 
 		returnPaginatedResults(w, r, renderedPage)
 	}

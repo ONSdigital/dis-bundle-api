@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 )
@@ -16,7 +17,7 @@ type Datastore struct {
 }
 
 type dataMongoDB interface {
-	ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error)
+	ListBundles(ctx context.Context, offset, limit int, filters *filters.Bundlefilters) (bundles []*models.Bundle, totalCount int, err error)
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
@@ -34,8 +35,8 @@ type Storer interface {
 	dataMongoDB
 }
 
-func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	return ds.Backend.ListBundles(ctx, offset, limit)
+func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int, filters *filters.Bundlefilters) ([]*models.Bundle, int, error) {
+	return ds.Backend.ListBundles(ctx, offset, limit, filters)
 }
 
 func (ds *Datastore) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
