@@ -24,14 +24,32 @@ var _ store.Storer = &StorerMock{}
 //			CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
 //				panic("mock out the CheckAllBundleContentsAreApproved method")
 //			},
+//			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+//				panic("mock out the CheckBundleExists method")
+//			},
+//			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error) {
+//				panic("mock out the CheckContentItemExistsByDatasetEditionVersion method")
+//			},
 //			CheckerFunc: func(ctx context.Context, state *healthcheck.CheckState) error {
 //				panic("mock out the Checker method")
 //			},
 //			CloseFunc: func(ctx context.Context) error {
 //				panic("mock out the Close method")
 //			},
+//			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+//				panic("mock out the CreateBundleEvent method")
+//			},
+//			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
+//				panic("mock out the CreateContentItem method")
+//			},
+//			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+//				panic("mock out the GetBundle method")
+//			},
 //			ListBundlesFunc: func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
+//			},
+//			UpdateBundleETagFunc: func(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
+//				panic("mock out the UpdateBundleETag method")
 //			},
 //		}
 //
@@ -43,14 +61,32 @@ type StorerMock struct {
 	// CheckAllBundleContentsAreApprovedFunc mocks the CheckAllBundleContentsAreApproved method.
 	CheckAllBundleContentsAreApprovedFunc func(ctx context.Context, bundleID string) (bool, error)
 
+	// CheckBundleExistsFunc mocks the CheckBundleExists method.
+	CheckBundleExistsFunc func(ctx context.Context, bundleID string) (bool, error)
+
+	// CheckContentItemExistsByDatasetEditionVersionFunc mocks the CheckContentItemExistsByDatasetEditionVersion method.
+	CheckContentItemExistsByDatasetEditionVersionFunc func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error)
+
 	// CheckerFunc mocks the Checker method.
 	CheckerFunc func(ctx context.Context, state *healthcheck.CheckState) error
 
 	// CloseFunc mocks the Close method.
 	CloseFunc func(ctx context.Context) error
 
+	// CreateBundleEventFunc mocks the CreateBundleEvent method.
+	CreateBundleEventFunc func(ctx context.Context, event *models.Event) error
+
+	// CreateContentItemFunc mocks the CreateContentItem method.
+	CreateContentItemFunc func(ctx context.Context, contentItem *models.ContentItem) error
+
+	// GetBundleFunc mocks the GetBundle method.
+	GetBundleFunc func(ctx context.Context, bundleID string) (*models.Bundle, error)
+
 	// ListBundlesFunc mocks the ListBundles method.
 	ListBundlesFunc func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error)
+
+	// UpdateBundleETagFunc mocks the UpdateBundleETag method.
+	UpdateBundleETagFunc func(ctx context.Context, bundleID string, email string) (*models.Bundle, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -60,6 +96,24 @@ type StorerMock struct {
 			Ctx context.Context
 			// BundleID is the bundleID argument value.
 			BundleID string
+		}
+		// CheckBundleExists holds details about calls to the CheckBundleExists method.
+		CheckBundleExists []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
+		// CheckContentItemExistsByDatasetEditionVersion holds details about calls to the CheckContentItemExistsByDatasetEditionVersion method.
+		CheckContentItemExistsByDatasetEditionVersion []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// DatasetID is the datasetID argument value.
+			DatasetID string
+			// EditionID is the editionID argument value.
+			EditionID string
+			// VersionID is the versionID argument value.
+			VersionID int
 		}
 		// Checker holds details about calls to the Checker method.
 		Checker []struct {
@@ -73,6 +127,27 @@ type StorerMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// CreateBundleEvent holds details about calls to the CreateBundleEvent method.
+		CreateBundleEvent []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Event is the event argument value.
+			Event *models.Event
+		}
+		// CreateContentItem holds details about calls to the CreateContentItem method.
+		CreateContentItem []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ContentItem is the contentItem argument value.
+			ContentItem *models.ContentItem
+		}
+		// GetBundle holds details about calls to the GetBundle method.
+		GetBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// ListBundles holds details about calls to the ListBundles method.
 		ListBundles []struct {
 			// Ctx is the ctx argument value.
@@ -82,11 +157,26 @@ type StorerMock struct {
 			// Limit is the limit argument value.
 			Limit int
 		}
+		// UpdateBundleETag holds details about calls to the UpdateBundleETag method.
+		UpdateBundleETag []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+			// Email is the email argument value.
+			Email string
+		}
 	}
-	lockCheckAllBundleContentsAreApproved sync.RWMutex
-	lockChecker                           sync.RWMutex
-	lockClose                             sync.RWMutex
-	lockListBundles                       sync.RWMutex
+	lockCheckAllBundleContentsAreApproved             sync.RWMutex
+	lockCheckBundleExists                             sync.RWMutex
+	lockCheckContentItemExistsByDatasetEditionVersion sync.RWMutex
+	lockChecker                                       sync.RWMutex
+	lockClose                                         sync.RWMutex
+	lockCreateBundleEvent                             sync.RWMutex
+	lockCreateContentItem                             sync.RWMutex
+	lockGetBundle                                     sync.RWMutex
+	lockListBundles                                   sync.RWMutex
+	lockUpdateBundleETag                              sync.RWMutex
 }
 
 // CheckAllBundleContentsAreApproved calls CheckAllBundleContentsAreApprovedFunc.
@@ -122,6 +212,86 @@ func (mock *StorerMock) CheckAllBundleContentsAreApprovedCalls() []struct {
 	mock.lockCheckAllBundleContentsAreApproved.RLock()
 	calls = mock.calls.CheckAllBundleContentsAreApproved
 	mock.lockCheckAllBundleContentsAreApproved.RUnlock()
+	return calls
+}
+
+// CheckBundleExists calls CheckBundleExistsFunc.
+func (mock *StorerMock) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
+	if mock.CheckBundleExistsFunc == nil {
+		panic("StorerMock.CheckBundleExistsFunc: method is nil but Storer.CheckBundleExists was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockCheckBundleExists.Lock()
+	mock.calls.CheckBundleExists = append(mock.calls.CheckBundleExists, callInfo)
+	mock.lockCheckBundleExists.Unlock()
+	return mock.CheckBundleExistsFunc(ctx, bundleID)
+}
+
+// CheckBundleExistsCalls gets all the calls that were made to CheckBundleExists.
+// Check the length with:
+//
+//	len(mockedStorer.CheckBundleExistsCalls())
+func (mock *StorerMock) CheckBundleExistsCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockCheckBundleExists.RLock()
+	calls = mock.calls.CheckBundleExists
+	mock.lockCheckBundleExists.RUnlock()
+	return calls
+}
+
+// CheckContentItemExistsByDatasetEditionVersion calls CheckContentItemExistsByDatasetEditionVersionFunc.
+func (mock *StorerMock) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error) {
+	if mock.CheckContentItemExistsByDatasetEditionVersionFunc == nil {
+		panic("StorerMock.CheckContentItemExistsByDatasetEditionVersionFunc: method is nil but Storer.CheckContentItemExistsByDatasetEditionVersion was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		DatasetID string
+		EditionID string
+		VersionID int
+	}{
+		Ctx:       ctx,
+		DatasetID: datasetID,
+		EditionID: editionID,
+		VersionID: versionID,
+	}
+	mock.lockCheckContentItemExistsByDatasetEditionVersion.Lock()
+	mock.calls.CheckContentItemExistsByDatasetEditionVersion = append(mock.calls.CheckContentItemExistsByDatasetEditionVersion, callInfo)
+	mock.lockCheckContentItemExistsByDatasetEditionVersion.Unlock()
+	return mock.CheckContentItemExistsByDatasetEditionVersionFunc(ctx, datasetID, editionID, versionID)
+}
+
+// CheckContentItemExistsByDatasetEditionVersionCalls gets all the calls that were made to CheckContentItemExistsByDatasetEditionVersion.
+// Check the length with:
+//
+//	len(mockedStorer.CheckContentItemExistsByDatasetEditionVersionCalls())
+func (mock *StorerMock) CheckContentItemExistsByDatasetEditionVersionCalls() []struct {
+	Ctx       context.Context
+	DatasetID string
+	EditionID string
+	VersionID int
+} {
+	var calls []struct {
+		Ctx       context.Context
+		DatasetID string
+		EditionID string
+		VersionID int
+	}
+	mock.lockCheckContentItemExistsByDatasetEditionVersion.RLock()
+	calls = mock.calls.CheckContentItemExistsByDatasetEditionVersion
+	mock.lockCheckContentItemExistsByDatasetEditionVersion.RUnlock()
 	return calls
 }
 
@@ -193,6 +363,114 @@ func (mock *StorerMock) CloseCalls() []struct {
 	return calls
 }
 
+// CreateBundleEvent calls CreateBundleEventFunc.
+func (mock *StorerMock) CreateBundleEvent(ctx context.Context, event *models.Event) error {
+	if mock.CreateBundleEventFunc == nil {
+		panic("StorerMock.CreateBundleEventFunc: method is nil but Storer.CreateBundleEvent was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Event *models.Event
+	}{
+		Ctx:   ctx,
+		Event: event,
+	}
+	mock.lockCreateBundleEvent.Lock()
+	mock.calls.CreateBundleEvent = append(mock.calls.CreateBundleEvent, callInfo)
+	mock.lockCreateBundleEvent.Unlock()
+	return mock.CreateBundleEventFunc(ctx, event)
+}
+
+// CreateBundleEventCalls gets all the calls that were made to CreateBundleEvent.
+// Check the length with:
+//
+//	len(mockedStorer.CreateBundleEventCalls())
+func (mock *StorerMock) CreateBundleEventCalls() []struct {
+	Ctx   context.Context
+	Event *models.Event
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Event *models.Event
+	}
+	mock.lockCreateBundleEvent.RLock()
+	calls = mock.calls.CreateBundleEvent
+	mock.lockCreateBundleEvent.RUnlock()
+	return calls
+}
+
+// CreateContentItem calls CreateContentItemFunc.
+func (mock *StorerMock) CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error {
+	if mock.CreateContentItemFunc == nil {
+		panic("StorerMock.CreateContentItemFunc: method is nil but Storer.CreateContentItem was just called")
+	}
+	callInfo := struct {
+		Ctx         context.Context
+		ContentItem *models.ContentItem
+	}{
+		Ctx:         ctx,
+		ContentItem: contentItem,
+	}
+	mock.lockCreateContentItem.Lock()
+	mock.calls.CreateContentItem = append(mock.calls.CreateContentItem, callInfo)
+	mock.lockCreateContentItem.Unlock()
+	return mock.CreateContentItemFunc(ctx, contentItem)
+}
+
+// CreateContentItemCalls gets all the calls that were made to CreateContentItem.
+// Check the length with:
+//
+//	len(mockedStorer.CreateContentItemCalls())
+func (mock *StorerMock) CreateContentItemCalls() []struct {
+	Ctx         context.Context
+	ContentItem *models.ContentItem
+} {
+	var calls []struct {
+		Ctx         context.Context
+		ContentItem *models.ContentItem
+	}
+	mock.lockCreateContentItem.RLock()
+	calls = mock.calls.CreateContentItem
+	mock.lockCreateContentItem.RUnlock()
+	return calls
+}
+
+// GetBundle calls GetBundleFunc.
+func (mock *StorerMock) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
+	if mock.GetBundleFunc == nil {
+		panic("StorerMock.GetBundleFunc: method is nil but Storer.GetBundle was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockGetBundle.Lock()
+	mock.calls.GetBundle = append(mock.calls.GetBundle, callInfo)
+	mock.lockGetBundle.Unlock()
+	return mock.GetBundleFunc(ctx, bundleID)
+}
+
+// GetBundleCalls gets all the calls that were made to GetBundle.
+// Check the length with:
+//
+//	len(mockedStorer.GetBundleCalls())
+func (mock *StorerMock) GetBundleCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockGetBundle.RLock()
+	calls = mock.calls.GetBundle
+	mock.lockGetBundle.RUnlock()
+	return calls
+}
+
 // ListBundles calls ListBundlesFunc.
 func (mock *StorerMock) ListBundles(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
 	if mock.ListBundlesFunc == nil {
@@ -230,5 +508,45 @@ func (mock *StorerMock) ListBundlesCalls() []struct {
 	mock.lockListBundles.RLock()
 	calls = mock.calls.ListBundles
 	mock.lockListBundles.RUnlock()
+	return calls
+}
+
+// UpdateBundleETag calls UpdateBundleETagFunc.
+func (mock *StorerMock) UpdateBundleETag(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
+	if mock.UpdateBundleETagFunc == nil {
+		panic("StorerMock.UpdateBundleETagFunc: method is nil but Storer.UpdateBundleETag was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+		Email    string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+		Email:    email,
+	}
+	mock.lockUpdateBundleETag.Lock()
+	mock.calls.UpdateBundleETag = append(mock.calls.UpdateBundleETag, callInfo)
+	mock.lockUpdateBundleETag.Unlock()
+	return mock.UpdateBundleETagFunc(ctx, bundleID, email)
+}
+
+// UpdateBundleETagCalls gets all the calls that were made to UpdateBundleETag.
+// Check the length with:
+//
+//	len(mockedStorer.UpdateBundleETagCalls())
+func (mock *StorerMock) UpdateBundleETagCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+	Email    string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+		Email    string
+	}
+	mock.lockUpdateBundleETag.RLock()
+	calls = mock.calls.UpdateBundleETag
+	mock.lockUpdateBundleETag.RUnlock()
 	return calls
 }

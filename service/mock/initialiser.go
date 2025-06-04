@@ -10,6 +10,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"net/http"
 	"sync"
 )
@@ -26,6 +27,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //		mockedInitialiser := &InitialiserMock{
 //			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
 //				panic("mock out the DoGetAuthorisationMiddleware method")
+//			},
+//			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) *datasetAPISDK.Client {
+//				panic("mock out the DoGetDatasetAPIClient method")
 //			},
 //			DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
 //				panic("mock out the DoGetHTTPServer method")
@@ -49,6 +53,9 @@ type InitialiserMock struct {
 	// DoGetAuthorisationMiddlewareFunc mocks the DoGetAuthorisationMiddleware method.
 	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error)
 
+	// DoGetDatasetAPIClientFunc mocks the DoGetDatasetAPIClient method.
+	DoGetDatasetAPIClientFunc func(datasetAPIURL string) *datasetAPISDK.Client
+
 	// DoGetHTTPServerFunc mocks the DoGetHTTPServer method.
 	DoGetHTTPServerFunc func(bindAddr string, router http.Handler) service.HTTPServer
 
@@ -69,6 +76,11 @@ type InitialiserMock struct {
 			Ctx context.Context
 			// AuthorisationConfig is the authorisationConfig argument value.
 			AuthorisationConfig *auth.Config
+		}
+		// DoGetDatasetAPIClient holds details about calls to the DoGetDatasetAPIClient method.
+		DoGetDatasetAPIClient []struct {
+			// DatasetAPIURL is the datasetAPIURL argument value.
+			DatasetAPIURL string
 		}
 		// DoGetHTTPServer holds details about calls to the DoGetHTTPServer method.
 		DoGetHTTPServer []struct {
@@ -104,6 +116,7 @@ type InitialiserMock struct {
 		}
 	}
 	lockDoGetAuthorisationMiddleware sync.RWMutex
+	lockDoGetDatasetAPIClient        sync.RWMutex
 	lockDoGetHTTPServer              sync.RWMutex
 	lockDoGetHealthCheck             sync.RWMutex
 	lockDoGetHealthClient            sync.RWMutex
@@ -143,6 +156,38 @@ func (mock *InitialiserMock) DoGetAuthorisationMiddlewareCalls() []struct {
 	mock.lockDoGetAuthorisationMiddleware.RLock()
 	calls = mock.calls.DoGetAuthorisationMiddleware
 	mock.lockDoGetAuthorisationMiddleware.RUnlock()
+	return calls
+}
+
+// DoGetDatasetAPIClient calls DoGetDatasetAPIClientFunc.
+func (mock *InitialiserMock) DoGetDatasetAPIClient(datasetAPIURL string) *datasetAPISDK.Client {
+	if mock.DoGetDatasetAPIClientFunc == nil {
+		panic("InitialiserMock.DoGetDatasetAPIClientFunc: method is nil but Initialiser.DoGetDatasetAPIClient was just called")
+	}
+	callInfo := struct {
+		DatasetAPIURL string
+	}{
+		DatasetAPIURL: datasetAPIURL,
+	}
+	mock.lockDoGetDatasetAPIClient.Lock()
+	mock.calls.DoGetDatasetAPIClient = append(mock.calls.DoGetDatasetAPIClient, callInfo)
+	mock.lockDoGetDatasetAPIClient.Unlock()
+	return mock.DoGetDatasetAPIClientFunc(datasetAPIURL)
+}
+
+// DoGetDatasetAPIClientCalls gets all the calls that were made to DoGetDatasetAPIClient.
+// Check the length with:
+//
+//	len(mockedInitialiser.DoGetDatasetAPIClientCalls())
+func (mock *InitialiserMock) DoGetDatasetAPIClientCalls() []struct {
+	DatasetAPIURL string
+} {
+	var calls []struct {
+		DatasetAPIURL string
+	}
+	mock.lockDoGetDatasetAPIClient.RLock()
+	calls = mock.calls.DoGetDatasetAPIClient
+	mock.lockDoGetDatasetAPIClient.RUnlock()
 	return calls
 }
 
