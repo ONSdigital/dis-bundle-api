@@ -21,6 +21,7 @@ var fullyPopulatedBundle = Bundle{
 	Title:         "Fully Populated Bundle",
 	UpdatedAt:     &today,
 	ManagedBy:     ManagedByWagtail,
+	ETag:          "f9226b8eb338ac139b1c39d2bb69f5abad8bea09",
 }
 
 var minimallyPopulatedBundle = Bundle{
@@ -29,6 +30,7 @@ var minimallyPopulatedBundle = Bundle{
 	PreviewTeams: &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 	Title:        "Minimally Populated Bundle",
 	ManagedBy:    ManagedByWagtail,
+	ETag:         "3c897c1081faa19bff0c20ffd1ca99cc54640f0e",
 }
 
 func TestCreateBundle_Success(t *testing.T) {
@@ -54,6 +56,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(bundle.Title, ShouldEqual, fullyPopulatedBundle.Title)
 				So(bundle.UpdatedAt.Equal(*fullyPopulatedBundle.UpdatedAt), ShouldBeTrue)
 				So(bundle.ManagedBy, ShouldEqual, fullyPopulatedBundle.ManagedBy)
+				So(bundle.ETag, ShouldNotBeEmpty)
 			})
 		})
 	})
@@ -129,7 +132,7 @@ func TestValidateBundle_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the missing fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "missing mandatory fields: [id bundle_type created_by.email last_updated_by.email preview_teams title managed_by]")
+				So(err.Error(), ShouldEqual, "missing mandatory fields: [id bundle_type created_by.email last_updated_by.email preview_teams title managed_by e_tag]")
 			})
 		})
 	})
