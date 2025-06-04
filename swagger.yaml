@@ -87,6 +87,13 @@ parameters:
     type: integer
     default: 0
     minimum: 0
+  publish_date:
+    name: publish_date
+    description: "Filter bundles by their scheduled publication date. Accepts an optional datetime value and returns all bundles where the scheduled_at field matches the specified datetime."
+    in: query
+    required: false
+    type: string
+    format: date-time
   bundle_state:
     required: true
     name: bundle_state
@@ -117,6 +124,7 @@ paths:
       parameters:
         - $ref: "#/parameters/limit"
         - $ref: "#/parameters/offset"
+        - $ref: "#/parameters/publish_date"
       produces:
         - "application/json"
       responses:
@@ -261,6 +269,8 @@ paths:
           $ref: "#/responses/ForbiddenError"
         404:
           $ref: "#/responses/NotFound"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/contents:
@@ -354,6 +364,8 @@ paths:
           $ref: "#/responses/ForbiddenError"
         404:
           $ref: "#/responses/NotFound"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/state:
@@ -386,6 +398,8 @@ paths:
               type: string
           schema:
             $ref: "#/definitions/Bundle"
+        400:
+          $ref: "#/responses/InvalidRequest"
         401:
           $ref: "#/responses/UnauthorisedError"
         403:
