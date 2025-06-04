@@ -53,7 +53,7 @@ func (m *Mongo) GetBundle(ctx context.Context, bundleID string) (*models.Bundle,
 }
 
 func buildGetBundleQuery(bundleID string) bson.M {
-	return bson.M{"_id": bundleID}
+	return bson.M{"id": bundleID}
 }
 
 // CreateBundle inserts a new bundle
@@ -62,7 +62,7 @@ func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 	bundle.CreatedAt = &now
 	collectionName := m.ActualCollectionName(config.BundlesCollection)
 
-	_, err := m.Connection.Collection(collectionName).Insert(ctx, bundle)
+	_, err := m.Connection.Collection(collectionName).InsertOne(ctx, bundle)
 
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 
 func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
 	collectionName := m.ActualCollectionName(config.BundlesCollection)
-	filter := bson.M{"_id": id}
+	filter := bson.M{"id": id}
 
 	updateData := bson.M{
 		"$set": bson.M{
@@ -100,14 +100,14 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 
 // DeleteBundle deletes a bundle by ID
 func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
-	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().Delete(ctx, bson.D{{Key: "_id", Value: id}}); err != nil {
+	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().Delete(ctx, bson.D{{Key: "id", Value: id}}); err != nil {
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 			return apierrors.ErrBundleNotFound
 		}
 		return err
 	}
 
-	log.Info(ctx, "bundle deleted", log.Data{"_id": id})
+	log.Info(ctx, "bundle deleted", log.Data{"id": id})
 	return nil
 }
 

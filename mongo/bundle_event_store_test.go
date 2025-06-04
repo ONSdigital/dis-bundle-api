@@ -65,7 +65,7 @@ func TestCreateBundleEvent_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupTestDataForEvents(ctx, mongodb)
@@ -85,7 +85,7 @@ func TestCreateBundleEvent_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupTestDataForEvents(ctx, mongodb)
