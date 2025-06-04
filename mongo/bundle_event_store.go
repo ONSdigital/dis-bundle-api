@@ -66,9 +66,9 @@ func buildListBundleEventsQuery(bundleID string, after, before *time.Time) (filt
 	return
 }
 
-// GetBundleEvent retrieves a single bundle event by ID
-func (m *Mongo) GetBundleEvent(ctx context.Context, eventID string) (*models.Event, error) {
-	filter := buildGetBundleEventQuery(eventID)
+// GetBundleEvent retrieves an event by Bundle ID
+func (m *Mongo) GetBundleEvent(ctx context.Context, bundleID string) (*models.Event, error) {
+	filter := buildGetBundleEventQuery(bundleID)
 
 	var result models.Event
 	err := m.Connection.Collection(m.ActualCollectionName(config.BundleEventsCollection)).
@@ -84,6 +84,6 @@ func (m *Mongo) GetBundleEvent(ctx context.Context, eventID string) (*models.Eve
 	return &result, nil
 }
 
-func buildGetBundleEventQuery(eventID string) bson.M {
-	return bson.M{"_id": eventID}
+func buildGetBundleEventQuery(bundleID string) bson.M {
+	return bson.M{"_id": bundleID}
 }

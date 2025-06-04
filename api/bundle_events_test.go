@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -34,7 +35,7 @@ func TestGetBundleEvents_Success(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events", nil)
+		req := httptest.NewRequest("GET", "/bundle-events", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
@@ -65,7 +66,7 @@ func TestGetBundleEvents_WithBundleFilter(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events?bundle=test-bundle", nil)
+		req := httptest.NewRequest("GET", "/bundle-events?bundle=test-bundle", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
@@ -103,7 +104,7 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events?after=2025-01-01T00:00:00Z&before=2025-12-31T23:59:59Z", nil)
+		req := httptest.NewRequest("GET", "/bundle-events?after=2025-01-01T00:00:00Z&before=2025-12-31T23:59:59Z", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {

@@ -30,7 +30,6 @@ func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit i
 
 func (s *StateMachineBundleAPI) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {
 	results, totalCount, err := s.Datastore.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
-
 	if err != nil {
 		return nil, 0, err
 	}

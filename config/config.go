@@ -57,11 +57,11 @@ func Get() (*Config, error) {
 		OTBatchTimeout:             5 * time.Second,
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
-		EnablePermissionsAuth:      true,
-		OtelEnabled:                false,
-		DefaultMaxLimit:            1000,
-		DefaultLimit:               20,
-		DefaultOffset:              0,
+
+		OtelEnabled:     false,
+		DefaultMaxLimit: 1000,
+		DefaultLimit:    20,
+		DefaultOffset:   0,
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",
