@@ -20,7 +20,6 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^there are no bundles$`, c.thereAreNoBundles)
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I am an admin user$`, c.adminJWTToken)
-	ctx.Step(`^there are no bundle events$`, c.thereAreNoBundleEvents)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
@@ -78,14 +77,6 @@ func (c *BundleComponent) putBundleInDatabase(ctx context.Context, collectionNam
 		return err
 	}
 	return nil
-}
-
-func (c *BundleComponent) thereAreNoBundleEvents() error {
-	ctx := context.Background()
-	bundleEventsCollection := c.MongoClient.ActualCollectionName("BundleEventsCollection")
-
-	_, err := c.MongoClient.Connection.Collection(bundleEventsCollection).DeleteMany(ctx, bson.M{})
-	return err
 }
 
 func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) error {
