@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/gofrs/uuid"
@@ -61,6 +62,26 @@ func CreateContentItem(reader io.Reader) (*ContentItem, error) {
 	contentItem.ID = id.String()
 
 	return &contentItem, nil
+}
+
+func CleanContentItem(contentItem *ContentItem) {
+	contentItem.ID = strings.TrimSpace(contentItem.ID)
+
+	contentItem.BundleID = strings.TrimSpace(contentItem.BundleID)
+
+	contentItem.ContentType = ContentType(strings.TrimSpace(contentItem.ContentType.String()))
+
+	contentItem.Metadata.DatasetID = strings.TrimSpace(contentItem.Metadata.DatasetID)
+	contentItem.Metadata.EditionID = strings.TrimSpace(contentItem.Metadata.EditionID)
+	contentItem.Metadata.Title = strings.TrimSpace(contentItem.Metadata.Title)
+
+	if contentItem.State != nil {
+		state := State(strings.TrimSpace(contentItem.State.String()))
+		contentItem.State = &state
+	}
+
+	contentItem.Links.Edit = strings.TrimSpace(contentItem.Links.Edit)
+	contentItem.Links.Preview = strings.TrimSpace(contentItem.Links.Preview)
 }
 
 func ValidateContentItem(contentItem *ContentItem) error {
@@ -128,6 +149,11 @@ func (ct ContentType) IsValid() bool {
 	}
 }
 
+// String returns the string value of the ContentType
+func (ct ContentType) String() string {
+	return string(ct)
+}
+
 // State enum represents the state of the content item
 type State string
 
@@ -145,4 +171,9 @@ func (s State) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// String returns the string value of the State
+func (s State) String() string {
+	return string(s)
 }
