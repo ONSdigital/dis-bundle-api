@@ -16,9 +16,5 @@ func (m *Mongo) CreateBundleEvent(ctx context.Context, event *models.Event) erro
 	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleEventsCollection)).
 		InsertOne(ctx, event)
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
