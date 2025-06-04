@@ -2,14 +2,15 @@ package mongo
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/config"
 	mim "github.com/ONSdigital/dp-mongodb-in-memory"
 	mongoDriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	"github.com/ONSdigital/log.go/v2/log"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // getTestMongoDB initializes a MongoDB connection for use in tests
@@ -53,7 +54,12 @@ func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName, collection
 	if err != nil {
 		return err
 	}
-	defer client.Disconnect(ctx)
+	defer func(client *mongo.Client, ctx context.Context) {
+		err := client.Disconnect(ctx)
+		if err != nil {
+			log.Error(ctx, "failed to disconnect mongo client", err)
+		}
+	}(client, ctx)
 
 	collection := client.Database(dbName).Collection(collectionName)
 
