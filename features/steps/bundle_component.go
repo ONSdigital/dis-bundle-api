@@ -49,6 +49,8 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		return nil, err
 	}
 
+	c.Config.EnablePermissionsAuth = true
+
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
 	fakePermissionsAPI := setupFakePermissionsAPI()
@@ -95,10 +97,17 @@ func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
 
 func getPermissionsBundle() *sdk.Bundle {
 	return &sdk.Bundle{
-		"bundles:read": { // role
+		"bundles:read": {
 			"groups/role-admin": { // group
 				{
 					ID: "1", // policy
+				},
+			},
+		},
+		"bundle-events:read": {
+			"groups/role-admin": { // group
+				{
+					ID: "2", // policy
 				},
 			},
 		},

@@ -57,6 +57,7 @@ func Get() (*Config, error) {
 		OTBatchTimeout:             5 * time.Second,
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
+		EnablePermissionsAuth:      true,
 		OtelEnabled:                false,
 		DefaultMaxLimit:            1000,
 		DefaultLimit:               20,

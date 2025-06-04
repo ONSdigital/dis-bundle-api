@@ -34,7 +34,7 @@ var (
 				VersionID: 1,
 			},
 		},
-		Bundle: &models.Bundle{
+		Bundle: &models.EventBundle{
 			ID:         "bundle123",
 			BundleType: models.BundleTypeManual,
 			CreatedBy: &models.User{

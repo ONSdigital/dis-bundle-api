@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -17,6 +18,7 @@ type Datastore struct {
 
 type dataMongoDB interface {
 	ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error)
+	ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error)
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
@@ -36,6 +38,10 @@ type Storer interface {
 
 func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
 	return ds.Backend.ListBundles(ctx, offset, limit)
+}
+
+func (ds *Datastore) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {
+	return ds.Backend.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
 }
 
 func (ds *Datastore) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
