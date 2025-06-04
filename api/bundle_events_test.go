@@ -129,7 +129,7 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events?after=invalid-date", nil)
+		req := httptest.NewRequest("GET", "/bundle-events?after=invalid-date", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
@@ -154,7 +154,7 @@ func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events?invalid=test", nil)
+		req := httptest.NewRequest("GET", "/bundle-events?invalid=test", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
@@ -184,7 +184,7 @@ func TestGetBundleEvents_InternalError(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events", nil)
+		req := httptest.NewRequest("GET", "/bundle-events", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
@@ -215,7 +215,7 @@ func TestGetBundleEvents_NoResults(t *testing.T) {
 			stateMachineBundleAPI: stateMachineBundleAPI,
 		}
 
-		req := httptest.NewRequest("GET", "/bundle-events", nil)
+		req := httptest.NewRequest("GET", "/bundle-events", http.NoBody)
 		w := httptest.NewRecorder()
 
 		Convey("When getBundleEvents is called", func() {
