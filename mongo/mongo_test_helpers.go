@@ -13,6 +13,14 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var (
+	collectionNames = []string{
+		"bundles",
+		"bundle_events",
+		"bundle_contents",
+	}
+)
+
 // getTestMongoDB initializes a MongoDB connection for use in tests
 func getTestMongoDB(ctx context.Context) (*Mongo, *mim.Server, error) {
 	mongoVersion := "4.4.8"
@@ -49,7 +57,7 @@ func getTestMongoDriverConfig(mongoServer *mim.Server, database string, collecti
 	}
 }
 
-func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName, collectionName string) error {
+func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName string, collectionNames []string) error {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mimServer.URI()))
 	if err != nil {
 		return err
@@ -61,16 +69,18 @@ func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName, collection
 		}
 	}(client, ctx)
 
-	collection := client.Database(dbName).Collection(collectionName)
+	for _, collectionName := range collectionNames {
+		collection := client.Database(dbName).Collection(collectionName)
 
-	indexModel := mongo.IndexModel{
-		Keys:    bson.M{"id": 1},
-		Options: options.Index().SetUnique(true),
-	}
+		indexModel := mongo.IndexModel{
+			Keys:    bson.M{"id": 1},
+			Options: options.Index().SetUnique(true),
+		}
 
-	_, err = collection.Indexes().CreateOne(ctx, indexModel)
-	if err != nil {
-		return err
+		_, err = collection.Indexes().CreateOne(ctx, indexModel)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -100,7 +100,7 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 
 // DeleteBundle deletes a bundle by ID
 func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
-	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().Delete(ctx, bson.D{{Key: "id", Value: id}}); err != nil {
+	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().DeleteOne(ctx, bson.D{{Key: "id", Value: id}}); err != nil {
 		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 			return apierrors.ErrBundleNotFound
 		}
