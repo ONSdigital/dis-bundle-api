@@ -29,8 +29,8 @@ func HandleBundleAPIErr(w http.ResponseWriter, r *http.Request, errInfo *models.
 }
 
 func HandleBundleAPIErrors(w http.ResponseWriter, r *http.Request, errInfos models.ErrorList, httpStatusCode int) {
-	for _, errInfo := range *errInfos.Errors {
-		validationErr := models.ValidateError(&errInfo)
+	for _, errInfo := range errInfos.Errors {
+		validationErr := models.ValidateError(errInfo)
 		if validationErr == nil {
 			continue
 		}

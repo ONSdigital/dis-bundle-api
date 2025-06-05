@@ -85,69 +85,15 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 }
 
 // ValidateBundle checks that the Bundle has all mandatory fields and valid values
-func ValidateBundle(bundle *Bundle) error {
-	missingFields, invalidFields := []string{}, []string{}
+func ValidateBundle(bundle *Bundle) []*Error {
+	var missingFields []*Error
+	var invalidFields []*Error
 
-	if bundle.ID == "" {
-		missingFields = append(missingFields, "id")
-	}
-
-	if bundle.BundleType == "" {
-		missingFields = append(missingFields, "bundle_type")
-	}
-
-	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
-		invalidFields = append(invalidFields, "bundle_type")
-	}
-
-	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
-		missingFields = append(missingFields, "created_by.email")
-	}
-
-	if bundle.LastUpdatedBy != nil && bundle.LastUpdatedBy.Email == "" {
-		missingFields = append(missingFields, "last_updated_by.email")
-	}
-
-	if len(*bundle.PreviewTeams) == 0 {
-		missingFields = append(missingFields, "preview_teams")
-	}
-
-	if bundle.State != nil && !bundle.State.IsValid() {
-		invalidFields = append(invalidFields, "state")
-	}
-
-	if bundle.Title == "" {
-		missingFields = append(missingFields, "title")
-	}
-
-	if bundle.ManagedBy == "" {
-		missingFields = append(missingFields, "managed_by")
-	}
-
-	if bundle.ManagedBy != "" && !bundle.ManagedBy.IsValid() {
-		invalidFields = append(invalidFields, "managed_by")
-	}
-
-	if len(missingFields) > 0 {
-		return fmt.Errorf("missing mandatory fields: %v", missingFields)
-	}
-
-	if len(invalidFields) > 0 {
-		return fmt.Errorf("invalid fields: %v", invalidFields)
-	}
-
-	return nil
-}
-
-func GetBundleErrors(bundle *Bundle) ErrorList {
-	var errorList ErrorList
-	var errs []Error
 	code := ErrInvalidParameters
-
 	if bundle.ID == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Bundle ID is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/id",
 			},
@@ -155,9 +101,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.BundleType == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Bundle type is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/bundle_type",
 			},
@@ -165,9 +111,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
-		errs = append(errs, Error{
+		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: fmt.Sprintf("Invalid bundle type: %s", bundle.BundleType),
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/bundle_type",
 			},
@@ -175,9 +121,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Created by email is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/created_by/email",
 			},
@@ -185,9 +131,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.LastUpdatedBy != nil && bundle.LastUpdatedBy.Email == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Last updated by email is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/last_updated_by/email",
 			},
@@ -195,9 +141,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if len(*bundle.PreviewTeams) == 0 {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "At least one preview team is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/preview_teams",
 			},
@@ -205,9 +151,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	} else {
 		for i, team := range *bundle.PreviewTeams {
 			if team.ID == "" {
-				errs = append(errs, Error{
+				missingFields = append(missingFields, &Error{
 					Code:        &code,
-					Description: fmt.Sprintf("Preview team ID is required at index %d", i),
+					Description: errs.ErrDescription,
 					Source: &Source{
 						Field: fmt.Sprintf("/preview_teams/%d", i),
 					},
@@ -217,9 +163,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.State != nil && !bundle.State.IsValid() {
-		errs = append(errs, Error{
+		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: fmt.Sprintf("Invalid bundle state: %s", bundle.State),
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/state",
 			},
@@ -227,9 +173,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.Title == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Title is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/title",
 			},
@@ -237,9 +183,9 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.ManagedBy == "" {
-		errs = append(errs, Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: "Managed by is required",
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/managed_by",
 			},
@@ -247,17 +193,24 @@ func GetBundleErrors(bundle *Bundle) ErrorList {
 	}
 
 	if bundle.ManagedBy != "" && !bundle.ManagedBy.IsValid() {
-		errs = append(errs, Error{
+		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: fmt.Sprintf("Invalid managed by value: %s", bundle.ManagedBy),
+			Description: errs.ErrDescription,
 			Source: &Source{
 				Field: "/managed_by",
 			},
 		})
 	}
 
-	errorList.Errors = &errs
-	return errorList
+	if len(missingFields) > 0 {
+		return missingFields
+	}
+
+	if len(invalidFields) > 0 {
+		return invalidFields
+	}
+
+	return nil
 }
 
 func generateEtag(bundle *Bundle) (string, error) {

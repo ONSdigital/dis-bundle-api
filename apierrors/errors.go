@@ -17,6 +17,11 @@ var (
 	ErrUnableToParseTime   = errors.New("failed to parse time from json body")
 )
 
+var (
+	ErrDescription              = "Unable to process request due to a malformed or invalid request body or query parameter."
+	ErrInternalErrorDescription = "An internal error occurred."
+)
+
 // Core errors for dis-bundle-api
 var (
 	// Generic Errors

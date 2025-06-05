@@ -17,7 +17,7 @@ type Error struct {
 
 // ErrorList represents a list of errors
 type ErrorList struct {
-	Errors *[]Error `bson:"errors,omitempty" json:"errors,omitempty"`
+	Errors []*Error `bson:"errors,omitempty" json:"errors,omitempty"`
 }
 
 // Source represents the details of which field or parameter the error relates to. Used to return validation errors to 4xx requests. Only one of the properties below can be returned in any single error.

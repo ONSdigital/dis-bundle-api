@@ -139,7 +139,13 @@ func TestValidateBundle_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the missing fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "missing mandatory fields: [id bundle_type created_by.email last_updated_by.email preview_teams title managed_by]")
+				So(err[0].Source.Field, ShouldEqual, "/id")
+				So(err[1].Source.Field, ShouldEqual, "/bundle_type")
+				So(err[2].Source.Field, ShouldEqual, "/created_by/email")
+				So(err[3].Source.Field, ShouldEqual, "/last_updated_by/email")
+				So(err[4].Source.Field, ShouldEqual, "/preview_teams")
+				So(err[5].Source.Field, ShouldEqual, "/title")
+				So(err[6].Source.Field, ShouldEqual, "/managed_by")
 			})
 		})
 	})
@@ -155,7 +161,9 @@ func TestValidateBundle_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the invalid fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "invalid fields: [bundle_type state managed_by]")
+				So(err[0].Source.Field, ShouldEqual, "/bundle_type")
+				So(err[1].Source.Field, ShouldEqual, "/state")
+				So(err[2].Source.Field, ShouldEqual, "/managed_by")
 			})
 		})
 	})
