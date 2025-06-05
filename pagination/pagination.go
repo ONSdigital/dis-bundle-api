@@ -47,7 +47,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if offsetParameter != "" {
 		logData["offset"] = offsetParameter
-		offset, err := strconv.Atoi(offsetParameter)
+		offset, err = strconv.Atoi(offsetParameter)
 		if err != nil || offset < 0 {
 			err = errors.New("invalid query parameter: offset")
 			log.Error(r.Context(), "invalid query parameter: offset", err, logData)

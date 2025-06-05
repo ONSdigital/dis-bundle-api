@@ -85,12 +85,16 @@ const (
 	JSONMarshalError        Code = "JSONMarshalError"
 	JSONUnmarshalError      Code = "JSONUnmarshalError"
 	WriteResponseError      Code = "WriteResponseError"
+	ErrInvalidParameters    Code = "ErrInvalidParameters"
+	NotFound                Code = "NotFound"
+	Unauthorised            Code = "Unauthorised"
+	InternalError           Code = "InternalError"
 )
 
 // IsValid validates that the Code is a valid enum value
 func (c Code) IsValid() bool {
 	switch c {
-	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, JSONMarshalError, JSONUnmarshalError, WriteResponseError:
+	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, JSONMarshalError, JSONUnmarshalError, WriteResponseError, ErrInvalidParameters, NotFound, Unauthorised, InternalError:
 		return true
 	default:
 		return false

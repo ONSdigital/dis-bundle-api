@@ -9,6 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	"sync"
+	"time"
 )
 
 // Ensure, that StorerMock does implement store.Storer.
@@ -30,6 +31,9 @@ var _ store.Storer = &StorerMock{}
 //			CloseFunc: func(ctx context.Context) error {
 //				panic("mock out the Close method")
 //			},
+//			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
+//				panic("mock out the ListBundleEvents method")
+//			},
 //			ListBundlesFunc: func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
 //			},
@@ -48,6 +52,9 @@ type StorerMock struct {
 
 	// CloseFunc mocks the Close method.
 	CloseFunc func(ctx context.Context) error
+
+	// ListBundleEventsFunc mocks the ListBundleEvents method.
+	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
 
 	// ListBundlesFunc mocks the ListBundles method.
 	ListBundlesFunc func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error)
@@ -73,6 +80,21 @@ type StorerMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// ListBundleEvents holds details about calls to the ListBundleEvents method.
+		ListBundleEvents []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Offset is the offset argument value.
+			Offset int
+			// Limit is the limit argument value.
+			Limit int
+			// BundleID is the bundleID argument value.
+			BundleID string
+			// After is the after argument value.
+			After *time.Time
+			// Before is the before argument value.
+			Before *time.Time
+		}
 		// ListBundles holds details about calls to the ListBundles method.
 		ListBundles []struct {
 			// Ctx is the ctx argument value.
@@ -86,6 +108,7 @@ type StorerMock struct {
 	lockCheckAllBundleContentsAreApproved sync.RWMutex
 	lockChecker                           sync.RWMutex
 	lockClose                             sync.RWMutex
+	lockListBundleEvents                  sync.RWMutex
 	lockListBundles                       sync.RWMutex
 }
 
@@ -190,6 +213,58 @@ func (mock *StorerMock) CloseCalls() []struct {
 	mock.lockClose.RLock()
 	calls = mock.calls.Close
 	mock.lockClose.RUnlock()
+	return calls
+}
+
+// ListBundleEvents calls ListBundleEventsFunc.
+func (mock *StorerMock) ListBundleEvents(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
+	if mock.ListBundleEventsFunc == nil {
+		panic("StorerMock.ListBundleEventsFunc: method is nil but Storer.ListBundleEvents was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Offset   int
+		Limit    int
+		BundleID string
+		After    *time.Time
+		Before   *time.Time
+	}{
+		Ctx:      ctx,
+		Offset:   offset,
+		Limit:    limit,
+		BundleID: bundleID,
+		After:    after,
+		Before:   before,
+	}
+	mock.lockListBundleEvents.Lock()
+	mock.calls.ListBundleEvents = append(mock.calls.ListBundleEvents, callInfo)
+	mock.lockListBundleEvents.Unlock()
+	return mock.ListBundleEventsFunc(ctx, offset, limit, bundleID, after, before)
+}
+
+// ListBundleEventsCalls gets all the calls that were made to ListBundleEvents.
+// Check the length with:
+//
+//	len(mockedStorer.ListBundleEventsCalls())
+func (mock *StorerMock) ListBundleEventsCalls() []struct {
+	Ctx      context.Context
+	Offset   int
+	Limit    int
+	BundleID string
+	After    *time.Time
+	Before   *time.Time
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Offset   int
+		Limit    int
+		BundleID string
+		After    *time.Time
+		Before   *time.Time
+	}
+	mock.lockListBundleEvents.RLock()
+	calls = mock.calls.ListBundleEvents
+	mock.lockListBundleEvents.RUnlock()
 	return calls
 }
 
