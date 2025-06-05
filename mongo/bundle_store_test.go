@@ -242,7 +242,7 @@ func TestCreateBundle_Failure(t *testing.T) {
 		cfg, err := config.Get()
 		So(err, ShouldBeNil)
 
-		err = SetupIndexes(ctx, mimServer, cfg.Database, cfg.Collections[config.BundlesCollection])
+		err = SetupIndexes(ctx, mimServer, cfg.Database, collectionNames)
 		So(err, ShouldBeNil)
 
 		Convey("When CreateBundle is called with an existing bundle ID", func() {
