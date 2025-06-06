@@ -30,3 +30,11 @@ func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit i
 func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
 	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
+
+func (s *StateMachineBundleAPI) GetBundleById(ctx context.Context, bundleId string) (*models.Bundle, error) {
+	results, err := s.Datastore.GetBundleById(ctx, bundleId)
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}

@@ -2,12 +2,14 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 
@@ -199,6 +201,117 @@ func TestGetBundles_Failure(t *testing.T) {
 			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
+			})
+		})
+	})
+}
+
+func TestGetBundleById_Success(t *testing.T) {
+	t.Parallel()
+
+	validBundle := &models.Bundle{
+		ID:         "valid-id",
+		Title:      "Test Bundle",
+		ETag:       "12345-etag",
+		ManagedBy:  models.ManagedByDataAdmin,
+		BundleType: models.BundleTypeManual,
+	}
+
+	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
+		Convey("When the bundle-id is valid", func() {
+			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
+			req = mux.SetURLVars(req, map[string]string{"bundle_id": "valid-id"})
+			rec := httptest.NewRecorder()
+
+			mockStore := &storetest.StorerMock{
+				GetBundleByIdFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+					return validBundle, nil
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should have status 200, ETag and Cache-Control headers", func() {
+				So(rec.Code, ShouldEqual, http.StatusOK)
+				So(rec.Header().Get("ETag"), ShouldEqual, validBundle.ETag)
+				So(rec.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+
+				var response models.Bundle
+				err := json.Unmarshal(rec.Body.Bytes(), &response)
+				So(err, ShouldBeNil)
+				So(response.ID, ShouldEqual, validBundle.ID)
+			})
+		})
+	})
+}
+
+func TestGetBundleById_Failure(t *testing.T) {
+	t.Parallel()
+	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
+		ctx := context.Background()
+		Convey("When the bundle-id is invalid", func() {
+			req := httptest.NewRequest(http.MethodGet, "/bundles/invalid-id", http.NoBody)
+			req = mux.SetURLVars(req, map[string]string{"bundle_id": "invalid-id"})
+			rec := httptest.NewRecorder()
+
+			mockStore := &storetest.StorerMock{
+				GetBundleByIdFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+					return nil, apierrors.ErrBundleNotFound
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be 404 with 'The requested resource does not exist'", func() {
+				So(rec.Code, ShouldEqual, http.StatusNotFound)
+				expected := `{"code":"not_found","description":"The requested resource does not exist"}` + "\n"
+				So(rec.Body.String(), ShouldEqual, expected)
+			})
+		})
+
+		Convey("When the request causes an internal error", func() {
+			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
+			req = mux.SetURLVars(req, map[string]string{"bundle_id": "valid-id"})
+			rec := httptest.NewRecorder()
+
+			mockStore := &storetest.StorerMock{
+				GetBundleByIdFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+					return nil, errors.New("unexpected failure")
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be 500 with 'An internal error occurred'", func() {
+				So(rec.Code, ShouldEqual, http.StatusInternalServerError)
+				expected := `{"code":"internal_server_error","description":"An internal error occurred"}` + "\n"
+				So(rec.Body.String(), ShouldEqual, expected)
+			})
+		})
+
+		Convey("When no valid authentication token is provided", func() {
+			req := httptest.NewRequest(http.MethodGet, "/bundles/protected-id", http.NoBody)
+			req = mux.SetURLVars(req, map[string]string{"bundle_id": "protected-id"})
+			rec := httptest.NewRecorder()
+
+			authMiddleware := &authorisation.MiddlewareMock{
+				RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+					return func(w http.ResponseWriter, r *http.Request) {
+						http.Error(w, `{"code":"Unauthorised","description":"Access denied."}`, http.StatusUnauthorized)
+					}
+				},
+			}
+
+			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware)
+			bundleAPI.Router.HandleFunc("/bundles/{bundle_id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should be 401 with 'Access denied.'", func() {
+				So(rec.Code, ShouldEqual, http.StatusUnauthorized)
+				So(rec.Body.String(), ShouldEqual, `{"code":"Unauthorised","description":"Access denied."}`+"\n")
 			})
 		})
 	})

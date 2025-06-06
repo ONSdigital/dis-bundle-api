@@ -1,11 +1,11 @@
-Feature: List Bundles functionality - GET /Bundles
+Feature: Bundle API
 
     Background:
         Given I have these bundles:
             """
             [
                 {
-                    "id": "6835899f001ff18689225631",
+                    "id": "bundle-1",
                     "bundle_type": "SCHEDULED",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -26,7 +26,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "managed_by": "WAGTAIL"
                 },
                 {
-                    "id": "6835899f001ff1868922562c",
+                    "id": "bundle-2",
                     "bundle_type": "MANUAL",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -46,7 +46,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "managed_by": "WAGTAIL"
                 },
                 {
-                    "id": "6835899f001ff1868922562e",
+                    "id": "bundle-3",
                     "bundle_type": "MANUAL",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -78,7 +78,7 @@ Feature: List Bundles functionality - GET /Bundles
             {
                 "items": [
                     {
-                        "id": "6835899f001ff1868922562e",
+                        "id": "bundle-3",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -98,7 +98,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "managed_by": "WAGTAIL"
                     },
                     {
-                        "id": "6835899f001ff1868922562c",
+                        "id": "bundle-2",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -118,7 +118,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "managed_by": "WAGTAIL"
                     },
                     {
-                        "id": "6835899f001ff18689225631",
+                        "id": "bundle-1",
                         "bundle_type": "SCHEDULED",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -158,7 +158,7 @@ Feature: List Bundles functionality - GET /Bundles
             {
                 "items": [
                     {
-                        "id": "6835899f001ff1868922562e",
+                        "id": "bundle-3",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -220,5 +220,124 @@ Feature: List Bundles functionality - GET /Bundles
         When I GET "/bundles"
         Then the HTTP status code should be "401"
         And the response body should be empty
+
+    Scenario: GET /bundles/{bundle_id}
+        Given I am an admin user
+        When I GET "/bundles/bundle-1"
+        Then the HTTP status code should be "200"
+        And I should receive the following JSON response:
+            """
+            {
+                "id": "bundle-1",
+                "bundle_type": "SCHEDULED",
+                "created_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "created_at": "2025-04-03T11:25:00Z",
+                "last_updated_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "preview_teams": [
+                    {
+                        "id": "890m231k-98df-11ec-b909-0242ac120002"
+                    }
+                ],
+                "scheduled_at": "2025-05-05T08:00:00Z",
+                "state": "DRAFT",
+                "title": "bundle-1",
+                "updated_at": "2025-04-03T11:25:00Z",
+                "managed_by": "WAGTAIL"
+            }
+            """
+
+
+# Scenario: GET /bundles/{bundle_id} with a valid ID
+#     Given I am an admin user
+#     And I have these bundles:
+#         """
+#         [
+#             {
+#                 "id": "bundle-1",
+#                 "bundle_type": "SCHEDULED",
+#                 "created_by": {
+#                     "email": "publisher@ons.gov.uk"
+#                 },
+#                 "created_at": "2025-04-03T11:25:00Z",
+#                 "last_updated_by": {
+#                     "email": "publisher@ons.gov.uk"
+#                 },
+#                 "preview_teams": [
+#                     {
+#                         "id": "890m231k-98df-11ec-b909-0242ac120002"
+#                     }
+#                 ],
+#                 "scheduled_at": "2025-05-05T08:00:00Z",
+#                 "state": "DRAFT",
+#                 "title": "bundle-1",
+#                 "updated_at": "2025-04-03T11:25:00Z",
+#                 "managed_by": "WAGTAIL"
+#             }
+#         ]
+#         """
+#     When I GET "/bundles/bundle-1"
+#     Then the HTTP status code should be "200"
+#     And the response header "ETag" should not be empty
+#     And the response header "Cache-Control" should be "no-store"
+#     And I should receive the following JSON response:
+#         """
+#         {
+#             "id": "bundle-1",
+#             "bundle_type": "SCHEDULED",
+#             "created_by": {
+#                 "email": "publisher@ons.gov.uk"
+#             },
+#             "created_at": "2025-04-03T11:25:00Z",
+#             "last_updated_by": {
+#                 "email": "publisher@ons.gov.uk"
+#             },
+#             "preview_teams": [
+#                 {
+#                     "id": "890m231k-98df-11ec-b909-0242ac120002"
+#                 }
+#             ],
+#             "scheduled_at": "2025-05-05T08:00:00Z",
+#             "state": "DRAFT",
+#             "title": "bundle-1",
+#             "updated_at": "2025-04-03T11:25:00Z",
+#             "managed_by": "WAGTAIL"
+#         }
+#         """
+
+# Scenario: GET /bundles/{bundle_id} with an invalid ID
+#     Given I am an admin user
+#     When I GET "/bundles/invalid-id"
+#     Then the HTTP status code should be "404"
+#     And I should receive the following JSON response:
+#         """
+#         {
+#             "code": "not_found",
+#             "description": "The requested resource does not exist"
+#         }
+#         """
+
+# Scenario: GET /bundles/{bundle_id} with no authentication
+#     Given I am not authenticated
+#     When I GET "/bundles/bundle-1"
+#     Then the HTTP status code should be "401"
+#     And the response body should be empty
+
+# Scenario: GET /bundles/{bundle_id} when the service has an internal error
+#     Given I am an admin user
+#     And the service is configured to simulate an internal error on GetBundleById
+#     When I GET "/bundles/bundle-1"
+#     Then the HTTP status code should be "500"
+#     And I should receive the following JSON response:
+#         """
+#         {
+#             "code": "internal_server_error",
+#             "description": "An internal error occurred"
+#         }
+#         """
+
 
 

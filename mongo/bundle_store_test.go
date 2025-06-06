@@ -136,7 +136,7 @@ func TestGetBundle_Success(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When GetBundle is called with an existing bundle ID", func() {
-			bundle, err := mongodb.GetBundle(ctx, "bundle1")
+			bundle, err := mongodb.GetBundleById(ctx, "bundle1")
 
 			Convey("Then it should return the correct bundle without error", func() {
 				So(err, ShouldBeNil)
@@ -157,7 +157,7 @@ func TestGetBundle_Failure(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When GetBundle is called with a non-existent bundle ID", func() {
-			_, err := mongodb.GetBundle(ctx, "non-existent-id")
+			_, err := mongodb.GetBundleById(ctx, "non-existent-id")
 
 			Convey("Then it should return a bundle not found error", func() {
 				So(err, ShouldEqual, apierrors.ErrBundleNotFound)
@@ -166,7 +166,7 @@ func TestGetBundle_Failure(t *testing.T) {
 
 		Convey("When GetBundle is called and the connection fails", func() {
 			mongodb.Connection.Close(ctx)
-			_, err := mongodb.GetBundle(ctx, "bundle1")
+			_, err := mongodb.GetBundleById(ctx, "bundle1")
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
@@ -216,7 +216,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			Convey("Then it should create the bundle without error", func() {
 				So(err, ShouldBeNil)
 
-				returnedBundle, err := mongodb.GetBundle(ctx, "NewBundle")
+				returnedBundle, err := mongodb.GetBundleById(ctx, "NewBundle")
 				So(err, ShouldBeNil)
 				So(returnedBundle.ID, ShouldEqual, "NewBundle")
 				So(returnedBundle.BundleType, ShouldEqual, models.BundleTypeManual)
@@ -341,7 +341,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 			Convey("Then it should delete the bundle without error", func() {
 				So(err, ShouldBeNil)
 
-				_, err := mongodb.GetBundle(ctx, "bundle1")
+				_, err := mongodb.GetBundleById(ctx, "bundle1")
 				So(err, ShouldEqual, apierrors.ErrBundleNotFound)
 			})
 		})
