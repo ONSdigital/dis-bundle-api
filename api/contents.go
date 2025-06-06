@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
@@ -32,7 +33,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Failed to check if bundle exists",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 	if !bundleExists {
@@ -42,7 +43,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Bundle not found",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusNotFound)
+		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		return
 	}
 
@@ -52,25 +53,20 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeBadRequest
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+			Description: apierrors.ErrDescriptionMalformedRequest,
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 		return
 	}
 
 	contentItem.BundleID = bundleID
 	models.CleanContentItem(contentItem)
 
-	err = models.ValidateContentItem(contentItem)
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: content item validation failed", err, logdata)
-		code := models.CodeBadRequest
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: "Content item validation failed",
-			Source:      &models.Source{Field: err.Error()},
-		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+	validationErrs := models.ValidateContentItem(contentItem)
+	if len(validationErrs) > 0 {
+		logdata["validation_errors"] = validationErrs
+		log.Error(ctx, "postBundleContents endpoint: content item validation failed", apierrors.ErrInvalidBody, logdata)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, validationErrs...)
 		return
 	}
 
@@ -88,9 +84,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "version not found",
+				Description: "dataset version not found",
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusNotFound)
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 			return
 		} else {
 			log.Error(ctx, "postBundleContents endpoint: failed to get version from dataset API", err, logdata)
@@ -99,7 +95,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 				Code:        &code,
 				Description: "Failed to get version from dataset API",
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 			return
 		}
 	}
@@ -112,7 +108,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Failed to check if content item exists",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
@@ -123,19 +119,31 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Content item already exists for the given dataset, edition, and version",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusConflict)
+		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
 	}
 
 	err = api.stateMachineBundleAPI.CreateContentItem(ctx, contentItem)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to create content item in the datastore", err, logdata)
+		log.Error(ctx, "postBundleContents endpoint: failed to create content item in database", err, logdata)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: "Failed to create content item in the datastore",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	JWTEntityData, err := api.authMiddleware.Parse(r.Header.Get("Authorization"))
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to get user identity from JWT",
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
@@ -143,8 +151,8 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
-			ID:    "placeholder-user-id",
-			Email: "placeholder-email",
+			ID:    JWTEntityData.UserID,
+			Email: JWTEntityData.UserID,
 		},
 		Action:      models.ActionCreate,
 		Resource:    location,
@@ -157,38 +165,25 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Event validation failed",
-			Source:      &models.Source{Field: err.Error()},
+			Description: "failed to validate event",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
 	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to create bundle event", err, logdata)
+		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logdata)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to create bundle event",
+			Description: "Failed to create event",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
-	userEmail, err := api.authMiddleware.Parse(r.Header.Get("Authorization"))
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to parse user email from authorization header", err, logdata)
-		code := models.CodeInternalServerError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: "Failed to parse user email from authorization header",
-		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
-		return
-	}
-
-	bundleUpdate, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, userEmail.UserID)
+	bundleUpdate, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, JWTEntityData.UserID)
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to update bundle ETag", err, logdata)
 		code := models.CodeInternalServerError
@@ -196,7 +191,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Failed to update bundle ETag",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
@@ -208,7 +203,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			Code:        &code,
 			Description: "Failed to marshal content item to JSON",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
