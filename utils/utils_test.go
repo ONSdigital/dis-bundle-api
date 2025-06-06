@@ -35,16 +35,16 @@ func TestHandleBundleAPIErr_Success(t *testing.T) {
 		}
 
 		Convey("When HandleBundleAPIErr is called", func() {
-			HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+			HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 
 			Convey("Then it should write the correct response", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
 
-				var response models.Error
+				var response models.ErrorList
 				err := json.NewDecoder(w.Body).Decode(&response)
 				So(err, ShouldBeNil)
-				So(&response, ShouldResemble, errInfo)
+				So(&response, ShouldResemble, &models.ErrorList{Errors: []*models.Error{errInfo}})
 			})
 		})
 	})
@@ -56,17 +56,17 @@ func TestHandleBundleAPIErr_Failure(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/test", http.NoBody)
 
 		Convey("When HandleBundleAPIErr is called", func() {
-			HandleBundleAPIErr(w, r, nil, http.StatusBadRequest)
+			HandleBundleAPIErr(w, r, http.StatusBadRequest, nil)
 
 			Convey("Then it should return an internal server error", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
 
-				var response models.Error
+				var response models.ErrorList
 				err := json.NewDecoder(w.Body).Decode(&response)
 				So(err, ShouldBeNil)
-				So(response.Code.String(), ShouldEqual, models.CodeInternalServerError.String())
-				So(response.Description, ShouldEqual, "Failed to process the request due to an internal error")
+				So(response.Errors[0].Code.String(), ShouldEqual, models.CodeInternalServerError.String())
+				So(response.Errors[0].Description, ShouldEqual, "Failed to process the request due to an internal error")
 			})
 		})
 	})
@@ -82,7 +82,7 @@ func TestHandleBundleAPIErr_Failure(t *testing.T) {
 		Convey("When the response writer fails", func() {
 			errorWriter := &errorWriter{ResponseWriter: w}
 
-			HandleBundleAPIErr(errorWriter, r, errInfo, http.StatusBadRequest)
+			HandleBundleAPIErr(errorWriter, r, http.StatusBadRequest, errInfo)
 
 			Convey("Then it should log the write error", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
