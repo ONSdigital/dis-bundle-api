@@ -152,7 +152,7 @@ func TestCheckAllBundleContentsAreApproved_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -182,7 +182,7 @@ func TestCheckAllBundleContentsAreApproved_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
