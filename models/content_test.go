@@ -222,7 +222,12 @@ func TestValidateContentItem_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the missing fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "missing mandatory fields: [bundle_id content_type metadata.dataset_id metadata.edition_id links.edit links.preview]")
+				So(err[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(err[1].Source.Field, ShouldEqual, "/content_type")
+				So(err[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(err[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(err[4].Source.Field, ShouldEqual, "/links/edit")
+				So(err[5].Source.Field, ShouldEqual, "/links/preview")
 			})
 		})
 	})
@@ -238,7 +243,9 @@ func TestValidateContentItem_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the invalid fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "invalid fields: [content_type metadata.version_id state]")
+				So(err[0].Source.Field, ShouldEqual, "/content_type")
+				So(err[1].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(err[2].Source.Field, ShouldEqual, "/state")
 			})
 		})
 	})

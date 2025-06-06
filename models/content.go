@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 
@@ -84,48 +83,54 @@ func CleanContentItem(contentItem *ContentItem) {
 	contentItem.Links.Preview = strings.TrimSpace(contentItem.Links.Preview)
 }
 
-func ValidateContentItem(contentItem *ContentItem) error {
-	missingFields, invalidFields := []string{}, []string{}
+func ValidateContentItem(contentItem *ContentItem) []*Error {
+	var (
+		missingFields = []*Error{}
+		invalidFields = []*Error{}
+	)
+
+	codeMissingParameters := CodeMissingParameters
+	codeInvalidParameters := CodeInvalidParameters
 
 	if contentItem.BundleID == "" {
-		missingFields = append(missingFields, "bundle_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/bundle_id"}})
 	}
 
 	if contentItem.ContentType == "" {
-		missingFields = append(missingFields, "content_type")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
 	}
 
 	if !contentItem.ContentType.IsValid() {
-		invalidFields = append(invalidFields, "content_type")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
 	}
 
 	if contentItem.Metadata.DatasetID == "" {
-		missingFields = append(missingFields, "metadata.dataset_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/dataset_id"}})
 	}
 	if contentItem.Metadata.EditionID == "" {
-		missingFields = append(missingFields, "metadata.edition_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/edition_id"}})
 	}
 	if contentItem.Metadata.VersionID < 1 {
-		invalidFields = append(invalidFields, "metadata.version_id")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/version_id"}})
 	}
 
 	if contentItem.State != nil && !contentItem.State.IsValid() {
-		invalidFields = append(invalidFields, "state")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/state"}})
 	}
 
 	if contentItem.Links.Edit == "" {
-		missingFields = append(missingFields, "links.edit")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/links/edit"}})
 	}
 	if contentItem.Links.Preview == "" {
-		missingFields = append(missingFields, "links.preview")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/links/preview"}})
 	}
 
 	if len(missingFields) > 0 {
-		return fmt.Errorf("missing mandatory fields: %v", missingFields)
+		return missingFields
 	}
 
 	if len(invalidFields) > 0 {
-		return fmt.Errorf("invalid fields: %v", invalidFields)
+		return invalidFields
 	}
 
 	return nil

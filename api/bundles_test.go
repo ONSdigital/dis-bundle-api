@@ -15,6 +15,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	authorisation "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -71,7 +72,8 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 		Datastore:    datastore,
 		StateMachine: stateMachine,
 	}
-	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, newAuthMiddlwareMock())
+	datasetAPISDK := &datasetAPISDK.Client{}
+	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, datasetAPISDK, newAuthMiddlwareMock())
 }
 
 func TestGetBundles_Success(t *testing.T) {
@@ -198,7 +200,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldEqual, `{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}`+"\n")
+				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}]}`+"\n")
 			})
 		})
 	})
