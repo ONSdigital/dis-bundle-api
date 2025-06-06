@@ -32,6 +32,7 @@ func (m *Mongo) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID 
 	return true, nil
 }
 
+// CheckContentItemExistsByDatasetEditionVersion checks if a content item exists with the specified dataset, edition, and version
 func (m *Mongo) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
 	filter := bson.M{
 		"metadata.dataset_id": datasetID,

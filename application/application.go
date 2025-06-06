@@ -20,11 +20,7 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineB
 }
 
 func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit)
-	if err != nil {
-		return nil, 0, err
-	}
-	return results, totalCount, nil
+	return s.Datastore.ListBundles(ctx, offset, limit)
 }
 
 func (s *StateMachineBundleAPI) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
