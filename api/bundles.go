@@ -25,16 +25,16 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 	return bundles, totalCount, nil
 }
 
-func (api *BundleAPI) getBundleById(w http.ResponseWriter, r *http.Request) {
+func (api *BundleAPI) getBundleByID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleId := vars["bundle_id"]
-	logData := log.Data{"bundle_id": bundleId}
+	bundleID := vars["bundle_id"]
+	logData := log.Data{"bundle_id": bundleID}
 
-	bundles, err := api.stateMachineBundleAPI.GetBundleById(ctx, bundleId)
+	bundles, err := api.stateMachineBundleAPI.GetBundleByID(ctx, bundleID)
 	if err != nil {
 		if err == apierrors.ErrBundleNotFound {
-			log.Error(ctx, "getBundleById endpoint: bundle id not found", err, logData)
+			log.Error(ctx, "getBundleByID endpoint: bundle id not found", err, logData)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,

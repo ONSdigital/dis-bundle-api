@@ -31,8 +31,8 @@ func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Co
 	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
 
-func (s *StateMachineBundleAPI) GetBundleById(ctx context.Context, bundleId string) (*models.Bundle, error) {
-	results, err := s.Datastore.GetBundleById(ctx, bundleId)
+func (s *StateMachineBundleAPI) GetBundleByID(ctx context.Context, bundleID string) (*models.Bundle, error) {
+	results, err := s.Datastore.GetBundleByID(ctx, bundleID)
 	if err != nil {
 		return nil, err
 	}

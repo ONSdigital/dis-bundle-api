@@ -36,7 +36,7 @@ func buildListBundlesQuery() (filter, sort bson.M) {
 }
 
 // GetBundle retrieves a single bundle by ID
-func (m *Mongo) GetBundleById(ctx context.Context, bundleID string) (*models.Bundle, error) {
+func (m *Mongo) GetBundleByID(ctx context.Context, bundleID string) (*models.Bundle, error) {
 	filter := buildGetBundleQuery(bundleID)
 
 	var result models.Bundle
@@ -95,7 +95,7 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 	}
 
 	// Re-fetch updated bundle to return full latest version
-	return m.GetBundleById(ctx, id)
+	return m.GetBundleByID(ctx, id)
 }
 
 // DeleteBundle deletes a bundle by ID

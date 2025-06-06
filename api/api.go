@@ -38,7 +38,7 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 
 	api.get(
 		"/bundles/{bundle_id}",
-		authMiddleware.Require("bundles:read", api.getBundleById),
+		authMiddleware.Require("bundles:read", api.getBundleByID),
 	)
 
 	return api
