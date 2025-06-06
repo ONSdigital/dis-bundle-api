@@ -11,7 +11,7 @@ import (
 
 // Bundle represents the response body when retrieving a bundle
 type Bundle struct {
-	ID            string         `bson:"id"                        json:"id"`
+	ID            string         `bson:"id"                       json:"id"`
 	BundleType    BundleType     `bson:"bundle_type"               json:"bundle_type"`
 	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
 	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
