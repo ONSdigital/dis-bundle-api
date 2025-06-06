@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
-	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
@@ -241,10 +240,7 @@ func TestCreateBundle_Failure(t *testing.T) {
 		err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		cfg, err := config.Get()
-		So(err, ShouldBeNil)
-
-		err = SetupIndexes(ctx, mimServer, cfg.Database, collectionNames)
+		err = SetupIndexes(ctx, mimServer)
 		So(err, ShouldBeNil)
 
 		Convey("When CreateBundle is called with an existing bundle ID", func() {
@@ -338,7 +334,7 @@ func TestUpdateBundleETag_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -364,7 +360,7 @@ func TestUpdateBundleETag_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -437,7 +433,7 @@ func TestCheckBundleExists_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -467,7 +463,7 @@ func TestCheckBundleExists_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)

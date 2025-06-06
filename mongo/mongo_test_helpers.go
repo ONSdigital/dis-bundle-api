@@ -57,7 +57,7 @@ func getTestMongoDriverConfig(mongoServer *mim.Server, database string, collecti
 	}
 }
 
-func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName string, collectionNames []string) error {
+func SetupIndexes(ctx context.Context, mimServer *mim.Server) error {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mimServer.URI()))
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func SetupIndexes(ctx context.Context, mimServer *mim.Server, dbName string, col
 	}(client, ctx)
 
 	for _, collectionName := range collectionNames {
-		collection := client.Database(dbName).Collection(collectionName)
+		collection := client.Database("bundles").Collection(collectionName)
 
 		indexModel := mongo.IndexModel{
 			Keys:    bson.M{"id": 1},

@@ -119,7 +119,7 @@ func (m *Mongo) UpdateBundleETag(ctx context.Context, bundleID, email string) (*
 
 	etag := dpresponse.GenerateETag(bundleUpdateJSON, false)
 
-	filter := bson.M{"_id": bundleID}
+	filter := bson.M{"id": bundleID}
 
 	updateData := bson.M{
 		"$set": bson.M{
@@ -152,7 +152,7 @@ func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
 
 // CheckBundleExists checks if a bundle exists by ID
 func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
-	filter := bson.M{"_id": bundleID}
+	filter := bson.M{"id": bundleID}
 	count, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Count(ctx, filter)
 	if err != nil {
 		return false, err

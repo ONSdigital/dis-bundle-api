@@ -75,7 +75,7 @@ func TestCreateContentItem_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -113,7 +113,10 @@ func TestCreateContentItem_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, minServer, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = SetupIndexes(ctx, minServer)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -204,7 +207,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -234,7 +237,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
