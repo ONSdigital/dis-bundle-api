@@ -47,7 +47,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if offsetParameter != "" {
 		logData["offset"] = offsetParameter
-		offset, err := strconv.Atoi(offsetParameter)
+		offset, err = strconv.Atoi(offsetParameter)
 		if err != nil || offset < 0 {
 			err = errors.New("invalid query parameter: offset")
 			log.Error(r.Context(), "invalid query parameter: offset", err, logData)
@@ -71,7 +71,8 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 		log.Error(r.Context(), "limit is greater than the maximum allowed", err, logData)
 		return 0, 0, err
 	}
-	return offset, limit, err
+
+	return offset, limit, nil
 }
 
 func renderPage(list interface{}, offset, limit, totalCount int) PaginatedResponse {
