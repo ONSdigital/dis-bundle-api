@@ -38,7 +38,7 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 
 	api.get(
 		"/bundles/{bundle_id}",
-		authMiddleware.Require("bundles:read", api.getBundleByID),
+		authMiddleware.Require("bundles:read", api.getBundle),
 	)
 
 	return api
@@ -47,9 +47,4 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 // get registers a GET http.HandlerFunc.
 func (api *BundleAPI) get(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodGet)
-}
-
-func setMainHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
 }

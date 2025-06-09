@@ -25,7 +25,7 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 	return bundles, totalCount, nil
 }
 
-func (api *BundleAPI) getBundleByID(w http.ResponseWriter, r *http.Request) {
+func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
 	bundleID := vars["bundle_id"]
@@ -53,14 +53,14 @@ func (api *BundleAPI) getBundleByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setMainHeaders(w)
-	if bundles.ETag != "" {
-		dpresponse.SetETag(w, bundles.ETag)
-	}
+	// Set the required headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	dpresponse.SetETag(w, bundles.ETag)
 
-	versionBytes, err := json.Marshal(bundles)
+	bundleBytes, err := json.Marshal(bundles)
 	if err != nil {
-		log.Error(ctx, "failed to marshal version resource into bytes", err, logData)
+		log.Error(ctx, "failed to unmarshal version resource into bytes", err, logData)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -70,7 +70,7 @@ func (api *BundleAPI) getBundleByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(versionBytes)
+	_, err = w.Write(bundleBytes)
 	if err != nil {
 		log.Error(ctx, "failed writing bytes to response", err, logData)
 		code := models.CodeNotFound

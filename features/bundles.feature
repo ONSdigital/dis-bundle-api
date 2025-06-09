@@ -45,7 +45,7 @@ Feature: Bundle API
                     "title": "bundle-2",
                     "updated_at": "2025-04-04T13:40:00Z",
                     "managed_by": "WAGTAIL",
-                    "e_tag": "testetag1"
+                    "e_tag": "testetag2"
                 },
                 {
                     "id": "bundle-3",
@@ -66,7 +66,7 @@ Feature: Bundle API
                     "title": "bundle-3",
                     "updated_at": "2025-04-05T13:40:00Z",
                     "managed_by": "WAGTAIL",
-                    "e_tag": "testetag1"
+                    "e_tag": "testetag3"
                 }
             ]
             """

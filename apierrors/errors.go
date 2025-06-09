@@ -20,7 +20,7 @@ var (
 	ErrDescription              = "Unable to process request due to a malformed or invalid request body or query parameter"
 	ErrInternalErrorDescription = "An internal error occurred"
 	ErrResourceNotFound         = "The requested resource does not exist"
-	ErrUnmarshallJSONObject     = "Failed to marshal bundle resource into bytes"
+	ErrUnmarshallJSONObject     = "Failed to unmarshal bundle resource into bytes"
 	ErrWritingBytesToResponse   = "Failed writing bytes to response"
 )
 

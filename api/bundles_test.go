@@ -224,7 +224,7 @@ func TestGetBundleById_Success(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
-				GetBundleByIDFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 					return validBundle, nil
 				},
 			}
@@ -256,7 +256,7 @@ func TestGetBundleById_Failure(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
-				GetBundleByIDFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 					return nil, apierrors.ErrBundleNotFound
 				},
 			}
@@ -277,7 +277,7 @@ func TestGetBundleById_Failure(t *testing.T) {
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
-				GetBundleByIDFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 					return nil, errors.New("unexpected failure")
 				},
 			}
