@@ -90,7 +90,6 @@ func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) er
 	for _, event := range mapEvents {
 		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
 			return fmt.Errorf("failed to insert event: %w", err)
-
 		}
 	}
 	return nil
@@ -236,26 +235,4 @@ func (c *BundleComponent) theResponseHeaderShouldBePresent(headerName string) er
 
 func (c *BundleComponent) theResponseShouldContain(expectedJSON *godog.DocString) error {
 	return c.apiFeature.IShouldReceiveTheFollowingJSONResponse(expectedJSON)
-}
-func (c *BundleComponent) theJSONResponseShouldContain(expectedTitle string) error {
-	var body struct {
-		Items []struct {
-			Title string `json:"title"`
-		} `json:"items"`
-	}
-
-	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-	if err = json.Unmarshal(bodyBytes, &body); err != nil {
-		return fmt.Errorf("failed to parse JSON response: %w", err)
-	}
-	if len(body.Items) == 0 {
-		return fmt.Errorf("response items list is empty")
-	}
-	if body.Items[0].Title != expectedTitle {
-		return fmt.Errorf("expected first bundle title %q, got %q", expectedTitle, body.Items[0].Title)
-	}
-	return nil
 }
