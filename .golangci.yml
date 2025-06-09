@@ -89,6 +89,9 @@ issues:
         - errcheck
         - dupl
         - gosec
+    - path: api/contents_test.go
+      linters:
+        - goconst
     # Allow dot import in test files for goconvey
     - path: _test.go
       text: "dot-imports"

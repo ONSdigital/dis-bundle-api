@@ -13,7 +13,7 @@ import (
 type Event struct {
 	CreatedAt   *time.Time   `bson:"created_at,omitempty"   json:"created_at,omitempty"`
 	RequestedBy *RequestedBy `bson:"requested_by,omitempty" json:"requested_by,omitempty"`
-	Action      Action       `bson:"action,"                json:"action"`
+	Action      Action       `bson:"action"                 json:"action"`
 	Resource    string       `bson:"resource"               json:"resource"`
 	ContentItem *ContentItem `bson:"content_item,omitempty" json:"content_item,omitempty"`
 	Bundle      *EventBundle `bson:"bundle,omitempty"       json:"bundle,omitempty"`

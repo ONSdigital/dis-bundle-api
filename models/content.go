@@ -2,8 +2,8 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
+	"strings"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/gofrs/uuid"
@@ -11,7 +11,7 @@ import (
 
 // ContentItem represents information about the datasets to be published as part of the bundle
 type ContentItem struct {
-	ID          string      `bson:"_id,omitempty"   json:"id,omitempty"`
+	ID          string      `bson:"id,omitempty"    json:"id,omitempty"`
 	BundleID    string      `bson:"bundle_id"       json:"bundle_id"`
 	ContentType ContentType `bson:"content_type"    json:"content_type"`
 	Metadata    Metadata    `bson:"metadata"        json:"metadata"`
@@ -63,48 +63,74 @@ func CreateContentItem(reader io.Reader) (*ContentItem, error) {
 	return &contentItem, nil
 }
 
-func ValidateContentItem(contentItem *ContentItem) error {
-	missingFields, invalidFields := []string{}, []string{}
+func CleanContentItem(contentItem *ContentItem) {
+	contentItem.ID = strings.TrimSpace(contentItem.ID)
+
+	contentItem.BundleID = strings.TrimSpace(contentItem.BundleID)
+
+	contentItem.ContentType = ContentType(strings.TrimSpace(contentItem.ContentType.String()))
+
+	contentItem.Metadata.DatasetID = strings.TrimSpace(contentItem.Metadata.DatasetID)
+	contentItem.Metadata.EditionID = strings.TrimSpace(contentItem.Metadata.EditionID)
+	contentItem.Metadata.Title = strings.TrimSpace(contentItem.Metadata.Title)
+
+	if contentItem.State != nil {
+		state := State(strings.TrimSpace(contentItem.State.String()))
+		contentItem.State = &state
+	}
+
+	contentItem.Links.Edit = strings.TrimSpace(contentItem.Links.Edit)
+	contentItem.Links.Preview = strings.TrimSpace(contentItem.Links.Preview)
+}
+
+func ValidateContentItem(contentItem *ContentItem) []*Error {
+	var (
+		missingFields = []*Error{}
+		invalidFields = []*Error{}
+	)
+
+	codeMissingParameters := CodeMissingParameters
+	codeInvalidParameters := CodeInvalidParameters
 
 	if contentItem.BundleID == "" {
-		missingFields = append(missingFields, "bundle_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/bundle_id"}})
 	}
 
 	if contentItem.ContentType == "" {
-		missingFields = append(missingFields, "content_type")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
 	}
 
 	if !contentItem.ContentType.IsValid() {
-		invalidFields = append(invalidFields, "content_type")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
 	}
 
 	if contentItem.Metadata.DatasetID == "" {
-		missingFields = append(missingFields, "metadata.dataset_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/dataset_id"}})
 	}
 	if contentItem.Metadata.EditionID == "" {
-		missingFields = append(missingFields, "metadata.edition_id")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/edition_id"}})
 	}
 	if contentItem.Metadata.VersionID < 1 {
-		invalidFields = append(invalidFields, "metadata.version_id")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/metadata/version_id"}})
 	}
 
 	if contentItem.State != nil && !contentItem.State.IsValid() {
-		invalidFields = append(invalidFields, "state")
+		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/state"}})
 	}
 
 	if contentItem.Links.Edit == "" {
-		missingFields = append(missingFields, "links.edit")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/links/edit"}})
 	}
 	if contentItem.Links.Preview == "" {
-		missingFields = append(missingFields, "links.preview")
+		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrDescriptionMalformedRequest, Source: &Source{Field: "/links/preview"}})
 	}
 
 	if len(missingFields) > 0 {
-		return fmt.Errorf("missing mandatory fields: %v", missingFields)
+		return missingFields
 	}
 
 	if len(invalidFields) > 0 {
-		return fmt.Errorf("invalid fields: %v", invalidFields)
+		return invalidFields
 	}
 
 	return nil
@@ -128,6 +154,11 @@ func (ct ContentType) IsValid() bool {
 	}
 }
 
+// String returns the string value of the ContentType
+func (ct ContentType) String() string {
+	return string(ct)
+}
+
 // State enum represents the state of the content item
 type State string
 
@@ -145,4 +176,9 @@ func (s State) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// String returns the string value of the State
+func (s State) String() string {
+	return string(s)
 }

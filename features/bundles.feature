@@ -192,11 +192,15 @@ Feature: List Bundles functionality - GET /Bundles
         And I should receive the following JSON response:
             """
             {
-                "code": "bad_request",
-                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-                "source": {
-                    "parameter": " offset"
-                }
+                "errors": [
+                    {
+                        "code": "bad_request",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "source": {
+                            "parameter": " offset"
+                        }
+                    }
+                ]
             }
             """
 
@@ -207,11 +211,15 @@ Feature: List Bundles functionality - GET /Bundles
         And I should receive the following JSON response:
             """
             {
-                "code": "bad_request",
-                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-                "source": {
-                    "parameter": " limit"
-                }
+                "errors": [
+                    {
+                        "code": "bad_request",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "source": {
+                            "parameter": " limit"
+                        }
+                    }
+                ]
             }
             """
 

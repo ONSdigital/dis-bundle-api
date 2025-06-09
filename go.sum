@@ -4,6 +4,8 @@ github.com/ONSdigital/dp-authorisation/v2 v2.32.2 h1:Hxza+cvvPb2zvZfEOpZfWZcy/7M
 github.com/ONSdigital/dp-authorisation/v2 v2.32.2/go.mod h1:uDDkQ/HeqeirqXBCVrvyGxbKSO/bKe80wW7V226sB+g=
 github.com/ONSdigital/dp-component-test v0.20.0 h1:6a1pr5A1MW/oQjvZQZNPxoQFVk7JPsKh3mA61f4VHH0=
 github.com/ONSdigital/dp-component-test v0.20.0/go.mod h1:9hcGbl+8zILaF5TBLJqgEsLEmw5wT0O0Ty+d933r4SM=
+github.com/ONSdigital/dp-dataset-api v1.81.0 h1:kSv52ZPQUQJW0kc7Sc8oj022z0NTgghRW+RTeE1J/3o=
+github.com/ONSdigital/dp-dataset-api v1.81.0/go.mod h1:/rTXiNJFqMKmxbmqi35Ijz6PuJvzab1CSttn5SGhOzg=
 github.com/ONSdigital/dp-healthcheck v1.6.4 h1:FhWOuVmob36dYq7AzCdbgyf0Vk58IFitSl8y8pWJ8ck=
 github.com/ONSdigital/dp-healthcheck v1.6.4/go.mod h1:j3UNbGT4ZJg1chrRkPLE6YUVYCg1su3AAQ8frcBrvgc=
 github.com/ONSdigital/dp-mocking v0.11.0 h1:laln6e2JD4vtsYbg0cTw9ur1Xf390AUYdd85cG2UNQw=
@@ -127,6 +129,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
 github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
+github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b h1:gQZ0qzfKHQIybLANtM3mBXNUtOfsCFXeTsnBqCsx1KM=
+github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 github.com/smarty/assertions v1.16.0 h1:EvHNkdRA4QHMrn75NZSoUQ/mAUXAYWfatfB01yTCzfY=
 github.com/smarty/assertions v1.16.0/go.mod h1:duaaFdCS0K9dnoM50iyek/eYINOZ64gbh1Xlf6LG7AI=
 github.com/smartystreets/goconvey v1.8.1 h1:qGjIddxOk4grTu9JPOU31tVfq3cNdBlNa5sSznIX1xY=

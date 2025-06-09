@@ -28,7 +28,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: param},
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 			return []*models.Event{}, 0, nil
 		}
 	}
@@ -48,7 +48,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: "after"},
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 			return []*models.Event{}, 0, nil
 		}
 		after = &afterTime
@@ -63,7 +63,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: "before"},
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 			return []*models.Event{}, 0, nil
 		}
 		before = &beforeTime
@@ -74,14 +74,14 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 		code := models.InternalError
 		log.Error(ctx, "failed to get bundle events", err)
 		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return nil, 0, nil
 	}
 
 	if totalCount == 0 {
 		code := models.NotFound
 		errInfo := &models.Error{Code: &code, Description: "The requested resource does not exist."}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusNotFound)
+		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		return []*models.Event{}, 0, nil
 	}
 

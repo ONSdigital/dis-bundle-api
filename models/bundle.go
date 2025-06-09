@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
+	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 )
 
 // Bundle represents the response body when retrieving a bundle
 type Bundle struct {
-	ID            string         `bson:"_id"                       json:"id"`
+	ID            string         `bson:"id"                        json:"id"`
 	BundleType    BundleType     `bson:"bundle_type"               json:"bundle_type"`
 	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
 	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
@@ -22,6 +24,7 @@ type Bundle struct {
 	Title         string         `bson:"title"                     json:"title"`
 	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
 	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
+	ETag          string         `bson:"e_tag"                     json:"-"`
 }
 
 // Bundles represents a list of bundles
@@ -39,16 +42,6 @@ type PreviewTeam struct {
 	ID string `bson:"id" json:"id"`
 }
 
-// BundleContent represents the content of the bundle
-type BundleContent struct {
-	DatasetID string `bson:"dataset_id" json:"dataset_id"`
-	EditionID string `bson:"edition_id" json:"edition_id"`
-	ItemID    string `bson:"item_id" json:"item_id"`
-	State     string `bson:"state" json:"state"`
-	Title     string `bson:"title" json:"title"`
-	URLPath   string `bson:"url_path" json:"url_path"`
-}
-
 // CreateBundle creates a new Bundle from the provided reader
 func CreateBundle(reader io.Reader) (*Bundle, error) {
 	b, err := io.ReadAll(reader)
@@ -62,6 +55,10 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 	if err != nil {
 		return nil, errs.ErrUnableToParseJSON
 	}
+
+	etag := dpresponse.GenerateETag(b, false)
+	etag = strings.Trim(etag, "\"")
+	bundle.ETag = etag
 
 	return &bundle, nil
 }
@@ -108,6 +105,10 @@ func ValidateBundle(bundle *Bundle) error {
 
 	if bundle.ManagedBy != "" && !bundle.ManagedBy.IsValid() {
 		invalidFields = append(invalidFields, "managed_by")
+	}
+
+	if bundle.ETag == "" {
+		missingFields = append(missingFields, "e_tag")
 	}
 
 	if len(missingFields) > 0 {

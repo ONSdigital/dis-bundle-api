@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -17,8 +18,8 @@ import (
 
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
-	ctx.Step(`^there are no bundles$`, c.thereAreNoBundles)
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
+	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I am an admin user$`, c.adminJWTToken)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
@@ -27,12 +28,8 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
-	ctx.Step(`^I should receive a JSON response with (\d+) item$`, c.iShouldReceiveAJSONResponseWithItems)
-	ctx.Step(`^the first bundle in the response should have title "([^"]*)"$`, c.theJSONResponseShouldContain)
-}
-
-func (c *BundleComponent) thereAreNoBundles() error {
-	return c.MongoClient.Connection.DropDatabase(context.Background())
+	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
+	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
 }
 
 func (c *BundleComponent) adminJWTToken() error {
@@ -93,9 +90,27 @@ func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) er
 	for _, event := range mapEvents {
 		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
 			return fmt.Errorf("failed to insert event: %w", err)
+
 		}
 	}
+	return nil
+}
 
+func (c *BundleComponent) iHaveTheseContentItems(contentItemsJSON *godog.DocString) error {
+	ctx := context.Background()
+	contentItems := []models.ContentItem{}
+
+	err := json.Unmarshal([]byte(contentItemsJSON.Content), &contentItems)
+	if err != nil {
+		return err
+	}
+
+	for contentItem := range contentItems {
+		bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
+		if err := c.putContentItemInDatabase(ctx, bundleContentsCollection, contentItems[contentItem]); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -114,6 +129,19 @@ func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collecti
 	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
 	if err != nil {
 		return fmt.Errorf("failed to insert event: %w", err)
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) putContentItemInDatabase(ctx context.Context, collectionName string, contentItem models.ContentItem) error {
+	update := bson.M{
+		"$set": contentItem,
+	}
+
+	_, err := c.MongoClient.Connection.Collection(collectionName).UpsertById(ctx, contentItem.ID, update)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -153,20 +181,41 @@ func (c *BundleComponent) theResponseHeaderShouldBe(header, expected string) err
 	return nil
 }
 
-func (c *BundleComponent) iShouldReceiveAJSONResponseWithItems(expectedCount int) error {
-	var body struct {
-		Items []map[string]interface{} `json:"items"`
+func (c *BundleComponent) theResponseHeaderShouldContain(headerName, expectedValue string) error {
+	value := c.apiFeature.HTTPResponse.Header.Get(headerName)
+	if !strings.Contains(value, expectedValue) {
+		return fmt.Errorf("expected header %q to contain %q, but got %q", headerName, expectedValue, value)
+	}
+	return nil
+}
+
+func (c *BundleComponent) iShouldReceiveTheFollowingContentItemJSONResponse(expectedJSON *godog.DocString) error {
+	var expectedContentItem models.ContentItem
+	if err := json.Unmarshal([]byte(expectedJSON.Content), &expectedContentItem); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
 	}
 
 	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
-	if err = json.Unmarshal(bodyBytes, &body); err != nil {
+
+	var actualContentItem models.ContentItem
+	if err = json.Unmarshal(bodyBytes, &actualContentItem); err != nil {
 		return fmt.Errorf("failed to parse JSON response: %w", err)
 	}
-	if len(body.Items) != expectedCount {
-		return fmt.Errorf("expected %d items, got %d", expectedCount, len(body.Items))
+
+	if actualContentItem.ID == "" ||
+		actualContentItem.BundleID != expectedContentItem.BundleID ||
+		actualContentItem.ContentType != expectedContentItem.ContentType ||
+		actualContentItem.Metadata.DatasetID != expectedContentItem.Metadata.DatasetID ||
+		actualContentItem.Metadata.EditionID != expectedContentItem.Metadata.EditionID ||
+		actualContentItem.Metadata.VersionID != expectedContentItem.Metadata.VersionID ||
+		actualContentItem.Metadata.Title != expectedContentItem.Metadata.Title ||
+		actualContentItem.State != expectedContentItem.State ||
+		actualContentItem.Links.Edit != expectedContentItem.Links.Edit ||
+		actualContentItem.Links.Preview != expectedContentItem.Links.Preview {
+		return fmt.Errorf("actual content item does not match expected content item:\nExpected: %+v\nActual: %+v", expectedContentItem, actualContentItem)
 	}
 
 	return nil

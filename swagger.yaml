@@ -525,6 +525,7 @@ definitions:
       - preview_teams
       - title
       - managed_by
+      - e_tag
     properties:
       bundle_type:
         description: "The type of bundle."
@@ -609,6 +610,10 @@ definitions:
           - WAGTAIL
           - DATA-ADMIN
         example: WAGTAIL
+      e_tag:
+        description: "Auto generated ETag that defines the unique entity tag for the current state of the resource."
+        type: string
+        example: "c7e4b9a2f813d6e5f0a9d3c1e7f8b4a5d6c7e9f0"
   Contents:
     description: "A list of contents related to a bundle"
     type: object

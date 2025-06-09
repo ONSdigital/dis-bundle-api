@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -14,9 +15,12 @@ import (
 	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
 	componenttest "github.com/ONSdigital/dp-component-test"
 	"github.com/ONSdigital/dp-component-test/utils"
+	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
-	"github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
@@ -29,6 +33,7 @@ type BundleComponent struct {
 	HTTPServer              *http.Server
 	ServiceRunning          bool
 	initialiser             service.Initialiser
+	datasetAPIClient        datasetAPISDK.Clienter
 	apiFeature              *componenttest.APIFeature
 	AuthorisationMiddleware authorisation.Middleware
 }
@@ -58,6 +63,7 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
+		DoGetDatasetAPIClientFunc:        c.DoGetDatasetAPIClient,
 		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
 		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
 		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
@@ -95,19 +101,26 @@ func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
 	return fakePermissionsAPI
 }
 
-func getPermissionsBundle() *sdk.Bundle {
-	return &sdk.Bundle{
-		"bundles:read": {
+func getPermissionsBundle() *permissionsSDK.Bundle {
+	return &permissionsSDK.Bundle{
+		"bundles:read": { // role
 			"groups/role-admin": { // group
 				{
 					ID: "1", // policy
 				},
 			},
 		},
-		"bundle-events:read": {
-			"groups/role-admin": { // group
+		"bundles:create": {
+			"groups/role-admin": {
 				{
-					ID: "2", // policy
+					ID: "1",
+				},
+			},
+		},
+		"bundles:update": {
+			"groups/role-admin": {
+				{
+					ID: "1",
 				},
 			},
 		},
@@ -156,6 +169,19 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
+func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
+	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
+		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+			if datasetID == "fail-get-version" {
+				return datasetAPIModels.Version{}, errors.New("version not found")
+			}
+			return datasetAPIModels.Version{}, nil
+		},
+	}
+	c.datasetAPIClient = datasetAPIClient
+	return c.datasetAPIClient
+}
+
 func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg *authorisation.Config) (authorisation.Middleware, error) {
 	middleware, err := authorisation.NewMiddlewareFromConfig(ctx, cfg, cfg.JWTVerificationPublicKeys)
 	if err != nil {
@@ -169,6 +195,7 @@ func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg 
 func (c *BundleComponent) setInitialiserMock() {
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
+		DoGetDatasetAPIClientFunc:        c.DoGetDatasetAPIClient,
 		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
 		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
 		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,

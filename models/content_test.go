@@ -149,6 +149,44 @@ func TestCreateContentItem_Failure(t *testing.T) {
 	})
 }
 
+func TestCleanContentItem_Success(t *testing.T) {
+	Convey("Given a ContentItem with leading and trailing spaces in its fields", t, func() {
+		stateApprovedWithWhitespace := State("  APPROVED  ")
+
+		contentItem := &ContentItem{
+			ID:          "  id  ",
+			BundleID:    "  bundle-id  ",
+			ContentType: ContentType("  DATASET  "),
+			Metadata: Metadata{
+				DatasetID: "  dataset-id  ",
+				EditionID: "  edition-id  ",
+				Title:     "  title  ",
+			},
+			State: &stateApprovedWithWhitespace,
+			Links: Links{
+				Edit:    "  edit-link  ",
+				Preview: "  preview-link  ",
+			},
+		}
+
+		Convey("When CleanContentItem is called", func() {
+			CleanContentItem(contentItem)
+
+			Convey("Then all fields should be trimmed of leading and trailing spaces", func() {
+				So(contentItem.ID, ShouldEqual, "id")
+				So(contentItem.BundleID, ShouldEqual, "bundle-id")
+				So(contentItem.ContentType.String(), ShouldEqual, "DATASET")
+				So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+				So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+				So(contentItem.Metadata.Title, ShouldEqual, "title")
+				So(contentItem.State.String(), ShouldEqual, StateApproved.String())
+				So(contentItem.Links.Edit, ShouldEqual, "edit-link")
+				So(contentItem.Links.Preview, ShouldEqual, "preview-link")
+			})
+		})
+	})
+}
+
 func TestValidateContentItem_Success(t *testing.T) {
 	Convey("Given a fully populated ContentItem", t, func() {
 		contentItem := fullyPopulatedContentItem
@@ -184,7 +222,12 @@ func TestValidateContentItem_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the missing fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "missing mandatory fields: [bundle_id content_type metadata.dataset_id metadata.edition_id links.edit links.preview]")
+				So(err[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(err[1].Source.Field, ShouldEqual, "/content_type")
+				So(err[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(err[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(err[4].Source.Field, ShouldEqual, "/links/edit")
+				So(err[5].Source.Field, ShouldEqual, "/links/preview")
 			})
 		})
 	})
@@ -200,7 +243,37 @@ func TestValidateContentItem_Failure(t *testing.T) {
 
 			Convey("Then it should return an error indicating the invalid fields", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "invalid fields: [content_type metadata.version_id state]")
+				So(err[0].Source.Field, ShouldEqual, "/content_type")
+				So(err[1].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(err[2].Source.Field, ShouldEqual, "/state")
+			})
+		})
+	})
+}
+
+func TestContentType_String_Success(t *testing.T) {
+	Convey("Given a valid ContentType", t, func() {
+		contentType := ContentTypeDataset
+
+		Convey("When String is called", func() {
+			str := contentType.String()
+
+			Convey("Then it should return the correct string representation", func() {
+				So(str, ShouldEqual, "DATASET")
+			})
+		})
+	})
+}
+
+func TestState_String_Success(t *testing.T) {
+	Convey("Given a valid State", t, func() {
+		state := StateApproved
+
+		Convey("When String is called", func() {
+			str := state.String()
+
+			Convey("Then it should return the correct string representation", func() {
+				So(str, ShouldEqual, "APPROVED")
 			})
 		})
 	})

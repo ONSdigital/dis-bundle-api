@@ -63,7 +63,7 @@ func TestListBundles_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -90,7 +90,7 @@ func TestListBundles_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -129,7 +129,7 @@ func TestGetBundle_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -150,7 +150,7 @@ func TestGetBundle_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -186,7 +186,7 @@ func TestBuildGetBundleQuery(t *testing.T) {
 			query := buildGetBundleQuery(bundleID)
 
 			Convey("Then it should return a query with the correct ID", func() {
-				expected := bson.M{"_id": bundleID}
+				expected := bson.M{"id": bundleID}
 				So(query, ShouldResemble, expected)
 			})
 		})
@@ -197,7 +197,7 @@ func TestCreateBundle_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -210,6 +210,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				PreviewTeams: &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 				Title:        "New Bundle",
 				ManagedBy:    models.ManagedByWagtail,
+				ETag:         "some-etag",
 			}
 			err = mongodb.CreateBundle(ctx, newBundle)
 
@@ -223,6 +224,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(returnedBundle.PreviewTeams, ShouldResemble, &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}})
 				So(returnedBundle.Title, ShouldEqual, "New Bundle")
 				So(returnedBundle.ManagedBy, ShouldEqual, models.ManagedByWagtail)
+				So(returnedBundle.ETag, ShouldEqual, "some-etag")
 			})
 		})
 	})
@@ -232,10 +234,13 @@ func TestCreateBundle_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, mimServer, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		err = SetupIndexes(ctx, mimServer)
 		So(err, ShouldBeNil)
 
 		Convey("When CreateBundle is called with an existing bundle ID", func() {
@@ -267,7 +272,7 @@ func TestUpdateBundle_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -293,7 +298,7 @@ func TestUpdateBundle_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -325,11 +330,57 @@ func TestUpdateBundle_Failure(t *testing.T) {
 	})
 }
 
+func TestUpdateBundleETag_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateBundleETag is called with an existing bundle ID", func() {
+			oldBundle, err := mongodb.GetBundle(ctx, "bundle1")
+			So(err, ShouldBeNil)
+
+			bundleUpdate, err := mongodb.UpdateBundleETag(ctx, "bundle1", "new-email")
+
+			Convey("Then it should update the ETag, last_updated_by, and updated_at fields without error", func() {
+				So(err, ShouldBeNil)
+				So(bundleUpdate.ETag, ShouldNotEqual, oldBundle.ETag)
+				So(bundleUpdate.LastUpdatedBy.Email, ShouldEqual, "new-email")
+				So(bundleUpdate.UpdatedAt, ShouldNotEqual, oldBundle.UpdatedAt)
+			})
+		})
+	})
+}
+
+func TestUpdateBundleETag_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateBundleETag is called with a non-existent bundle ID", func() {
+			_, err := mongodb.UpdateBundleETag(ctx, "non-existent-id", "new-email")
+
+			Convey("Then it should return a bundle not found error", func() {
+				So(err, ShouldEqual, apierrors.ErrBundleNotFound)
+			})
+		})
+	})
+}
+
 func TestDeleteBundle_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -352,7 +403,7 @@ func TestDeleteBundle_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, err := getTestMongoDB(ctx)
+		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
 		err = setupBundleTestData(ctx, mongodb)
@@ -373,6 +424,57 @@ func TestDeleteBundle_Failure(t *testing.T) {
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldNotEqual, apierrors.ErrBundleNotFound)
+			})
+		})
+	})
+}
+
+func TestCheckBundleExists_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When CheckBundleExists is called with an existing bundle ID", func() {
+			exists, err := mongodb.CheckBundleExists(ctx, "bundle1")
+
+			Convey("Then it should return true without error", func() {
+				So(err, ShouldBeNil)
+				So(exists, ShouldBeTrue)
+			})
+		})
+
+		Convey("When CheckBundleExists is called with a non-existent bundle ID", func() {
+			exists, err := mongodb.CheckBundleExists(ctx, "non-existent-id")
+
+			Convey("Then it should return false without error", func() {
+				So(err, ShouldBeNil)
+				So(exists, ShouldBeFalse)
+			})
+		})
+	})
+}
+
+func TestCheckBundleExists_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When CheckBundleExists is called and the connection fails", func() {
+			mongodb.Connection.Close(ctx)
+			_, err := mongodb.CheckBundleExists(ctx, "bundle1")
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
 			})
 		})
 	})
