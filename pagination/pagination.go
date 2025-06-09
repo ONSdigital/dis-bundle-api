@@ -3,6 +3,7 @@ package pagination
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -47,7 +48,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if offsetParameter != "" {
 		logData["offset"] = offsetParameter
-		offset, err := strconv.Atoi(offsetParameter)
+		offset, err = strconv.Atoi(offsetParameter)
 		if err != nil || offset < 0 {
 			err = errors.New("invalid query parameter: offset")
 			log.Error(r.Context(), "invalid query parameter: offset", err, logData)
@@ -71,7 +72,8 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 		log.Error(r.Context(), "limit is greater than the maximum allowed", err, logData)
 		return 0, 0, err
 	}
-	return offset, limit, err
+
+	return offset, limit, nil
 }
 
 func renderPage(list interface{}, offset, limit, totalCount int) PaginatedResponse {
@@ -95,6 +97,9 @@ func listLength(list interface{}) int {
 func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		offset, limit, err := p.getPaginationParameters(r)
+		fmt.Print("offsetxx is:", offset)
+		fmt.Print("limitxx is:", limit)
+
 		if err != nil {
 			log.Error(r.Context(), "pagination parameters incorrect", err)
 			errArray := strings.Split(err.Error(), ":")
