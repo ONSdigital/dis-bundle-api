@@ -20,6 +20,8 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 		"offset": true,
 	}
 
+	var validationErrors []*models.Error
+
 	for param := range r.URL.Query() {
 		if !allowedParams[param] {
 			code := models.ErrInvalidParameters
@@ -28,8 +30,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: param},
 			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-			return []*models.Event{}, 0, nil
+			validationErrors = append(validationErrors, errInfo)
 		}
 	}
 
@@ -48,10 +49,10 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: "after"},
 			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-			return []*models.Event{}, 0, nil
+			validationErrors = append(validationErrors, errInfo)
+		} else {
+			after = &afterTime
 		}
-		after = &afterTime
 	}
 
 	if beforeParam != "" {
@@ -63,10 +64,15 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: "before"},
 			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-			return []*models.Event{}, 0, nil
+			validationErrors = append(validationErrors, errInfo)
+		} else {
+			before = &beforeTime
 		}
-		before = &beforeTime
+	}
+
+	if len(validationErrors) > 0 {
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, validationErrors...)
+		return []*models.Event{}, 0, nil
 	}
 
 	events, totalCount, err := api.stateMachineBundleAPI.ListBundleEvents(ctx, offset, limit, bundleID, after, before)

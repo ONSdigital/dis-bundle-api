@@ -40,7 +40,7 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 	)
 	api.get(
 		"/bundle-events",
-		authMiddleware.Require("bundle-events:read", paginator.Paginate(api.getBundleEvents)),
+		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleEvents)),
 	)
 	api.post(
 		"/bundles/{bundle-id}/contents",
