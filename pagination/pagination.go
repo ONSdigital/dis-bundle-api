@@ -3,7 +3,6 @@ package pagination
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -97,9 +96,6 @@ func listLength(list interface{}) int {
 func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		offset, limit, err := p.getPaginationParameters(r)
-		fmt.Print("offsetxx is:", offset)
-		fmt.Print("limitxx is:", limit)
-
 		if err != nil {
 			log.Error(r.Context(), "pagination parameters incorrect", err)
 			errArray := strings.Split(err.Error(), ":")
