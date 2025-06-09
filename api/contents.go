@@ -25,28 +25,6 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	logdata := log.Data{"bundle_id": bundleID}
 
-	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to check if bundle exists", err, logdata)
-		code := models.CodeInternalServerError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: "Failed to check if bundle exists",
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-	if !bundleExists {
-		log.Error(ctx, "postBundleContents endpoint: bundle not found", nil, logdata)
-		code := models.CodeNotFound
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: "Bundle not found",
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
-		return
-	}
-
 	contentItem, err := models.CreateContentItem(r.Body)
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to create content item from request body", err, logdata)
@@ -70,6 +48,28 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to check if bundle exists", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to check if bundle exists",
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+	if !bundleExists {
+		log.Error(ctx, "postBundleContents endpoint: bundle not found", nil, logdata)
+		code := models.CodeNotFound
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Bundle not found",
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+		return
+	}
+
 	var authHeaders datasetAPISDK.Headers
 	if r.Header.Get("X-Florence-Token") != "" {
 		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
@@ -84,7 +84,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "dataset version not found",
+				Description: "Dataset version not found",
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 			return
@@ -117,7 +117,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Content item already exists for the given dataset, edition, and version",
+			Description: "Content item already exists for the given dataset, edition and version",
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
@@ -135,7 +135,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	JWTEntityData, err := api.authMiddleware.Parse(r.Header.Get("Authorization"))
+	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logdata)
 		code := models.CodeInternalServerError
@@ -165,7 +165,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "failed to validate event",
+			Description: "Failed to validate event",
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
