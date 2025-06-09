@@ -78,7 +78,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 		return nil, 0, nil
 	}
 
-	if totalCount == 0 && bundleID == "" && after == nil && before == nil {
+	if totalCount == 0 {
 		code := models.NotFound
 		errInfo := &models.Error{Code: &code, Description: "The requested resource does not exist."}
 		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusNotFound)
