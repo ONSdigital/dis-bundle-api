@@ -71,6 +71,45 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	log.Info(ctx, "createBundle: created bundle from request body", log.Data{"bundle": bundle})
 
+	authToken := r.Header.Get("Authorization")
+	if authToken == "" {
+		log.Error(ctx, "authorization token is missing", nil)
+		code := models.CodeUnauthorized
+		e := &models.Error{
+			Code:        &code,
+			Description: "Authorization token is required",
+		}
+		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusUnauthorized)
+		return
+	}
+
+	authToken = strings.TrimPrefix(authToken, "Bearer ")
+
+	var entityData *permsdk.EntityData
+	if strings.Contains(authToken, ".") {
+		entityData, err = api.authMiddleware.Parse(authToken)
+		if err != nil {
+			log.Error(ctx, "failed to parse auth token", err)
+			code := models.CodeInternalServerError
+			e := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrInternalErrorDescription,
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
+
+	bundle.CreatedBy = &models.User{
+		Email: entityData.UserID,
+	}
+
+	bundle.LastUpdatedBy = &models.User{
+		Email: entityData.UserID,
+	}
+
 	bundleErrs := models.ValidateBundle(bundle)
 	if len(bundleErrs) > 0 {
 		log.Error(ctx, "failed to validate bundle", nil, log.Data{"errors": bundleErrs})
@@ -117,37 +156,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if !isValid {
 		return
 	}
-
-	authToken := r.Header.Get("Authorization")
-	if authToken == "" {
-		log.Error(ctx, "authorization token is missing", nil)
-		code := models.CodeUnauthorized
-		e := &models.Error{
-			Code:        &code,
-			Description: "Authorization token is required",
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusUnauthorized)
-		return
-	}
-
-	authToken = strings.TrimPrefix(authToken, "Bearer ")
-
-	var entityData *permsdk.EntityData
-	if strings.Contains(authToken, ".") {
-		entityData, err = api.authMiddleware.Parse(authToken)
-		if err != nil {
-			log.Error(ctx, "failed to parse auth token", err)
-			code := models.CodeInternalServerError
-			e := &models.Error{
-				Code:        &code,
-				Description: apierrors.ErrInternalErrorDescription,
-			}
-			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
-			return
-		}
-	}
-
-	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
 
 	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
