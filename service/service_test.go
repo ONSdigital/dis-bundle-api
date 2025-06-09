@@ -15,6 +15,7 @@ import (
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
@@ -90,8 +91,8 @@ func TestRun(t *testing.T) {
 			return hcMock, nil
 		}
 
-		funcDoGetDatasetAPIClientOk := func(datasetAPIURL string) *datasetAPISDK.Client {
-			return &datasetAPISDK.Client{}
+		funcDoGetDatasetAPIClientOk := func(datasetAPIURL string) datasetAPISDK.Clienter {
+			return &datasetAPISDKMock.ClienterMock{}
 		}
 
 		funcDoGetHTTPServer := func(string, http.Handler) service.HTTPServer {

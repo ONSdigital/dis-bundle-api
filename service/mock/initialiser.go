@@ -28,7 +28,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
 //				panic("mock out the DoGetAuthorisationMiddleware method")
 //			},
-//			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) *datasetAPISDK.Client {
+//			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) datasetAPISDK.Clienter {
 //				panic("mock out the DoGetDatasetAPIClient method")
 //			},
 //			DoGetHTTPServerFunc: func(bindAddr string, router http.Handler) service.HTTPServer {
@@ -54,7 +54,7 @@ type InitialiserMock struct {
 	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error)
 
 	// DoGetDatasetAPIClientFunc mocks the DoGetDatasetAPIClient method.
-	DoGetDatasetAPIClientFunc func(datasetAPIURL string) *datasetAPISDK.Client
+	DoGetDatasetAPIClientFunc func(datasetAPIURL string) datasetAPISDK.Clienter
 
 	// DoGetHTTPServerFunc mocks the DoGetHTTPServer method.
 	DoGetHTTPServerFunc func(bindAddr string, router http.Handler) service.HTTPServer
@@ -160,7 +160,7 @@ func (mock *InitialiserMock) DoGetAuthorisationMiddlewareCalls() []struct {
 }
 
 // DoGetDatasetAPIClient calls DoGetDatasetAPIClientFunc.
-func (mock *InitialiserMock) DoGetDatasetAPIClient(datasetAPIURL string) *datasetAPISDK.Client {
+func (mock *InitialiserMock) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	if mock.DoGetDatasetAPIClientFunc == nil {
 		panic("InitialiserMock.DoGetDatasetAPIClientFunc: method is nil but Initialiser.DoGetDatasetAPIClient was just called")
 	}

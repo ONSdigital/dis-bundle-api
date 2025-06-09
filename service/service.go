@@ -23,7 +23,7 @@ type Service struct {
 	Server                HTTPServer
 	Router                *mux.Router
 	API                   *api.BundleAPI
-	datasetAPIClient      *datasetAPISDK.Client
+	datasetAPIClient      datasetAPISDK.Clienter
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB

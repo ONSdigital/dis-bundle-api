@@ -18,12 +18,12 @@ type BundleAPI struct {
 	Router                *mux.Router
 	Store                 *store.Datastore
 	stateMachineBundleAPI *application.StateMachineBundleAPI
-	datasetAPIClient      *datasetAPISDK.Client
+	datasetAPIClient      datasetAPISDK.Clienter
 	authMiddleware        auth.Middleware
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, datasetAPIClient *datasetAPISDK.Client, authMiddleware auth.Middleware) *BundleAPI {
+func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, datasetAPIClient datasetAPISDK.Clienter, authMiddleware auth.Middleware) *BundleAPI {
 	api := &BundleAPI{
 		Router:                router,
 		Store:                 store,

@@ -14,8 +14,9 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
-	authorisation "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -24,10 +25,18 @@ func ptrBundleState(state models.BundleState) *models.BundleState {
 	return &state
 }
 
-func newAuthMiddlwareMock() *authorisation.MiddlewareMock {
-	return &authorisation.MiddlewareMock{
+func newAuthMiddlwareMock() *authorisationMock.MiddlewareMock {
+	return &authorisationMock.MiddlewareMock{
 		RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 			return handlerFunc
+		},
+		ParseFunc: func(token string) (*permissionsSDK.EntityData, error) {
+			if token == "test-auth-token" {
+				return &permissionsSDK.EntityData{
+					UserID: "User123",
+				}, nil
+			}
+			return nil, errors.New("authorisation header not found")
 		},
 	}
 }
@@ -72,8 +81,8 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 		Datastore:    datastore,
 		StateMachine: stateMachine,
 	}
-	datasetAPISDK := &datasetAPISDK.Client{}
-	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, datasetAPISDK, newAuthMiddlwareMock())
+	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, mockDatasetAPIClient, newAuthMiddlwareMock())
 }
 
 func TestGetBundles_Success(t *testing.T) {

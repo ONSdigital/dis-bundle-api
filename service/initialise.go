@@ -89,14 +89,14 @@ func (e *Init) DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.
 }
 
 // GetDatasetAPIClient creates a new Dataset API client with the provided datasetAPIURL and sets the DatasetAPI flag to true
-func (e *ExternalServiceList) GetDatasetAPIClient(datasetAPIURL string) *datasetAPISDK.Client {
+func (e *ExternalServiceList) GetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	client := e.Init.DoGetDatasetAPIClient(datasetAPIURL)
 	e.DatasetAPIClient = true
 	return client
 }
 
 // DoGetDatasetAPIClient returns a new Dataset API client with the provided datasetAPIURL
-func (e *Init) DoGetDatasetAPIClient(datasetAPIURL string) *datasetAPISDK.Client {
+func (e *Init) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	client := datasetAPISDK.New(datasetAPIURL)
 	return client
 }
