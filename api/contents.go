@@ -31,7 +31,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeBadRequest
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrDescriptionMalformedRequest,
+			Description: apierrors.ErrorDescriptionMalformedRequest,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 		return

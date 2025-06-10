@@ -11,10 +11,11 @@ func (e ErrInvalidPatch) Error() string {
 	return e.Msg
 }
 
+// Response error descriptions
 var (
-	ErrDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
-	ErrorDescriptionNotFound       = "The requested resource does not exist"
-	ErrDescriptionInternalError    = "Failed to process the request due to an internal error"
+	ErrorDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrorDescriptionNotFound         = "The requested resource does not exist"
+	ErrorDescriptionInternalError    = "Failed to process the request due to an internal error"
 )
 
 var (
@@ -47,13 +48,6 @@ var (
 	// State errors
 	ErrExpectedStateOfCreated  = errors.New("expected bundle state to be 'CREATED'")
 	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
-)
-
-// Error messages for responses
-var (
-	ErrorDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
-	ErrorDescriptionNotFound         = "The requested resource does not exist"
-	ErrorDescriptionInternalError    = "Failed to process the request due to an internal error"
 )
 
 // 404 Not Found
