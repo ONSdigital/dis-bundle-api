@@ -28,19 +28,19 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle_id"]
-	logData := log.Data{"bundle_id": bundleID}
+	bundleID := vars["bundle-id"]
+	logData := log.Data{"bundle-id": bundleID}
 
-	bundles, err := api.stateMachineBundleAPI.GetBundleByID(ctx, bundleID)
+	bundles, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
 		if err == apierrors.ErrBundleNotFound {
-			log.Error(ctx, "getBundleByID endpoint: bundle id not found", err, logData)
+			log.Error(ctx, "getBundle endpoint: bundle id not found", err, logData)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
 				Description: apierrors.ErrResourceNotFound,
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusNotFound)
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		} else {
 			log.Error(ctx, "An internal error occurred", err, logData)
 			code := models.CodeInternalServerError
@@ -48,7 +48,7 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 				Code:        &code,
 				Description: apierrors.ErrInternalErrorDescription,
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		}
 		return
 	}
@@ -60,27 +60,27 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundleBytes, err := json.Marshal(bundles)
 	if err != nil {
-		log.Error(ctx, "failed to unmarshal version resource into bytes", err, logData)
+		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrUnmarshallJSONObject,
+			Description: apierrors.ErrMarshallJSONObject,
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
 	_, err = w.Write(bundleBytes)
 	if err != nil {
 		log.Error(ctx, "failed writing bytes to response", err, logData)
-		code := models.CodeNotFound
+		code := models.InternalError
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: apierrors.ErrWritingBytesToResponse,
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusInternalServerError)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
 
-	log.Info(ctx, "getBundleById endpoint: request successful", logData)
+	log.Info(ctx, "getBundle endpoint: request successful", logData)
 }

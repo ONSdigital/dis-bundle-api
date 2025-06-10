@@ -13,10 +13,25 @@ import (
 type Event struct {
 	CreatedAt   *time.Time   `bson:"created_at,omitempty"   json:"created_at,omitempty"`
 	RequestedBy *RequestedBy `bson:"requested_by,omitempty" json:"requested_by,omitempty"`
-	Action      Action       `bson:"action,"                json:"action"`
+	Action      Action       `bson:"action"                 json:"action"`
 	Resource    string       `bson:"resource"               json:"resource"`
 	ContentItem *ContentItem `bson:"content_item,omitempty" json:"content_item,omitempty"`
-	Bundle      *Bundle      `bson:"bundle,omitempty"       json:"bundle,omitempty"`
+	Bundle      *EventBundle `bson:"bundle,omitempty"       json:"bundle,omitempty"`
+}
+
+// EventBundle represents the Bundle response body when retrieving an Event
+type EventBundle struct {
+	ID            string         `bson:"id"                       json:"id"`
+	BundleType    BundleType     `bson:"bundle_type"               json:"bundle_type"`
+	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
+	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
+	LastUpdatedBy *User          `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
+	PreviewTeams  *[]PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
+	ScheduledAt   *time.Time     `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
+	State         *BundleState   `bson:"state,omitempty"           json:"state,omitempty"`
+	Title         string         `bson:"title"                     json:"title"`
+	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
+	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
 }
 
 // RequestedBy represents the user who made the request

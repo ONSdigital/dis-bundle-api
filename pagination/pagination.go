@@ -47,7 +47,7 @@ func (p *Paginator) getPaginationParameters(r *http.Request) (offset, limit int,
 
 	if offsetParameter != "" {
 		logData["offset"] = offsetParameter
-		offset, err := strconv.Atoi(offsetParameter)
+		offset, err = strconv.Atoi(offsetParameter)
 		if err != nil || offset < 0 {
 			err = errors.New("invalid query parameter: offset")
 			log.Error(r.Context(), "invalid query parameter: offset", err, logData)
@@ -106,12 +106,12 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
 				Source:      &models.Source{Parameter: param},
 			}
-			utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadRequest)
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 			return
 		}
 		list, totalCount, errBundle := paginatedHandler(w, r, limit, offset)
 		if errBundle != nil {
-			utils.HandleBundleAPIErr(w, r, errBundle, http.StatusInternalServerError)
+			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errBundle)
 			return
 		}
 
@@ -133,7 +133,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 			Code:        &code,
 			Description: "Failed to process the request due to an internal error",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadGateway)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadGateway, errInfo)
 		return
 	}
 
@@ -150,7 +150,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 			Code:        &code,
 			Description: "Failed to process the request due to an internal error",
 		}
-		utils.HandleBundleAPIErr(w, r, errInfo, http.StatusBadGateway)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadGateway, errInfo)
 		return
 	}
 

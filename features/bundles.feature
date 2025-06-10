@@ -1,4 +1,4 @@
-Feature: Bundle API
+Feature: List Bundles functionality - GET /Bundles and /Bundles/{bundle-id}
 
     Background:
         Given I have these bundles:
@@ -195,11 +195,15 @@ Feature: Bundle API
         And I should receive the following JSON response:
             """
             {
-                "code": "bad_request",
-                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-                "source": {
-                    "parameter": " offset"
-                }
+                "errors": [
+                    {
+                        "code": "bad_request",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "source": {
+                            "parameter": " offset"
+                        }
+                    }
+                ]
             }
             """
 
@@ -210,11 +214,15 @@ Feature: Bundle API
         And I should receive the following JSON response:
             """
             {
-                "code": "bad_request",
-                "description": "Unable to process request due to a malformed or invalid request body or query parameter",
-                "source": {
-                    "parameter": " limit"
-                }
+                "errors": [
+                    {
+                        "code": "bad_request",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "source": {
+                            "parameter": " limit"
+                        }
+                    }
+                ]
             }
             """
 
@@ -224,7 +232,7 @@ Feature: Bundle API
         Then the HTTP status code should be "401"
         And the response body should be empty
 
-    Scenario: GET /bundles/{bundle_id}
+    Scenario: GET /bundles/{bundle-id}
         Given I am an admin user
         When I GET "/bundles/bundle-1"
         Then the HTTP status code should be "200"
@@ -254,23 +262,27 @@ Feature: Bundle API
             """
         And the response header "Cache-Control" should be "no-store"
 
-Scenario: GET /bundles/{bundle_id} with an invalid ID
-    Given I am an admin user
-    When I GET "/bundles/invalid-id"
-    Then the HTTP status code should be "404"
-    And I should receive the following JSON response:
-        """
-        {
-            "code": "not_found",
-            "description": "The requested resource does not exist"
-        }
-        """
+    Scenario: GET /bundles/{bundle-id} with an invalid ID
+        Given I am an admin user
+        When I GET "/bundles/invalid-id"
+        Then the HTTP status code should be "404"
+        And I should receive the following JSON response:
+            """
+            {
+                "errors": [
+                    {
+                        "code": "not_found",
+                        "description": "The requested resource does not exist"
+                    }
+                ]
+            }
+            """
 
-Scenario: GET /bundles/{bundle_id} with no authentication
-    Given I am not authenticated
-    When I GET "/bundles/bundle-1"
-    Then the HTTP status code should be "401"
-    And the response body should be empty
+    Scenario: GET /bundles/{bundle-id} with no authentication
+        Given I am not authenticated
+        When I GET "/bundles/bundle-1"
+        Then the HTTP status code should be "401"
+        And the response body should be empty
 
 
 

@@ -12,6 +12,11 @@ func (e ErrInvalidPatch) Error() string {
 }
 
 var (
+	ErrDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrDescriptionInternalError    = "Failed to process the request due to an internal error"
+)
+
+var (
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 	ErrUnableToParseJSON   = errors.New("failed to parse json body")
 )
@@ -21,6 +26,7 @@ var (
 	ErrInternalErrorDescription = "An internal error occurred"
 	ErrResourceNotFound         = "The requested resource does not exist"
 	ErrUnmarshallJSONObject     = "Failed to unmarshal bundle resource into bytes"
+	ErrMarshallJSONObject       = "Failed to Marshal bundle resource into bytes"
 	ErrWritingBytesToResponse   = "Failed writing bytes to response"
 )
 

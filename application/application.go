@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
@@ -20,7 +21,27 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineB
 }
 
 func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit)
+	return s.Datastore.ListBundles(ctx, offset, limit)
+}
+
+func (s *StateMachineBundleAPI) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
+	return s.Datastore.GetBundle(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+	return s.Datastore.UpdateBundleETag(ctx, bundleID, email)
+}
+
+func (s *StateMachineBundleAPI) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
+	return s.Datastore.CheckBundleExists(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error {
+	return s.Datastore.CreateContentItem(ctx, contentItem)
+}
+
+func (s *StateMachineBundleAPI) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {
+	results, totalCount, err := s.Datastore.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -31,6 +52,10 @@ func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Co
 	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
 }
 
-func (s *StateMachineBundleAPI) GetBundleByID(ctx context.Context, bundleID string) (*models.Bundle, error) {
-	return s.Datastore.GetBundle(ctx, bundleID)
+func (s *StateMachineBundleAPI) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+	return s.Datastore.CheckContentItemExistsByDatasetEditionVersion(ctx, datasetID, editionID, versionID)
+}
+
+func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
+	return s.Datastore.CreateBundleEvent(ctx, event)
 }

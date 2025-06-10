@@ -16,7 +16,8 @@ func TestSetup(t *testing.T) {
 
 		Convey("When created the following routes should have been added", func() {
 			So(hasRoute(api.Router, "/bundles", "GET"), ShouldBeTrue)
-			So(hasRoute(api.Router, "/bundles/{bundle_id}", "GET"), ShouldBeTrue)
+			So(hasRoute(api.Router, "/bundles/{bundle-id}", "GET"), ShouldBeTrue)
+			So(hasRoute(api.Router, "/bundles/{bundle-id}/contents", "POST"), ShouldBeTrue)
 		})
 	})
 }
