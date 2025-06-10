@@ -54,7 +54,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-1/contents"
             """
                 {
-                    "bundle_id": "bundle-1",
                     "content_type": "DATASET",
                     "metadata": {
                         "dataset_id": "dataset1",
@@ -97,7 +96,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-1/contents"
             """
                 {
-                    "bundle_id": "bundle-1",
                     "metadata": {
                         "dataset_id": "dataset1",
                         "edition_id": "edition1",
@@ -130,7 +128,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-missing/contents"
             """
                 {
-                    "bundle_id": "bundle-missing",
                     "content_type": "DATASET",
                     "metadata": {
                         "dataset_id": "dataset1",
@@ -161,7 +158,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-1/contents"
             """
                 {
-                    "bundle_id": "bundle-1",
                     "content_type": "DATASET",
                     "metadata": {
                         "dataset_id": "fail-get-version",
@@ -181,7 +177,10 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "not_found",
-                        "description": "Dataset version not found"
+                        "description": "The requested resource does not exist",
+                        "source": {
+                            "field": "/metadata/dataset_id"
+                        }
                     }
                 ]
             }
@@ -192,7 +191,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-1/contents"
             """
                 {
-                    "bundle_id": "bundle-1",
                     "content_type": "DATASET",
                     "metadata": {
                         "dataset_id": "dataset2",
@@ -223,7 +221,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         When I POST "/bundles/bundle-1/contents"
             """
                 {
-                    "bundle_id": "bundle-1",
                     "content_type": "DATASET",
                     "metadata": {
                         "dataset_id": "dataset1",

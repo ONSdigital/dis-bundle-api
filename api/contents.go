@@ -84,7 +84,8 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Dataset version not found",
+				Description: apierrors.ErrorDescriptionNotFound,
+				Source:      &models.Source{Field: "/metadata/dataset_id"},
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 			return

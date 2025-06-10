@@ -356,7 +356,8 @@ func TestPostBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeNotFound,
-							Description: "Dataset version not found",
+							Description: apierrors.ErrorDescriptionNotFound,
+							Source:      &models.Source{Field: "/metadata/dataset_id"},
 						},
 					},
 				}

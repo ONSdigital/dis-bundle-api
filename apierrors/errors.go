@@ -13,6 +13,7 @@ func (e ErrInvalidPatch) Error() string {
 
 var (
 	ErrDescriptionMalformedRequest = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrorDescriptionNotFound       = "The requested resource does not exist"
 	ErrDescriptionInternalError    = "Failed to process the request due to an internal error"
 )
 
