@@ -170,7 +170,13 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-			if datasetID == "fail-get-version" {
+			if datasetID == "dataset-not-found" {
+				return datasetAPIModels.Version{}, errors.New("dataset not found")
+			}
+			if editionID == "edition-not-found" {
+				return datasetAPIModels.Version{}, errors.New("edition not found")
+			}
+			if versionID == "404" {
 				return datasetAPIModels.Version{}, errors.New("version not found")
 			}
 			return datasetAPIModels.Version{}, nil
