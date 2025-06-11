@@ -62,6 +62,7 @@ func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error 
 }
 
 func (c *BundleComponent) putBundleInDatabase(ctx context.Context, collectionName string, bundle models.Bundle) error {
+	bundle.ETag = "etag-" + bundle.ID
 	update := bson.M{
 		"$set": bundle,
 		"$setOnInsert": bson.M{

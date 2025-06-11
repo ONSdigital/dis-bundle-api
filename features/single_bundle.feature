@@ -23,8 +23,7 @@ Feature: List Single Bundle functionality - GET /Bundles/{bundle-id}
                     "state": "DRAFT",
                     "title": "bundle-1",
                     "updated_at": "2025-04-03T11:25:00Z",
-                    "managed_by": "WAGTAIL",
-                    "e_tag": "original-etag"
+                    "managed_by": "WAGTAIL"
                 }
             ]
             """
@@ -54,12 +53,11 @@ Feature: List Single Bundle functionality - GET /Bundles/{bundle-id}
                 "state": "DRAFT",
                 "title": "bundle-1",
                 "updated_at": "2025-04-03T11:25:00Z",
-                "managed_by": "WAGTAIL",
-                "e_tag": "original-etag"
+                "managed_by": "WAGTAIL"
             }
             """
         And the response header "ETag" should not be empty
-        And the response header "ETag" should be "original-etag"
+        And the response header "ETag" should be "etag-bundle-1"
 
         And the response header "Cache-Control" should be "no-store"
 

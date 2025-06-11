@@ -23,8 +23,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "state": "DRAFT",
                     "title": "bundle-1",
                     "updated_at": "2025-04-03T11:25:00Z",
-                    "managed_by": "WAGTAIL",
-                    "e_tag": "testetag1"
+                    "managed_by": "WAGTAIL"
                 },
                 {
                     "id": "bundle-2",
@@ -44,8 +43,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "state": "DRAFT",
                     "title": "bundle-2",
                     "updated_at": "2025-04-04T13:40:00Z",
-                    "managed_by": "WAGTAIL",
-                    "e_tag": "testetag2"
+                    "managed_by": "WAGTAIL"
                 },
                 {
                     "id": "bundle-3",
@@ -65,8 +63,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "state": "DRAFT",
                     "title": "bundle-3",
                     "updated_at": "2025-04-05T13:40:00Z",
-                    "managed_by": "WAGTAIL",
-                    "e_tag": "testetag3"
+                    "managed_by": "WAGTAIL"
                 }
             ]
             """
