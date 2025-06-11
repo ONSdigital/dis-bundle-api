@@ -6,21 +6,22 @@ import (
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func setupBundleTestData(ctx context.Context, mongo *Mongo) error {
+func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, error) {
 	if err := mongo.Connection.DropDatabase(ctx); err != nil {
-		return err
+		return nil, err
 	}
 
 	now := time.Now()
 	oneDayFromNow := now.Add(24 * time.Hour)
 	twoDaysFromNow := now.Add(48 * time.Hour)
 	draft := models.BundleStateDraft
-
+	approved := models.BundleStateApproved
 	bundles := []*models.Bundle{
 		{
 			ID:            "bundle1",
@@ -48,15 +49,28 @@ func setupBundleTestData(ctx context.Context, mongo *Mongo) error {
 			UpdatedAt:     &now,
 			ManagedBy:     models.ManagedByWagtail,
 		},
+		{
+			ID:            "bundle3",
+			BundleType:    models.BundleTypeManual,
+			CreatedBy:     &models.User{Email: "user2@ons.gov.uk"},
+			CreatedAt:     &now,
+			LastUpdatedBy: &models.User{Email: "user2@ons.gov.uk"},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
+			ScheduledAt:   nil,
+			State:         &approved,
+			Title:         "Manual Bundle 3",
+			UpdatedAt:     &now,
+			ManagedBy:     models.ManagedByWagtail,
+		},
 	}
 
 	for _, b := range bundles {
 		if err := mongo.CreateBundle(ctx, b); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return bundles, nil
 }
 
 func TestListBundles_Success(t *testing.T) {
@@ -66,21 +80,57 @@ func TestListBundles_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		mockBundles, err := setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When ListBundles is called", func() {
-			bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10)
+		Convey("When ListBundles is called with nil filters", func() {
+			bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, nil)
 
 			Convey("Then it should return the correct bundles and total count", func() {
 				So(err, ShouldBeNil)
-				So(totalCount, ShouldEqual, 2)
-				So(len(bundles), ShouldEqual, 2)
+				So(totalCount, ShouldEqual, 3)
+				So(len(bundles), ShouldEqual, len(mockBundles))
 
 				So(bundles[0].ID, ShouldEqual, "bundle1")
 				So(bundles[0].BundleType, ShouldEqual, models.BundleTypeScheduled)
 				So(bundles[1].ID, ShouldEqual, "bundle2")
 				So(bundles[1].BundleType, ShouldEqual, models.BundleTypeManual)
+				So(bundles[2].ID, ShouldEqual, mockBundles[2].ID)
+				So(bundles[2].BundleType, ShouldEqual, mockBundles[2].BundleType)
+			})
+		})
+
+		Convey("When ListBundles is called with valid filters", func() {
+			Convey("Then it should return the matching correct bundles and total count when matching bundles", func() {
+				expectedBundle := mockBundles[0]
+				scheduledAtDate := expectedBundle.ScheduledAt
+
+				filters := filters.BundleFilters{
+					PublishDate: scheduledAtDate,
+				}
+
+				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &filters)
+
+				So(err, ShouldBeNil)
+				So(totalCount, ShouldEqual, 1)
+				So(len(bundles), ShouldEqual, 1)
+
+				So(bundles[0].ID, ShouldEqual, expectedBundle.ID)
+				So(bundles[0].BundleType, ShouldEqual, models.BundleTypeScheduled)
+			})
+
+			Convey("Then it should return no bundles when no bundles matching", func() {
+				scheduledAtDate := time.Now()
+
+				filters := filters.BundleFilters{
+					PublishDate: &scheduledAtDate,
+				}
+
+				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &filters)
+
+				So(err, ShouldBeNil)
+				So(totalCount, ShouldEqual, 0)
+				So(len(bundles), ShouldEqual, 0)
 			})
 		})
 	})
@@ -93,12 +143,12 @@ func TestListBundles_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When ListBundles is called and the connection fails", func() {
 			mongodb.Connection.Close(ctx)
-			bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10)
+			bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, nil)
 
 			Convey("Then it should return an error and no bundles", func() {
 				So(err, ShouldNotBeNil)
@@ -112,11 +162,48 @@ func TestListBundles_Failure(t *testing.T) {
 func TestBuildListBundlesQuery(t *testing.T) {
 	t.Parallel()
 
-	Convey("When we call buildListBundlesQuery", t, func() {
-		filter, sort := buildListBundlesQuery()
+	Convey("When we call buildListBundlesQuery with a nil filter", t, func() {
+		filter, sort := buildListBundlesQuery(nil)
 
 		Convey("Then it should return an empty filter and sort by updated_at descending", func() {
 			expectedFilter := bson.M{}
+			expectedSort := bson.M{"updated_at": -1}
+
+			So(filter, ShouldResemble, expectedFilter)
+			So(sort, ShouldResemble, expectedSort)
+		})
+	})
+
+	Convey("When we call buildListBundlesQuery with a non-nil filter", t, func() {
+		Convey("Then it should return an empty filter if publishDate is nil", func() {
+			bundleFilters := filters.BundleFilters{
+				PublishDate: nil,
+			}
+			filter, sort := buildListBundlesQuery(&bundleFilters)
+
+			expectedFilter := bson.M{}
+			expectedSort := bson.M{"updated_at": -1}
+
+			So(filter, ShouldResemble, expectedFilter)
+			So(sort, ShouldResemble, expectedSort)
+		})
+
+		Convey("Then it should return an appropriate scheduled_at filter if publishDate is not nil", func() {
+			publishDateFilter := time.Date(2025, 01, 01, 10, 30, 30, 0, time.UTC)
+			bundleFilters := filters.BundleFilters{
+				PublishDate: &publishDateFilter,
+			}
+
+			filter, sort := buildListBundlesQuery(&bundleFilters)
+
+			scheduledAtFilter := bson.M{
+				"$gte": publishDateFilter.Add(time.Second * -2),
+				"$lte": publishDateFilter.Add(time.Second * 2),
+			}
+
+			expectedFilter := bson.M{
+				"scheduled_at": scheduledAtFilter,
+			}
 			expectedSort := bson.M{"updated_at": -1}
 
 			So(filter, ShouldResemble, expectedFilter)
@@ -132,7 +219,7 @@ func TestGetBundle_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When GetBundle is called with an existing bundle ID", func() {
@@ -153,7 +240,7 @@ func TestGetBundle_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When GetBundle is called with a non-existent bundle ID", func() {
@@ -200,7 +287,7 @@ func TestCreateBundle_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When CreateBundle is called with a new bundle", func() {
@@ -237,7 +324,7 @@ func TestCreateBundle_Failure(t *testing.T) {
 		mongodb, mimServer, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		err = SetupIndexes(ctx, mimServer)
@@ -275,7 +362,7 @@ func TestUpdateBundle_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When UpdateBundle is called with an existing bundle ID", func() {
@@ -301,7 +388,7 @@ func TestUpdateBundle_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When UpdateBundle is called with a non-existent bundle ID", func() {
@@ -337,7 +424,7 @@ func TestUpdateBundleETag_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When UpdateBundleETag is called with an existing bundle ID", func() {
@@ -363,7 +450,7 @@ func TestUpdateBundleETag_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When UpdateBundleETag is called with a non-existent bundle ID", func() {
@@ -383,7 +470,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When DeleteBundle is called with an existing bundle ID", func() {
@@ -406,7 +493,7 @@ func TestDeleteBundle_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When DeleteBundle is called with a non-existent bundle ID", func() {
@@ -436,7 +523,7 @@ func TestCheckBundleExists_Success(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When CheckBundleExists is called with an existing bundle ID", func() {
@@ -466,7 +553,7 @@ func TestCheckBundleExists_Failure(t *testing.T) {
 		mongodb, _, err := getTestMongoDB(ctx)
 		So(err, ShouldBeNil)
 
-		err = setupBundleTestData(ctx, mongodb)
+		_, err = setupBundleTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
 		Convey("When CheckBundleExists is called and the connection fails", func() {

@@ -4,14 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
@@ -123,25 +125,64 @@ func TestGetBundles_Success(t *testing.T) {
 			},
 		}
 
-		Convey("When offset and limit values are default", func() {
-			r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
-			w := httptest.NewRecorder()
-
-			mockedDatastore := &storetest.StorerMock{
-				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-					return defaultBundles, len(defaultBundles), nil
-				},
+		bundleFilterFunc := func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+			if filters == nil || filters.PublishDate == nil {
+				return defaultBundles, len(defaultBundles), nil
 			}
 
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+			var filteredBundles []*models.Bundle
 
-			results, count, errResp := bundleAPI.getBundles(w, r, 10, 0)
-			actualBundles, ok := results.([]*models.Bundle)
-			Convey("Then default values should be returned with no error", func() {
-				So(ok, ShouldBeTrue)
+			timeTolerance := time.Second * 2
+			for _, bundle := range defaultBundles {
+				if bundle.ScheduledAt.Sub(*filters.PublishDate) < timeTolerance {
+					filteredBundles = append(filteredBundles, bundle)
+				}
+			}
+
+			return filteredBundles, len(filteredBundles), nil
+		}
+
+		Convey("When offset and limit values are default", func() {
+			Convey("And publish_date filter is not supplied, then default values should be returned with no error", func() {
+				r := httptest.NewRequest("GET", "http://localhost:29800/bundles", http.NoBody)
+				w := httptest.NewRecorder()
+
+				mockedDatastore := &storetest.StorerMock{
+					ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+						return defaultBundles, len(defaultBundles), nil
+					},
+				}
+
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+				successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
+
 				So(errResp, ShouldBeNil)
-				So(actualBundles, ShouldResemble, defaultBundles)
-				So(count, ShouldEqual, len(defaultBundles))
+				So(successResp.Result.Items, ShouldResemble, defaultBundles)
+				So(successResp.Result.TotalCount, ShouldEqual, len(defaultBundles))
+			})
+
+			Convey("And publish_date filter is supplied, then default values should be returned with no error", func() {
+				paramValue := oneDayLater.UTC().Format(time.RFC3339)
+
+				r := httptest.NewRequest("GET", fmt.Sprintf("http://localhost:29800/bundles?%s=%s", filters.PublishDate, paramValue), http.NoBody)
+				w := httptest.NewRecorder()
+
+				mockedDatastore := &storetest.StorerMock{
+					ListBundlesFunc: bundleFilterFunc,
+				}
+
+				expectedBundles := []*models.Bundle{
+					defaultBundles[0],
+				}
+
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+				successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
+
+				So(errResp, ShouldBeNil)
+				So(successResp.Result.Items, ShouldResemble, expectedBundles)
+				So(successResp.Result.TotalCount, ShouldEqual, len(expectedBundles))
 			})
 		})
 
@@ -151,7 +192,7 @@ func TestGetBundles_Success(t *testing.T) {
 			customBundles := defaultBundles[1:]
 
 			mockedDatastore := &storetest.StorerMock{
-				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+				ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
 					So(offset, ShouldEqual, 1)
 					So(limit, ShouldEqual, 1)
 					return customBundles, len(customBundles), nil
@@ -160,13 +201,33 @@ func TestGetBundles_Success(t *testing.T) {
 
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
-			results, count, err := bundleAPI.getBundles(w, r, 1, 1)
-			actualBundles, ok := results.([]*models.Bundle)
+			successResp, err := bundleAPI.getBundles(w, r, 1, 1)
 			Convey("Then custom paginated values should be returned with no error", func() {
-				So(ok, ShouldBeTrue)
 				So(err, ShouldBeNil)
-				So(actualBundles, ShouldResemble, customBundles)
-				So(count, ShouldEqual, len(customBundles))
+				So(successResp.Result.Items, ShouldResemble, customBundles)
+				So(successResp.Result.TotalCount, ShouldEqual, len(customBundles))
+			})
+		})
+
+		Convey("When no matching bundles are found for the publish date", func() {
+			paramValue := time.Now().UTC().Format(time.RFC3339)
+
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: bundleFilterFunc,
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+			Convey("Then it returns a 404 error", func() {
+				url := fmt.Sprintf("http://localhost:29800/bundles?%s=%s", filters.PublishDate, paramValue)
+
+				r := httptest.NewRequest("GET", url, http.NoBody)
+				w := httptest.NewRecorder()
+
+				successResp, err := bundleAPI.getBundles(w, r, 10, 0)
+				So(successResp, ShouldBeNil)
+				So(err, ShouldNotBeNil)
+				So(err.HTTPStatusCode, ShouldEqual, 404)
 			})
 		})
 	})
@@ -180,19 +241,18 @@ func TestGetBundles_Failure(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+				ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
 					return nil, 0, errors.New("database failure")
 				},
 			}
 
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-			results, errCode, errResp := bundleAPI.getBundles(w, r, 10, 0)
+			successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
 			Convey("Then the status code should be 500", func() {
-				So(errCode, ShouldEqual, http.StatusInternalServerError)
-				So(results, ShouldBeNil)
-				So(results, ShouldBeNil)
+				So(successResp, ShouldBeNil)
 				So(errResp, ShouldNotBeNil)
-				So(errResp.Description, ShouldEqual, "Failed to process the request due to an internal error")
+				So(errResp.HTTPStatusCode, ShouldEqual, 500)
+				So(errResp.Error.Description, ShouldEqual, "Failed to process the request due to an internal error")
 			})
 		})
 
@@ -201,7 +261,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				ListBundlesFunc: func(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
+				ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
 					return nil, 0, errors.New("something broke inside")
 				},
 			}
@@ -212,6 +272,44 @@ func TestGetBundles_Failure(t *testing.T) {
 			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}]}`+"\n")
+			})
+		})
+
+		Convey("When an invalid publish_date is supplied", func() {
+			r := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/bundles?%s=%s", filters.PublishDate, "notactuallyadate"), http.NoBody)
+			w := httptest.NewRecorder()
+
+			mockedDatastore := &storetest.StorerMock{
+				ListBundlesFunc: func(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+					return nil, 0, nil
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+			bundleAPI.Router.ServeHTTP(w, r)
+			Convey("Then the status code should be 500", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+				expectedErrorCode := models.CodeInternalServerError
+				expectedErrorSource := models.Source{
+					Parameter: "publish_date",
+				}
+
+				expectedError := &models.Error{
+					Code:        &expectedErrorCode,
+					Description: errs.ErrorDescriptionMalformedRequest,
+					Source:      &expectedErrorSource,
+				}
+
+				var errList models.ErrorList
+				errList.Errors = append(errList.Errors, expectedError)
+				bytes, err := json.Marshal(errList)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				expectedErrorString := fmt.Sprintf("%s\n", string(bytes))
+				So(w.Body.String(), ShouldEqual, expectedErrorString)
 			})
 		})
 	})
@@ -231,7 +329,7 @@ func TestGetBundle_Success(t *testing.T) {
 	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
 		Convey("When the bundle-id is valid", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle_id": "valid-id"})
+			req = mux.SetURLVars(req, map[string]string{"bundle-id": "valid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
@@ -261,30 +359,44 @@ func TestGetBundle_Failure(t *testing.T) {
 	t.Parallel()
 	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
 		ctx := context.Background()
+
 		Convey("When the bundle-id is invalid", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/invalid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle_id": "invalid-id"})
+			req = mux.SetURLVars(req, map[string]string{"bundle-id": "invalid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
 				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-					return nil, apierrors.ErrBundleNotFound
+					return nil, errs.ErrBundleNotFound
 				},
 			}
 
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
 			bundleAPI.Router.ServeHTTP(rec, req)
 
-			Convey("Then the response should be 404 with 'The requested resource does not exist'", func() {
+			Convey("Then the response should be 404 with structured NotFound error", func() {
 				So(rec.Code, ShouldEqual, http.StatusNotFound)
-				expected := `{"errors":[{"code":"not_found","description":"The requested resource does not exist"}]}` + "\n"
-				So(rec.Body.String(), ShouldEqual, expected)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(rec.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeNotFound
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrResourceNotFound,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 
 		Convey("When the request causes an internal error", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle_id": "valid-id"})
+			req = mux.SetURLVars(req, map[string]string{"bundle-id": "valid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
@@ -296,33 +408,45 @@ func TestGetBundle_Failure(t *testing.T) {
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
 			bundleAPI.Router.ServeHTTP(rec, req)
 
-			Convey("Then the response should be 500 with 'An internal error occurred'", func() {
+			Convey("Then the response should be 500 with structured InternalError", func() {
 				So(rec.Code, ShouldEqual, http.StatusInternalServerError)
-				expected := `{"errors":[{"code":"internal_server_error","description":"An internal error occurred"}]}` + "\n"
-				So(rec.Body.String(), ShouldEqual, expected)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(rec.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrInternalErrorDescription,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 
 		Convey("When no valid authentication token is provided", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/protected-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle_id": "protected-id"})
+			req = mux.SetURLVars(req, map[string]string{"bundle-id": "protected-id"})
 			rec := httptest.NewRecorder()
 
 			authMiddleware := &authorisationMock.MiddlewareMock{
 				RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 					return func(w http.ResponseWriter, r *http.Request) {
-						http.Error(w, `{"code":"Unauthorised","description":"Access denied."}`, http.StatusUnauthorized)
+						http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
 					}
 				},
 			}
 
 			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, nil, authMiddleware)
-			bundleAPI.Router.HandleFunc("/bundles/{bundle_id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
+			bundleAPI.Router.HandleFunc("/bundles/{bundle-id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
-			Convey("Then the response should be 401 with 'Access denied.'", func() {
+			Convey("Then the response should be 401 with structured Unauthorised error", func() {
 				So(rec.Code, ShouldEqual, http.StatusUnauthorized)
-				So(rec.Body.String(), ShouldEqual, `{"code":"Unauthorised","description":"Access denied."}`+"\n")
 			})
 		})
 	})

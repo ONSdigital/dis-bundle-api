@@ -18,6 +18,7 @@ func TestSetup(t *testing.T) {
 			So(hasRoute(api.Router, "/bundles", "GET"), ShouldBeTrue)
 			So(hasRoute(api.Router, "/bundles/{bundle-id}", "GET"), ShouldBeTrue)
 			So(hasRoute(api.Router, "/bundles/{bundle-id}/contents", "POST"), ShouldBeTrue)
+			So(hasRoute(api.Router, "/bundle-events", "GET"), ShouldBeTrue)
 		})
 	})
 }

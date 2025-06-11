@@ -154,7 +154,7 @@ func TestPostBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: apierrors.ErrDescriptionMalformedRequest,
+							Description: apierrors.ErrorDescriptionMalformedRequest,
 						},
 					},
 				}
@@ -203,7 +203,7 @@ func TestPostBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeMissingParameters,
-							Description: apierrors.ErrDescriptionMalformedRequest,
+							Description: apierrors.ErrorDescriptionMalformedRequest,
 							Source:      &models.Source{Field: "/metadata/edition_id"},
 						},
 					},
@@ -356,7 +356,8 @@ func TestPostBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeNotFound,
-							Description: "Dataset version not found",
+							Description: apierrors.ErrorDescriptionNotFound,
+							Source:      &models.Source{Field: "/metadata/dataset_id"},
 						},
 					},
 				}

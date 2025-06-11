@@ -5,6 +5,7 @@ package storetest
 
 import (
 	"context"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
@@ -49,7 +50,7 @@ var _ store.MongoDB = &MongoDBMock{}
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 //				panic("mock out the ListBundleEvents method")
 //			},
-//			ListBundlesFunc: func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
+//			ListBundlesFunc: func(ctx context.Context, offset int, limit int, filtersMoqParam *filters.BundleFilters) ([]*models.Bundle, int, error) {
 //				panic("mock out the ListBundles method")
 //			},
 //			UpdateBundleETagFunc: func(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
@@ -90,7 +91,7 @@ type MongoDBMock struct {
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
 
 	// ListBundlesFunc mocks the ListBundles method.
-	ListBundlesFunc func(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error)
+	ListBundlesFunc func(ctx context.Context, offset int, limit int, filtersMoqParam *filters.BundleFilters) ([]*models.Bundle, int, error)
 
 	// UpdateBundleETagFunc mocks the UpdateBundleETag method.
 	UpdateBundleETagFunc func(ctx context.Context, bundleID string, email string) (*models.Bundle, error)
@@ -178,6 +179,8 @@ type MongoDBMock struct {
 			Offset int
 			// Limit is the limit argument value.
 			Limit int
+			// FiltersMoqParam is the filtersMoqParam argument value.
+			FiltersMoqParam *filters.BundleFilters
 		}
 		// UpdateBundleETag holds details about calls to the UpdateBundleETag method.
 		UpdateBundleETag []struct {
@@ -547,23 +550,25 @@ func (mock *MongoDBMock) ListBundleEventsCalls() []struct {
 }
 
 // ListBundles calls ListBundlesFunc.
-func (mock *MongoDBMock) ListBundles(ctx context.Context, offset int, limit int) ([]*models.Bundle, int, error) {
+func (mock *MongoDBMock) ListBundles(ctx context.Context, offset int, limit int, filtersMoqParam *filters.BundleFilters) ([]*models.Bundle, int, error) {
 	if mock.ListBundlesFunc == nil {
 		panic("MongoDBMock.ListBundlesFunc: method is nil but MongoDB.ListBundles was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Offset int
-		Limit  int
+		Ctx             context.Context
+		Offset          int
+		Limit           int
+		FiltersMoqParam *filters.BundleFilters
 	}{
-		Ctx:    ctx,
-		Offset: offset,
-		Limit:  limit,
+		Ctx:             ctx,
+		Offset:          offset,
+		Limit:           limit,
+		FiltersMoqParam: filtersMoqParam,
 	}
 	mock.lockListBundles.Lock()
 	mock.calls.ListBundles = append(mock.calls.ListBundles, callInfo)
 	mock.lockListBundles.Unlock()
-	return mock.ListBundlesFunc(ctx, offset, limit)
+	return mock.ListBundlesFunc(ctx, offset, limit, filtersMoqParam)
 }
 
 // ListBundlesCalls gets all the calls that were made to ListBundles.
@@ -571,14 +576,16 @@ func (mock *MongoDBMock) ListBundles(ctx context.Context, offset int, limit int)
 //
 //	len(mockedMongoDB.ListBundlesCalls())
 func (mock *MongoDBMock) ListBundlesCalls() []struct {
-	Ctx    context.Context
-	Offset int
-	Limit  int
+	Ctx             context.Context
+	Offset          int
+	Limit           int
+	FiltersMoqParam *filters.BundleFilters
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Offset int
-		Limit  int
+		Ctx             context.Context
+		Offset          int
+		Limit           int
+		FiltersMoqParam *filters.BundleFilters
 	}
 	mock.lockListBundles.RLock()
 	calls = mock.calls.ListBundles
