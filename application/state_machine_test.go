@@ -181,6 +181,14 @@ func TestTransition_success(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 	})
+
+	Convey("When transitioning from nil current bundle to 'DRAFT'", t, func() {
+		err := stateMachine.Transition(ctx, stateMachineBundleAPI, nil, bundleUpdateWithStateDraft)
+
+		Convey("Then the transition should not fail", func() {
+			So(err, ShouldBeNil)
+		})
+	})
 }
 
 func TestTransition_failure(t *testing.T) {
@@ -249,6 +257,15 @@ func TestTransition_failure(t *testing.T) {
 		Convey("Then the transition should fail", func() {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEqual, "incorrect state value")
+		})
+	})
+
+	Convey("When transitioning from nil current bundle to 'APPROVED'", t, func() {
+		err := stateMachine.Transition(ctx, stateMachineBundleAPI, nil, bundleUpdateWithStateApproved)
+
+		Convey("Then the transition should fail", func() {
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "bundle state must be DRAFT when creating a new bundle")
 		})
 	})
 }
