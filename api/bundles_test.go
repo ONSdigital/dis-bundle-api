@@ -361,7 +361,6 @@ func TestGetBundle_Failure(t *testing.T) {
 
 		Convey("When the bundle-id is invalid", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/invalid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle-id": "invalid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
@@ -395,7 +394,6 @@ func TestGetBundle_Failure(t *testing.T) {
 
 		Convey("When the request causes an internal error", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle-id": "valid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{
@@ -429,7 +427,6 @@ func TestGetBundle_Failure(t *testing.T) {
 
 		Convey("When no valid authentication token is provided", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/protected-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle-id": "protected-id"})
 			rec := httptest.NewRecorder()
 
 			authMiddleware := &authorisationMock.MiddlewareMock{
