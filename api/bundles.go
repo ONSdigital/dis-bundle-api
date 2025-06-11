@@ -72,12 +72,6 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set the required headers
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-
-	dpresponse.SetETag(w, bundles.ETag)
-
 	bundleBytes, err := json.Marshal(bundles)
 	if err != nil {
 		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
@@ -89,6 +83,12 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
+
+	// Set the required headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	dpresponse.SetETag(w, bundles.ETag)
+
 	_, err = w.Write(bundleBytes)
 	if err != nil {
 		log.Error(ctx, "failed writing bytes to response", err, logData)
