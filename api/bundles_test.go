@@ -329,7 +329,6 @@ func TestGetBundle_Success(t *testing.T) {
 	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
 		Convey("When the bundle-id is valid", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
-			req = mux.SetURLVars(req, map[string]string{"bundle-id": "valid-id"})
 			rec := httptest.NewRecorder()
 
 			mockStore := &storetest.StorerMock{

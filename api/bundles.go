@@ -78,7 +78,7 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: errs.ErrMarshallJSONObject,
+			Description: errs.ErrMarshalJSONObject,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return

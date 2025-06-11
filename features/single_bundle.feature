@@ -56,7 +56,6 @@ Feature: List Single Bundle functionality - GET /Bundles/{bundle-id}
                 "managed_by": "WAGTAIL"
             }
             """
-        And the response header "ETag" should not be empty
         And the response header "ETag" should be "etag-bundle-1"
 
         And the response header "Cache-Control" should be "no-store"
