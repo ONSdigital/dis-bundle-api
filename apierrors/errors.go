@@ -15,6 +15,9 @@ var (
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 	ErrUnableToParseJSON   = errors.New("failed to parse json body")
 	ErrUnableToParseTime   = errors.New("failed to parse time from json body")
+	ErrScheduledAtRequired = errors.New("scheduled_at is required for scheduled bundles")
+	ErrScheduledAtSet      = errors.New("scheduled_at should not be set for manual bundles")
+	ErrScheduledAtInPast   = errors.New("scheduled_at cannot be in the past")
 )
 
 var (

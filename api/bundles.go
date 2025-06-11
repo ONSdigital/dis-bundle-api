@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -152,13 +151,47 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isValid := validateScheduledAt(ctx, bundle, w, r)
-	if !isValid {
-		return
-	}
-
 	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
+		if err == apierrors.ErrScheduledAtRequired {
+			log.Error(ctx, "scheduled_at is required for scheduled bundles", err)
+			code := models.CodeBadRequest
+			e := &models.Error{
+				Code:        &code,
+				Description: "scheduled_at is required for scheduled bundles",
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
+			return
+		}
+		if err == apierrors.ErrScheduledAtSet {
+			log.Error(ctx, "scheduled_at should not be set for manual bundles", err)
+			code := models.CodeBadRequest
+			e := &models.Error{
+				Code:        &code,
+				Description: "scheduled_at should not be set for manual bundles",
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
+			return
+		}
+		if err == apierrors.ErrScheduledAtInPast {
+			log.Error(ctx, "scheduled_at cannot be in the past", err)
+			code := models.CodeBadRequest
+			e := &models.Error{
+				Code:        &code,
+				Description: "scheduled_at cannot be in the past",
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
+			return
+		}
 		log.Error(ctx, "failed to create bundle in the database", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
@@ -233,41 +266,4 @@ func writeResponse(ctx context.Context, w http.ResponseWriter, bundle *models.Bu
 	}
 	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
 	return nil
-}
-
-func validateScheduledAt(ctx context.Context, bundle *models.Bundle, w http.ResponseWriter, r *http.Request) bool {
-	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
-		log.Error(ctx, "scheduled_at is required for scheduled bundles", nil)
-		code := models.CodeBadRequest
-		e := &models.Error{
-			Code:        &code,
-			Description: "scheduled_at is required for scheduled bundles",
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
-		return false
-	}
-
-	if bundle.BundleType == models.BundleTypeManual && bundle.ScheduledAt != nil {
-		log.Error(ctx, "scheduled_at should not be set for manual bundles", nil)
-		code := models.CodeBadRequest
-		e := &models.Error{
-			Code:        &code,
-			Description: "scheduled_at should not be set for manual bundles",
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
-		return false
-	}
-
-	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
-		log.Error(ctx, "scheduled_at cannot be in the past", nil)
-		code := models.CodeBadRequest
-		e := &models.Error{
-			Code:        &code,
-			Description: "scheduled_at cannot be in the past",
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
-		return false
-	}
-
-	return true
 }

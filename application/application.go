@@ -2,7 +2,9 @@ package application
 
 import (
 	"context"
+	"time"
 
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 )
@@ -32,7 +34,11 @@ func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Co
 }
 
 func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (*models.Bundle, error) {
-	err := s.Datastore.CreateBundle(ctx, bundle)
+	err := ValidateScheduledAt(bundle)
+	if err != nil {
+		return nil, err
+	}
+	err = s.Datastore.CreateBundle(ctx, bundle)
 	if err != nil {
 		return nil, err
 	}
@@ -56,5 +62,21 @@ func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *mo
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func ValidateScheduledAt(bundle *models.Bundle) error {
+	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
+		return errs.ErrScheduledAtRequired
+	}
+
+	if bundle.BundleType == models.BundleTypeManual && bundle.ScheduledAt != nil {
+		return errs.ErrScheduledAtSet
+	}
+
+	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
+		return errs.ErrScheduledAtInPast
+	}
+
 	return nil
 }
