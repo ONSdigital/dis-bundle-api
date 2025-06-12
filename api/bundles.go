@@ -50,14 +50,14 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	bundleID := vars["bundle-id"]
 	logData := log.Data{"bundle-id": bundleID}
 
-	bundles, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
+	bundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
 		if err == errs.ErrBundleNotFound {
 			log.Error(ctx, "getBundle endpoint: bundle id not found", err, logData)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: errs.ErrResourceNotFound,
+				Description: errs.ErrorDescriptionNotFound,
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		} else {
@@ -65,14 +65,14 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeInternalServerError
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: errs.ErrInternalErrorDescription,
+				Description: errs.ErrorDescriptionInternalError,
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		}
 		return
 	}
 
-	bundleBytes, err := json.Marshal(bundles)
+	bundleBytes, err := json.Marshal(bundle)
 	if err != nil {
 		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
 		code := models.CodeInternalServerError
@@ -87,7 +87,7 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	// Set the required headers
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	dpresponse.SetETag(w, bundles.ETag)
+	dpresponse.SetETag(w, bundle.ETag)
 
 	_, err = w.Write(bundleBytes)
 	if err != nil {

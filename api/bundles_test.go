@@ -318,12 +318,32 @@ func TestGetBundles_Failure(t *testing.T) {
 func TestGetBundle_Success(t *testing.T) {
 	t.Parallel()
 
+	scheduledAt := time.Date(2025, 4, 25, 9, 0, 0, 0, time.UTC)
+	createdAt := time.Date(2025, 3, 10, 11, 20, 0, 0, time.UTC)
+	updatedAt := time.Date(2025, 3, 25, 14, 30, 0, 0, time.UTC)
+	state := models.BundleStateDraft
+
 	validBundle := &models.Bundle{
-		ID:         "valid-id",
-		Title:      "Test Bundle",
-		ETag:       "12345-etag",
-		ManagedBy:  models.ManagedByDataAdmin,
-		BundleType: models.BundleTypeManual,
+		ID:          "bundle-2",
+		Title:       "bundle-2",
+		ETag:        "12345-etag",
+		ManagedBy:   models.ManagedByWagtail,
+		BundleType:  models.BundleTypeScheduled,
+		CreatedAt:   &createdAt,
+		UpdatedAt:   &updatedAt,
+		ScheduledAt: &scheduledAt,
+		State:       &state,
+		CreatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		LastUpdatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		PreviewTeams: &[]models.PreviewTeam{
+			{
+				ID: "c78d457e-98de-11ec-b909-0242ac120002",
+			},
+		},
 	}
 
 	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
@@ -348,7 +368,28 @@ func TestGetBundle_Success(t *testing.T) {
 				var response models.Bundle
 				err := json.Unmarshal(rec.Body.Bytes(), &response)
 				So(err, ShouldBeNil)
+
 				So(response.ID, ShouldEqual, validBundle.ID)
+				So(response.Title, ShouldEqual, validBundle.Title)
+				So(response.BundleType, ShouldEqual, validBundle.BundleType)
+				So(response.ManagedBy, ShouldEqual, validBundle.ManagedBy)
+
+				So(response.CreatedAt.Unix(), ShouldEqual, validBundle.CreatedAt.Unix())
+				So(response.UpdatedAt.Unix(), ShouldEqual, validBundle.UpdatedAt.Unix())
+				So(response.ScheduledAt.Unix(), ShouldEqual, validBundle.ScheduledAt.Unix())
+
+				So(response.CreatedBy, ShouldNotBeNil)
+				So(response.CreatedBy.Email, ShouldEqual, validBundle.CreatedBy.Email)
+
+				So(response.LastUpdatedBy, ShouldNotBeNil)
+				So(response.LastUpdatedBy.Email, ShouldEqual, validBundle.LastUpdatedBy.Email)
+
+				So(response.State, ShouldNotBeNil)
+				So(*response.State, ShouldEqual, *validBundle.State)
+
+				So(response.PreviewTeams, ShouldNotBeNil)
+				So(len(*response.PreviewTeams), ShouldEqual, 1)
+				So((*response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
 			})
 		})
 	})
@@ -384,7 +425,7 @@ func TestGetBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrResourceNotFound,
+							Description: errs.ErrorDescriptionNotFound,
 						},
 					},
 				}
@@ -417,7 +458,7 @@ func TestGetBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrInternalErrorDescription,
+							Description: errs.ErrorDescriptionInternalError,
 						},
 					},
 				}
