@@ -85,52 +85,47 @@ func CleanContentItem(contentItem *ContentItem) {
 
 func ValidateContentItem(contentItem *ContentItem) []*Error {
 	var (
-		missingFields = []*Error{}
-		invalidFields = []*Error{}
+		invalidOrMissingFields = []*Error{}
 	)
 
 	codeMissingParameters := CodeMissingParameters
 	codeInvalidParameters := CodeInvalidParameters
 
 	if contentItem.BundleID == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/bundle_id"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/bundle_id"}})
 	}
 
 	if contentItem.ContentType == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/content_type"}})
 	}
 
-	if !contentItem.ContentType.IsValid() {
-		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
+	if contentItem.ContentType != "" && !contentItem.ContentType.IsValid() {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/content_type"}})
 	}
 
 	if contentItem.Metadata.DatasetID == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/metadata/dataset_id"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/metadata/dataset_id"}})
 	}
 	if contentItem.Metadata.EditionID == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/metadata/edition_id"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/metadata/edition_id"}})
 	}
 	if contentItem.Metadata.VersionID < 1 {
-		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/metadata/version_id"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/metadata/version_id"}})
 	}
 
 	if contentItem.State != nil && !contentItem.State.IsValid() {
-		invalidFields = append(invalidFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/state"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/state"}})
 	}
 
 	if contentItem.Links.Edit == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/links/edit"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/links/edit"}})
 	}
 	if contentItem.Links.Preview == "" {
-		missingFields = append(missingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/links/preview"}})
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/links/preview"}})
 	}
 
-	if len(missingFields) > 0 {
-		return missingFields
-	}
-
-	if len(invalidFields) > 0 {
-		return invalidFields
+	if len(invalidOrMissingFields) > 0 {
+		return invalidOrMissingFields
 	}
 
 	return nil
