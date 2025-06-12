@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -218,4 +219,60 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 	if _, err := w.Write(contentItemJSON); err != nil {
 		log.Error(ctx, "postBundleContents endpoint: error writing response body", err, logdata)
 	}
+}
+
+func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, limit, offset int) (contents any, totalCount int, contentErrors *models.Error) {
+	fmt.Println("getBundleContents api pack : ")
+
+	//fetch bundle ID
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	bundleID := vars["bundle-id"]
+	fmt.Println("bundleID: ", bundleID)
+
+	fmt.Println("getBundleContents api pack 2: ")
+
+	//check if the bundle exists
+	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
+	if err != nil {
+		fmt.Println("errxx inside: ")
+
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to check if bundle exists",
+		}
+		return []*models.ContentItem{}, 0, errInfo
+	}
+	fmt.Println("getBundleContents api pack 3: ")
+	fmt.Println("bundleExists : ", bundleExists)
+
+	if !bundleExists {
+		fmt.Println("bundleExists inside: ")
+
+		code := models.CodeNotFound
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Bundle not found",
+		}
+		fmt.Println("bundleExists inside 2: ")
+		return []*models.ContentItem{}, 0, errInfo
+	}
+	fmt.Println("getBundleContents api pack 4: ")
+
+	//call to application.go to get the bundles
+	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit)
+	fmt.Println("getBundleContents api pack 5: ")
+
+	//handle errors
+	if err != nil {
+		code := models.InternalError
+		log.Error(ctx, "failed to get bundle contents", err)
+		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
+		return nil, 0, errInfo
+	}
+
+	fmt.Println("totalCount: ", totalCount)
+
+	return bundleContents, totalCount, nil
 }

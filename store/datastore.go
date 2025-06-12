@@ -29,6 +29,7 @@ type dataMongoDB interface {
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
+	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 }
 
 // MongoDB represents all the required methods from mongo DB
@@ -76,4 +77,8 @@ func (ds *Datastore) CheckContentItemExistsByDatasetEditionVersion(ctx context.C
 
 func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
 	return ds.Backend.CreateBundleEvent(ctx, event)
+}
+
+func (ds *Datastore) ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error) {
+	return ds.Backend.ListBundleContents(ctx, bundleID, offset, limit)
 }

@@ -123,12 +123,36 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 
 		items, totalCount, requestError := paginatedHandler(w, r, limit, offset)
 		if requestError != nil {
-			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, requestError)
+			status := mapErrorCodeToStatus(requestError.Code)
+			utils.HandleBundleAPIErr(w, r, status, requestError)
 			return
 		}
 
 		renderedPage := renderPage(items, offset, limit, totalCount)
 		returnPaginatedResults(w, r, renderedPage)
+	}
+}
+
+func mapErrorCodeToStatus(code *models.Code) int {
+	if code == nil {
+		return http.StatusInternalServerError
+	}
+
+	switch *code {
+	case models.CodeNotFound, models.NotFound:
+		return http.StatusNotFound
+	case models.CodeBadRequest, models.ErrInvalidParameters, models.CodeInvalidParameters, models.CodeMissingParameters:
+		return http.StatusBadRequest
+	case models.CodeUnauthorized, models.Unauthorised:
+		return http.StatusUnauthorized
+	case models.CodeForbidden:
+		return http.StatusForbidden
+	case models.CodeConflict:
+		return http.StatusConflict
+	case models.CodeInternalServerError, models.InternalError, models.JSONMarshalError, models.JSONUnmarshalError, models.WriteResponseError:
+		return http.StatusInternalServerError
+	default:
+		return http.StatusInternalServerError
 	}
 }
 
