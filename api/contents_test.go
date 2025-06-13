@@ -128,7 +128,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 	})
 }
 
-func TestPostBundleContents_Failure(t *testing.T) {
+func TestPostBundleContents_MalformedJSON_Failure(t *testing.T) {
 	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a malformed JSON body", t, func() {
@@ -162,6 +162,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_InvalidBody_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with an invalid body", t, func() {
 		invalidContentItem := &models.ContentItem{
@@ -174,7 +178,6 @@ func TestPostBundleContents_Failure(t *testing.T) {
 				VersionID: 1,
 			},
 			Links: models.Links{
-				Edit:    "/edit",
 				Preview: "/preview",
 			},
 		}
@@ -206,12 +209,21 @@ func TestPostBundleContents_Failure(t *testing.T) {
 							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source:      &models.Source{Field: "/metadata/edition_id"},
 						},
+						{
+							Code:        &codeMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
+							Source:      &models.Source{Field: "/links/edit"},
+						},
 					},
 				}
 				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a non-existent bundle", t, func() {
 		newContentItem := &models.ContentItem{
@@ -298,6 +310,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a dataset, edition or version that does not exist", t, func() {
 		newContentItem := &models.ContentItem{
@@ -475,6 +491,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a content item that already contains the same dataset, edition, and version", t, func() {
 		newContentItem := &models.ContentItem{
@@ -577,6 +597,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and the datastore fails to create the content item", t, func() {
 		newContentItem := &models.ContentItem{
@@ -646,6 +670,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and parsing the JWT fails", t, func() {
 		newContentItem := &models.ContentItem{
@@ -709,6 +737,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
+}
+
+func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and bundle event creation fails", t, func() {
 		newContentItem := &models.ContentItem{
@@ -779,6 +811,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
+}
+
+func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and updating the bundle ETag fails", t, func() {
 		newContentItem := &models.ContentItem{
