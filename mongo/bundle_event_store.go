@@ -42,6 +42,7 @@ func buildListBundleEventsQuery(bundleID string, after, before *time.Time) (filt
 	filter = bson.M{}
 
 	if bundleID != "" {
+		// if bundleID is provided, filter by it
 		filter["bundle.id"] = bundleID
 	}
 
