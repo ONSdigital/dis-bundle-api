@@ -121,10 +121,11 @@ func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collecti
 	}
 
 	if createdAtStr, ok := event["created_at"].(string); ok {
-		if _, err := time.Parse(time.RFC3339, createdAtStr); err != nil {
+		parsedTime, err := time.Parse(time.RFC3339, createdAtStr)
+		if err != nil {
 			return fmt.Errorf("failed to parse created_at: %w", err)
 		}
-		event["created_at"] = createdAtStr
+		event["created_at"] = parsedTime
 	}
 
 	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
