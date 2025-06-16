@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/filters"
@@ -67,16 +66,11 @@ func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *mo
 }
 
 func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error) {
-	// contents := []*models.ContentItem{
-	// 	{ID: "ABCD"},
-	// 	{ID: "BCD"},
-	// }
-	results, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+	//check if the bundle is published
+	contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	fmt.Println("GetBundleContents application pack : ")
-	fmt.Println("totalCount app: ", totalCount)
 
-	return results, totalCount, nil
+	return contentResults, totalCount, nil
 }

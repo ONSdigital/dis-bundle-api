@@ -258,11 +258,39 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 		fmt.Println("bundleExists inside 2: ")
 		return []*models.ContentItem{}, 0, errInfo
 	}
-	fmt.Println("getBundleContents api pack 4: ")
 
-	//call to application.go to get the bundles
 	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit)
-	fmt.Println("getBundleContents api pack 5: ")
+
+	// check for bundle state
+	bundle, _ := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
+	bundleState := bundle.State
+
+	//if bundle state is not published
+	if bundleState.String() != models.BundleStatePublished.String() {
+		var authHeaders datasetAPISDK.Headers
+		if r.Header.Get("X-Florence-Token") != "" {
+			authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
+		} else {
+			authHeaders.ServiceToken = r.Header.Get("Authorization")
+		}
+
+		// Loop through bundleContents and fetch dataset info using Metadata.DatasetID
+		for _, contentItem := range bundleContents {
+			datasetID := contentItem.Metadata.DatasetID
+			if datasetID == "" {
+				fmt.Println("Missing dataset ID for content item")
+			}
+
+			dataset, err := api.datasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
+			if err != nil {
+				fmt.Printf("Failed to fetch dataset for ID %s: %v\n", datasetID, err)
+			}
+
+			fmt.Println("dataset :", dataset)
+			// Assuming dataset has Title and State fields
+			fmt.Printf("Dataset ID: %s | Title: %s | State: %s\n", datasetID, dataset.Title, dataset.State)
+		}
+	}
 
 	//handle errors
 	if err != nil {
