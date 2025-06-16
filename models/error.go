@@ -10,21 +10,21 @@ import (
 
 // Error represents the details of a specific error
 type Error struct {
-	Code        *Code   `bson:"code,omitempty"        json:"code,omitempty"`
-	Description string  `bson:"description,omitempty" json:"description,omitempty"`
-	Source      *Source `bson:"source,omitempty"      json:"source,omitempty"`
+	Code        *Code   `json:"code,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Source      *Source `json:"source,omitempty"`
 }
 
 // ErrorList represents a list of errors
 type ErrorList struct {
-	Errors []*Error `bson:"errors,omitempty" json:"errors,omitempty"`
+	Errors []*Error `json:"errors"`
 }
 
 // Source represents the details of which field or parameter the error relates to. Used to return validation errors to 4xx requests. Only one of the properties below can be returned in any single error.
 type Source struct {
-	Field     string `bson:"field,omitempty"     json:"field,omitempty"`
-	Parameter string `bson:"parameter,omitempty" json:"parameter,omitempty"`
-	Header    string `bson:"header,omitempty"    json:"header,omitempty"`
+	Field     string `json:"field,omitempty"`
+	Parameter string `json:"parameter,omitempty"`
+	Header    string `json:"header,omitempty"`
 }
 
 func CreateError(reader io.Reader) (*Error, error) {
@@ -82,16 +82,21 @@ const (
 	CodeUnauthorized        Code = "unauthorized"
 	CodeForbidden           Code = "forbidden"
 	CodeConflict            Code = "conflict"
+	CodeMissingParameters   Code = "missing_parameters"
+	CodeInvalidParameters   Code = "invalid_parameters"
 	JSONMarshalError        Code = "JSONMarshalError"
 	JSONUnmarshalError      Code = "JSONUnmarshalError"
 	WriteResponseError      Code = "WriteResponseError"
-	ErrInvalidParameters    Code = "invalid_parameters"
+	ErrInvalidParameters    Code = "ErrInvalidParameters"
+	NotFound                Code = "NotFound"
+	Unauthorised            Code = "Unauthorised"
+	InternalError           Code = "InternalError"
 )
 
 // IsValid validates that the Code is a valid enum value
 func (c Code) IsValid() bool {
 	switch c {
-	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, JSONMarshalError, JSONUnmarshalError, WriteResponseError, ErrInvalidParameters:
+	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, CodeMissingParameters, CodeInvalidParameters, JSONMarshalError, JSONUnmarshalError, WriteResponseError, ErrInvalidParameters, NotFound, Unauthorised, InternalError:
 		return true
 	default:
 		return false

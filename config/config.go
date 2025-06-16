@@ -18,6 +18,7 @@ type AuthConfig = authorisation.Config
 // Config represents service configuration for dis-bundle-api
 type Config struct {
 	BindAddr                   string        `envconfig:"BIND_ADDR"`
+	DatasetAPIURL              string        `envconfig:"DATASET_API_URL"`
 	GracefulShutdownTimeout    time.Duration `envconfig:"GRACEFUL_SHUTDOWN_TIMEOUT"`
 	HealthCheckInterval        time.Duration `envconfig:"HEALTHCHECK_INTERVAL"`
 	HealthCheckCriticalTimeout time.Duration `envconfig:"HEALTHCHECK_CRITICAL_TIMEOUT"`
@@ -51,16 +52,18 @@ func Get() (*Config, error) {
 
 	cfg = &Config{
 		BindAddr:                   ":29800",
+		DatasetAPIURL:              "http://localhost:22000",
 		GracefulShutdownTimeout:    5 * time.Second,
 		HealthCheckInterval:        30 * time.Second,
 		HealthCheckCriticalTimeout: 90 * time.Second,
 		OTBatchTimeout:             5 * time.Second,
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
-		OtelEnabled:                false,
-		DefaultMaxLimit:            1000,
-		DefaultLimit:               20,
-		DefaultOffset:              0,
+
+		OtelEnabled:     false,
+		DefaultMaxLimit: 1000,
+		DefaultLimit:    20,
+		DefaultOffset:   0,
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",

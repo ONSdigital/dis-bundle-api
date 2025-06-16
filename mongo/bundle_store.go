@@ -2,22 +2,25 @@ package mongo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// ListBundles retrieves all bundles based on the provided offset and limit
-func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*models.Bundle, totalCount int, err error) {
+// ListBundles retrieves all bundles based on the provided offset, limit, and BundleFilters
+func (m *Mongo) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error) {
 	bundles = []*models.Bundle{}
 
-	filter, sort := buildListBundlesQuery()
+	filter, sort := buildListBundlesQuery(filters)
 
 	totalCount, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).
 		Find(ctx, filter, &bundles, mongodriver.Sort(sort), mongodriver.Offset(offset), mongodriver.Limit(limit))
@@ -29,10 +32,20 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int) (bundles []*
 	return bundles, totalCount, nil
 }
 
-func buildListBundlesQuery() (filter, sort bson.M) {
+// buildListBundlesQuery Builds the MongoDB filter query based on the supplied BundleFilters value
+func buildListBundlesQuery(filters *filters.BundleFilters) (filter, sort bson.M) {
 	filter = bson.M{}
 	sort = bson.M{"updated_at": -1}
-	return
+
+	if filters == nil {
+		return filter, sort
+	}
+
+	if filters.PublishDate != nil {
+		filter["scheduled_at"] = buildDateTimeFilter(*filters.PublishDate)
+	}
+
+	return filter, sort
 }
 
 // GetBundle retrieves a single bundle by ID
@@ -98,6 +111,43 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 	return m.GetBundle(ctx, id)
 }
 
+// UpdateBundleETag updates the ETag, last_updated_by, and updated_at fields of a bundle
+func (m *Mongo) UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+	bundleUpdate, err := m.GetBundle(ctx, bundleID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	bundleUpdate.LastUpdatedBy.Email = email
+	bundleUpdate.UpdatedAt = &now
+
+	bundleUpdateJSON, err := json.Marshal(bundleUpdate)
+	if err != nil {
+		return nil, err
+	}
+
+	etag := dpresponse.GenerateETag(bundleUpdateJSON, false)
+
+	filter := bson.M{"id": bundleID}
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"last_updated_by.email": email,
+			"updated_at":            now,
+			"e_tag":                 etag,
+		},
+	}
+
+	_, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).UpdateOne(ctx, filter, updateData)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.GetBundle(ctx, bundleID)
+}
+
 // DeleteBundle deletes a bundle by ID
 func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
 	if _, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Must().DeleteOne(ctx, bson.D{{Key: "id", Value: id}}); err != nil {
@@ -109,6 +159,16 @@ func (m *Mongo) DeleteBundle(ctx context.Context, id string) (err error) {
 
 	log.Info(ctx, "bundle deleted", log.Data{"id": id})
 	return nil
+}
+
+// CheckBundleExists checks if a bundle exists by ID
+func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
+	filter := bson.M{"id": bundleID}
+	count, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Count(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // GetBundleByTitle retrieves a bundle by its title

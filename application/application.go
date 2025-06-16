@@ -5,6 +5,7 @@ import (
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 )
@@ -21,8 +22,32 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineB
 	}
 }
 
-func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int) ([]*models.Bundle, int, error) {
-	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit)
+func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+	return results, totalCount, nil
+}
+
+func (s *StateMachineBundleAPI) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
+	return s.Datastore.GetBundle(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+	return s.Datastore.UpdateBundleETag(ctx, bundleID, email)
+}
+
+func (s *StateMachineBundleAPI) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
+	return s.Datastore.CheckBundleExists(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error {
+	return s.Datastore.CreateContentItem(ctx, contentItem)
+}
+
+func (s *StateMachineBundleAPI) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {
+	results, totalCount, err := s.Datastore.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -31,6 +56,14 @@ func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit i
 
 func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
 	return s.Datastore.CheckAllBundleContentsAreApproved(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+	return s.Datastore.CheckContentItemExistsByDatasetEditionVersion(ctx, datasetID, editionID, versionID)
+}
+
+func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
+	return s.Datastore.CreateBundleEvent(ctx, event)
 }
 
 func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (*models.Bundle, error) {
@@ -55,14 +88,6 @@ func (s *StateMachineBundleAPI) GetBundleByTitle(ctx context.Context, title stri
 		return nil, err
 	}
 	return bundle, nil
-}
-
-func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
-	err := s.Datastore.CreateBundleEvent(ctx, event)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func ValidateScheduledAt(bundle *models.Bundle) error {

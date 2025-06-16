@@ -9,21 +9,28 @@ import (
 )
 
 // HandleBundleAPIErr is a helper function to handle errors and set the HTTP response status code and headers accordingly
-func HandleBundleAPIErr(w http.ResponseWriter, r *http.Request, errInfo *models.Error, httpStatusCode int) {
-	if validationErr := models.ValidateError(errInfo); validationErr != nil {
-		log.Error(r.Context(), "HandleBundleAPIErr: invalid error info provided", validationErr)
-		codeInternalServerError := models.CodeInternalServerError
-		errInfo = &models.Error{
-			Code:        &codeInternalServerError,
-			Description: "Failed to process the request due to an internal error",
+func HandleBundleAPIErr(w http.ResponseWriter, r *http.Request, httpStatusCode int, errors ...*models.Error) {
+	var errList models.ErrorList
+
+	for _, customError := range errors {
+		if validationErr := models.ValidateError(customError); validationErr != nil {
+			log.Error(r.Context(), "HandleBundleAPIErr: invalid error info provided", validationErr, log.Data{"invalid_error": customError})
+			codeInternalServerError := models.CodeInternalServerError
+			genericError := &models.Error{
+				Code:        &codeInternalServerError,
+				Description: "Failed to process the request due to an internal error",
+			}
+			httpStatusCode = http.StatusInternalServerError
+			errList.Errors = append(errList.Errors, genericError)
+		} else {
+			errList.Errors = append(errList.Errors, customError)
 		}
-		httpStatusCode = http.StatusInternalServerError
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpStatusCode)
 
-	if err := json.NewEncoder(w).Encode(errInfo); err != nil {
+	if err := json.NewEncoder(w).Encode(errList); err != nil {
 		log.Error(r.Context(), "HandleBundleAPIErr: failed to encode error info", err)
 	}
 }

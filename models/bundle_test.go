@@ -21,6 +21,7 @@ var fullyPopulatedBundle = Bundle{
 	Title:         "Fully Populated Bundle",
 	UpdatedAt:     &today,
 	ManagedBy:     ManagedByWagtail,
+	ETag:          "f9226b8eb338ac139b1c39d2bb69f5abad8bea09",
 }
 
 var minimallyPopulatedBundle = Bundle{
@@ -29,6 +30,7 @@ var minimallyPopulatedBundle = Bundle{
 	PreviewTeams: &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 	Title:        "Minimally Populated Bundle",
 	ManagedBy:    ManagedByWagtail,
+	ETag:         "3c897c1081faa19bff0c20ffd1ca99cc54640f0e",
 }
 
 func TestCreateBundle_Success(t *testing.T) {
@@ -54,6 +56,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(bundle.Title, ShouldEqual, fullyPopulatedBundle.Title)
 				So(bundle.UpdatedAt.Equal(*fullyPopulatedBundle.UpdatedAt), ShouldBeTrue)
 				So(bundle.ManagedBy, ShouldEqual, fullyPopulatedBundle.ManagedBy)
+				So(bundle.ETag, ShouldNotBeEmpty)
 			})
 		})
 	})

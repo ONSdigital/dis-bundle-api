@@ -11,6 +11,14 @@ func (e ErrInvalidPatch) Error() string {
 	return e.Msg
 }
 
+// Response error descriptions
+var (
+	ErrorDescriptionMalformedRequest  = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrorDescriptionMissingParameters = "Unable to process request due to missing required parameters in the request body or query parameters"
+	ErrorDescriptionNotFound          = "The requested resource does not exist"
+	ErrorDescriptionInternalError     = "Failed to process the request due to an internal error"
+)
+
 var (
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 	ErrUnableToParseJSON   = errors.New("failed to parse json body")
@@ -23,6 +31,12 @@ var (
 var (
 	ErrDescription              = "Unable to process request due to a malformed or invalid request body or query parameter."
 	ErrInternalErrorDescription = "An internal error occurred."
+)
+
+var (
+	ErrUnmarshalJSONObject    = "Failed to unmarshal bundle resource into bytes"
+	ErrMarshalJSONObject      = "Failed to Marshal bundle resource into bytes"
+	ErrWritingBytesToResponse = "Failed writing bytes to response"
 )
 
 // Core errors for dis-bundle-api

@@ -24,7 +24,7 @@ type Bundle struct {
 	Title         string         `bson:"title"                     json:"title"`
 	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
 	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
-	ETag          string         `bson:"e_tag,omitempty"           json:"e_tag,omitempty"`
+	ETag          string         `bson:"e_tag"                     json:"-"`
 }
 
 // Bundles represents a list of bundles
@@ -40,16 +40,6 @@ type User struct {
 // PreviewTeam represents a team who have permissions to view the dataset series in the bundle
 type PreviewTeam struct {
 	ID string `bson:"id" json:"id"`
-}
-
-// BundleContent represents the content of the bundle
-type BundleContent struct {
-	DatasetID string `bson:"dataset_id" json:"dataset_id"`
-	EditionID string `bson:"edition_id" json:"edition_id"`
-	ItemID    string `bson:"item_id" json:"item_id"`
-	State     string `bson:"state" json:"state"`
-	Title     string `bson:"title" json:"title"`
-	URLPath   string `bson:"url_path" json:"url_path"`
 }
 
 // CreateBundle creates a new Bundle from the provided reader
@@ -69,17 +59,15 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 		return nil, errs.ErrUnableToParseJSON
 	}
 
+	etag := dpresponse.GenerateETag(b, false)
+	etag = strings.Trim(etag, "\"")
+	bundle.ETag = etag
+
 	id, err := newUUID()
 	if err != nil {
 		return nil, err
 	}
 	bundle.ID = id.String()
-
-	etag, err := generateEtag(&bundle)
-	if err != nil {
-		return nil, err
-	}
-	bundle.ETag = etag
 
 	return &bundle, nil
 }
@@ -211,16 +199,6 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	}
 
 	return nil
-}
-
-func generateEtag(bundle *Bundle) (string, error) {
-	b, err := json.Marshal(bundle)
-	if err != nil {
-		return "", err
-	}
-	etag := dpresponse.GenerateETag(b, false)
-	etag = strings.Trim(etag, `"`)
-	return etag, nil
 }
 
 // BundleType enum type representing the type of the bundle

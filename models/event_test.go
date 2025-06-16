@@ -38,7 +38,7 @@ var fullyPopulatedEvent = Event{
 			VersionID: 1,
 		},
 	},
-	Bundle: &Bundle{
+	Bundle: &EventBundle{
 		ID:         "bundle123",
 		BundleType: BundleTypeManual,
 		CreatedBy: &User{
@@ -67,7 +67,7 @@ var fullyPopulatedEvent = Event{
 var minimallyPopulatedEvent = Event{
 	Action:   ActionCreate,
 	Resource: "/bundles/123",
-	Bundle: &Bundle{
+	Bundle: &EventBundle{
 		BundleType: BundleTypeManual,
 		CreatedBy: &User{
 			Email: "user123@ons.gov.uk",

@@ -10,6 +10,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -22,6 +23,7 @@ type Service struct {
 	Server                HTTPServer
 	Router                *mux.Router
 	API                   *api.BundleAPI
+	datasetAPIClient      datasetAPISDK.Clienter
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
@@ -134,6 +136,9 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	sm := GetStateMachine(ctx, datastore)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
 
+	// Get Dataset API Client
+	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+
 	// Get Permissions
 	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
 	if err != nil {
@@ -142,7 +147,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	}
 
 	// Setup API
-	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, svc.datasetAPIClient, auth)
 
 	svc.HealthCheck.Start(ctx)
 

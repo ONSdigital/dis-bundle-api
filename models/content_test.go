@@ -149,6 +149,44 @@ func TestCreateContentItem_Failure(t *testing.T) {
 	})
 }
 
+func TestCleanContentItem_Success(t *testing.T) {
+	Convey("Given a ContentItem with leading and trailing spaces in its fields", t, func() {
+		stateApprovedWithWhitespace := State("  APPROVED  ")
+
+		contentItem := &ContentItem{
+			ID:          "  id  ",
+			BundleID:    "  bundle-id  ",
+			ContentType: ContentType("  DATASET  "),
+			Metadata: Metadata{
+				DatasetID: "  dataset-id  ",
+				EditionID: "  edition-id  ",
+				Title:     "  title  ",
+			},
+			State: &stateApprovedWithWhitespace,
+			Links: Links{
+				Edit:    "  edit-link  ",
+				Preview: "  preview-link  ",
+			},
+		}
+
+		Convey("When CleanContentItem is called", func() {
+			CleanContentItem(contentItem)
+
+			Convey("Then all fields should be trimmed of leading and trailing spaces", func() {
+				So(contentItem.ID, ShouldEqual, "id")
+				So(contentItem.BundleID, ShouldEqual, "bundle-id")
+				So(contentItem.ContentType.String(), ShouldEqual, "DATASET")
+				So(contentItem.Metadata.DatasetID, ShouldEqual, "dataset-id")
+				So(contentItem.Metadata.EditionID, ShouldEqual, "edition-id")
+				So(contentItem.Metadata.Title, ShouldEqual, "title")
+				So(contentItem.State.String(), ShouldEqual, StateApproved.String())
+				So(contentItem.Links.Edit, ShouldEqual, "edit-link")
+				So(contentItem.Links.Preview, ShouldEqual, "preview-link")
+			})
+		})
+	})
+}
+
 func TestValidateContentItem_Success(t *testing.T) {
 	Convey("Given a fully populated ContentItem", t, func() {
 		contentItem := fullyPopulatedContentItem
@@ -176,31 +214,123 @@ func TestValidateContentItem_Success(t *testing.T) {
 }
 
 func TestValidateContentItem_Failure(t *testing.T) {
-	Convey("Given a ContentItem with missing mandatory fields", t, func() {
-		contentItem := ContentItem{}
+	Convey("Given a ContentItem with all fields missing/invalid", t, func() {
+		contentItem := ContentItem{State: &contentItemStateInvalid}
 
-		Convey("When ValidateContentItem is called", func() {
-			err := ValidateContentItem(&contentItem)
+		Convey("When ValidateContentItem is called (content_type missing)", func() {
+			validationErrs := ValidateContentItem(&contentItem)
 
-			Convey("Then it should return an error indicating the missing fields", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "missing mandatory fields: [bundle_id content_type metadata.dataset_id metadata.edition_id links.edit links.preview]")
+			Convey("Then it should return validation errors for all missing/invalid fields", func() {
+				So(validationErrs, ShouldNotBeEmpty)
+				So(len(validationErrs), ShouldBeGreaterThan, 0)
+
+				codeMissingParameters := CodeMissingParameters
+				codeInvalidParameters := CodeInvalidParameters
+
+				So(validationErrs[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(validationErrs[0].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[0].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[1].Source.Field, ShouldEqual, "/content_type")
+				So(validationErrs[1].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[1].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(validationErrs[2].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[2].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(validationErrs[3].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[3].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[4].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(validationErrs[4].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[4].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
+				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
+				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
+				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
+			})
+		})
+
+		Convey("When ValidateContentItem is called (content_type invalid)", func() {
+			contentItem.ContentType = ContentType("InvalidContentType")
+			validationErrs := ValidateContentItem(&contentItem)
+
+			Convey("Then it should return validation errors for all missing/invalid fields", func() {
+				So(validationErrs, ShouldNotBeEmpty)
+				So(len(validationErrs), ShouldBeGreaterThan, 0)
+
+				codeMissingParameters := CodeMissingParameters
+				codeInvalidParameters := CodeInvalidParameters
+
+				So(validationErrs[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(validationErrs[0].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[0].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[1].Source.Field, ShouldEqual, "/content_type")
+				So(validationErrs[1].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[1].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(validationErrs[2].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[2].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(validationErrs[3].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[3].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[4].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(validationErrs[4].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[4].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
+				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
+				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
+				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
 			})
 		})
 	})
+}
 
-	Convey("Given a ContentItem with invalid fields", t, func() {
-		contentItem := fullyPopulatedContentItem
-		contentItem.ContentType = "invalid_content_type"
-		contentItem.Metadata.VersionID = -1
-		contentItem.State = &contentItemStateInvalid
+func TestContentType_String_Success(t *testing.T) {
+	Convey("Given a valid ContentType", t, func() {
+		contentType := ContentTypeDataset
 
-		Convey("When ValidateContentItem is called", func() {
-			err := ValidateContentItem(&contentItem)
+		Convey("When String is called", func() {
+			str := contentType.String()
 
-			Convey("Then it should return an error indicating the invalid fields", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "invalid fields: [content_type metadata.version_id state]")
+			Convey("Then it should return the correct string representation", func() {
+				So(str, ShouldEqual, "DATASET")
+			})
+		})
+	})
+}
+
+func TestState_String_Success(t *testing.T) {
+	Convey("Given a valid State", t, func() {
+		state := StateApproved
+
+		Convey("When String is called", func() {
+			str := state.String()
+
+			Convey("Then it should return the correct string representation", func() {
+				So(str, ShouldEqual, "APPROVED")
 			})
 		})
 	})

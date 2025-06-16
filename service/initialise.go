@@ -9,16 +9,18 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
-	dphttp "github.com/ONSdigital/dp-net/v2/http"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
 // ExternalServiceList holds the initialiser and initialisation state of external services.
 type ExternalServiceList struct {
-	HealthCheck bool
-	MongoDB     bool
-	Init        Initialiser
+	HealthCheck      bool
+	MongoDB          bool
+	DatasetAPIClient bool
+	Init             Initialiser
 }
 
 // NewServiceList creates a new service list with the provided initialiser
@@ -37,6 +39,13 @@ func (e *ExternalServiceList) GetHTTPServer(bindAddr string, router http.Handler
 	return s
 }
 
+// DoGetHTTPServer creates an HTTP Server with the provided bind address and router
+func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
+	s := dphttp.NewServer(bindAddr, router)
+	s.HandleOSSignals = false
+	return s
+}
+
 // GetHealthCheck creates a healthcheck with versionInfo and sets teh HealthCheck flag to true
 func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error) {
 	hc, err := e.Init.DoGetHealthCheck(cfg, buildTime, gitCommit, version)
@@ -45,13 +54,6 @@ func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitC
 	}
 	e.HealthCheck = true
 	return hc, nil
-}
-
-// DoGetHTTPServer creates an HTTP Server with the provided bind address and router
-func (e *Init) DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer {
-	s := dphttp.NewServer(bindAddr, router)
-	s.HandleOSSignals = false
-	return s
 }
 
 // DoGetHealthCheck creates a healthcheck with versionInfo
@@ -84,6 +86,19 @@ func (e *Init) DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.
 	}
 	log.Info(ctx, "listening to mongo db session", log.Data{"URI": mongodb.ClusterEndpoint})
 	return mongodb, nil
+}
+
+// GetDatasetAPIClient creates a new Dataset API client with the provided datasetAPIURL and sets the DatasetAPI flag to true
+func (e *ExternalServiceList) GetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
+	client := e.Init.DoGetDatasetAPIClient(datasetAPIURL)
+	e.DatasetAPIClient = true
+	return client
+}
+
+// DoGetDatasetAPIClient returns a new Dataset API client with the provided datasetAPIURL
+func (e *Init) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
+	client := datasetAPISDK.New(datasetAPIURL)
+	return client
 }
 
 // DoGetHealthClient creates a new Health Client for the provided name and url
