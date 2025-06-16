@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
@@ -41,6 +42,14 @@ func CreateError(reader io.Reader) (*Error, error) {
 	}
 
 	return &errorObj, nil
+}
+
+// Create instance of models.Error
+func CreateModelError(code Code, description string) *Error {
+	return &Error{
+		Code:        &code,
+		Description: description,
+	}
 }
 
 func ValidateError(e *Error) error {
@@ -106,4 +115,25 @@ func (c Code) IsValid() bool {
 // String returns the string value of the Code
 func (c Code) String() string {
 	return string(c)
+}
+
+func (c Code) HTTPStatusCode() int {
+	switch c {
+	case CodeInternalServerError, InternalError:
+		return http.StatusInternalServerError
+	case CodeNotFound, NotFound:
+		return http.StatusNotFound
+	case CodeUnauthorized, Unauthorised:
+		return http.StatusUnauthorized
+	case CodeInvalidParameters, ErrInvalidParameters, CodeMissingParameters:
+		return http.StatusBadRequest
+	case CodeForbidden:
+		return http.StatusForbidden
+	case CodeConflict:
+		return http.StatusConflict
+	case CodeBadRequest:
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
