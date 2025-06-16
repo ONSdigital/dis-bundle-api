@@ -30,7 +30,7 @@ type BundleEventsManager interface {
 	InsertContentItemUpdatedEvent(ctx context.Context, r *http.Request, contentItem *models.ContentItem) *models.Error
 }
 
-func InsertEventsManager(store store.Datastore, authMiddleware auth.AuthorisationMiddleware) BundleEventsManager {
+func CreateEventsManager(store store.Datastore, authMiddleware auth.AuthorisationMiddleware) BundleEventsManager {
 	return &EventsManager{
 		datastore:      store,
 		authMiddleware: authMiddleware,

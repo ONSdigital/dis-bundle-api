@@ -5,11 +5,12 @@ package mock
 
 import (
 	"context"
+	disbundleapiauth "github.com/ONSdigital/dis-bundle-api/auth"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/service"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
-	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	authorisation "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"net/http"
 	"sync"
@@ -25,7 +26,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //
 //		// make and configure a mocked service.Initialiser
 //		mockedInitialiser := &InitialiserMock{
-//			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
+//			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *authorisation.Config) (disbundleapiauth.AuthorisationMiddleware, error) {
 //				panic("mock out the DoGetAuthorisationMiddleware method")
 //			},
 //			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) datasetAPISDK.Clienter {
@@ -51,7 +52,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //	}
 type InitialiserMock struct {
 	// DoGetAuthorisationMiddlewareFunc mocks the DoGetAuthorisationMiddleware method.
-	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error)
+	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *authorisation.Config) (disbundleapiauth.AuthorisationMiddleware, error)
 
 	// DoGetDatasetAPIClientFunc mocks the DoGetDatasetAPIClient method.
 	DoGetDatasetAPIClientFunc func(datasetAPIURL string) datasetAPISDK.Clienter
@@ -75,7 +76,7 @@ type InitialiserMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// AuthorisationConfig is the authorisationConfig argument value.
-			AuthorisationConfig *auth.Config
+			AuthorisationConfig *authorisation.Config
 		}
 		// DoGetDatasetAPIClient holds details about calls to the DoGetDatasetAPIClient method.
 		DoGetDatasetAPIClient []struct {
@@ -124,13 +125,13 @@ type InitialiserMock struct {
 }
 
 // DoGetAuthorisationMiddleware calls DoGetAuthorisationMiddlewareFunc.
-func (mock *InitialiserMock) DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
+func (mock *InitialiserMock) DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (disbundleapiauth.AuthorisationMiddleware, error) {
 	if mock.DoGetAuthorisationMiddlewareFunc == nil {
 		panic("InitialiserMock.DoGetAuthorisationMiddlewareFunc: method is nil but Initialiser.DoGetAuthorisationMiddleware was just called")
 	}
 	callInfo := struct {
 		Ctx                 context.Context
-		AuthorisationConfig *auth.Config
+		AuthorisationConfig *authorisation.Config
 	}{
 		Ctx:                 ctx,
 		AuthorisationConfig: authorisationConfig,
@@ -147,11 +148,11 @@ func (mock *InitialiserMock) DoGetAuthorisationMiddleware(ctx context.Context, a
 //	len(mockedInitialiser.DoGetAuthorisationMiddlewareCalls())
 func (mock *InitialiserMock) DoGetAuthorisationMiddlewareCalls() []struct {
 	Ctx                 context.Context
-	AuthorisationConfig *auth.Config
+	AuthorisationConfig *authorisation.Config
 } {
 	var calls []struct {
 		Ctx                 context.Context
-		AuthorisationConfig *auth.Config
+		AuthorisationConfig *authorisation.Config
 	}
 	mock.lockDoGetAuthorisationMiddleware.RLock()
 	calls = mock.calls.DoGetAuthorisationMiddleware

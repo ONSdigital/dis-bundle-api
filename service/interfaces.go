@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ONSdigital/dis-bundle-api/auth"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
@@ -23,7 +24,7 @@ type Initialiser interface {
 	DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
 	DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter
 	DoGetHealthClient(name, url string) *health.Client
-	DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error)
+	DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (auth.AuthorisationMiddleware, error)
 }
 
 // HTTPServer defines the required methods from the HTTP server

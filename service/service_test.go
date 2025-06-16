@@ -7,13 +7,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ONSdigital/dis-bundle-api/auth"
+	authmocks "github.com/ONSdigital/dis-bundle-api/auth/mocks"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/service"
 	serviceMock "github.com/ONSdigital/dis-bundle-api/service/mock"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storeMock "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 
@@ -49,7 +50,7 @@ func TestRun(t *testing.T) {
 		cfg, err := config.Get()
 		So(err, ShouldBeNil)
 
-		authorisationMiddleware := &authorisationMock.MiddlewareMock{
+		authorisationMiddleware := &authmocks.AuthorisationMiddlewareMock{
 			RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 				return handlerFunc
 			},
@@ -79,7 +80,7 @@ func TestRun(t *testing.T) {
 			},
 		}
 
-		funcDoGetAuthOk := func(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+		funcDoGetAuthOk := func(ctx context.Context, authorisationConfig *authorisation.Config) (auth.AuthorisationMiddleware, error) {
 			return authorisationMiddleware, nil
 		}
 

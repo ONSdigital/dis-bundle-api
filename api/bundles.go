@@ -97,3 +97,43 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 
 	log.Info(ctx, "getBundle endpoint: request successful", logData)
 }
+
+func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) (errBundles *models.Error) {
+	ctx := r.Context()
+
+	etag, err := utils.GetETag(r)
+	if err != nil {
+		return err
+	}
+
+	bundleID, err := utils.GetBundleID(r)
+	if err != nil {
+		return err
+	}
+
+	updateRequest, err := utils.GetJSONRequestBody[models.UpdateBundleStateRequest](r)
+	if err != nil {
+		return err
+	}
+
+	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, r, bundleID, updateRequest.State, *etag)
+	if err != nil {
+		return err
+	}
+
+	responseWriteErr := utils.
+		CreateHTTPResponseBuilder().
+		WithETag(updatedBundle.ETag).
+		WithCacheControl(utils.CacheControlNoStore).
+		WithStatusCode(http.StatusOK).
+		Build(w)
+
+	if responseWriteErr != nil {
+		log.Error(ctx, "error writing HTTP response", responseWriteErr, log.Data{models.KeyBundleID: bundleID})
+		return models.CreateModelError(models.CodeInternalServerError, errs.ErrorDescriptionInternalError)
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	return nil
+}
