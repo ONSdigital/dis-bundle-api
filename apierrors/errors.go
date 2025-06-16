@@ -31,11 +31,12 @@ const (
 	ErrorDescriptionMissingBundleID     = "missing bundle ID"
 	ErrorDescriptionEmptyBundleID       = "Bundle ID cannot be empty"
 
-	// Identity
-	ErrorDescriptionUserIdentityParseFailed = "Failed to get user identity from JWT"
-
 	// Validation
 	ErrorDescriptionValidationEventFailed = "Failed to validate event"
+
+	// Auth
+	ErrorDescriptionUserIdentityParseFailed = "Failed to get user identity from JWT"
+	ErrorDescriptionNoTokenFound            = "No Authorisation token was found for the request"
 )
 
 // CreateMissingRouteVariableError creates a standard error message string for if a route variable is missing
