@@ -251,18 +251,16 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventBundle := &models.EventBundle{
-		ID:            createdBundle.ID,
-		BundleType:    createdBundle.BundleType,
-		CreatedBy:     createdBundle.CreatedBy,
-		CreatedAt:     createdBundle.CreatedAt,
-		LastUpdatedBy: createdBundle.LastUpdatedBy,
-		PreviewTeams:  createdBundle.PreviewTeams,
-		ScheduledAt:   createdBundle.ScheduledAt,
-		State:         createdBundle.State,
-		Title:         createdBundle.Title,
-		UpdatedAt:     createdBundle.UpdatedAt,
-		ManagedBy:     createdBundle.ManagedBy,
+	eventBundle, err := models.ConvertBundleToBundleEvent(createdBundle)
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to convert bundle to bundle event", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
+		return
 	}
 
 	event := &models.Event{

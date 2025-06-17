@@ -243,3 +243,67 @@ func TestAction_IsValid_Failure(t *testing.T) {
 		})
 	})
 }
+
+func TestConvertBundleToBundleEvent_Success(t *testing.T) {
+	Convey("Given a Bundle object with all fields populated", t, func() {
+		createdAt := time.Now()
+		updatedAt := createdAt.Add(1 * time.Hour)
+		scheduledAt := createdAt.Add(2 * time.Hour)
+
+		bundle := &Bundle{
+			ID:         "bundle123",
+			BundleType: BundleTypeScheduled,
+			CreatedBy: &User{
+				Email: "user@ons.gov.uk",
+			},
+			CreatedAt: &createdAt,
+			LastUpdatedBy: &User{
+				Email: "user@ons.gov.uk",
+			},
+			PreviewTeams: &[]PreviewTeam{
+				{ID: "team1"},
+				{ID: "team2"},
+			},
+			ScheduledAt: &scheduledAt,
+			State:       &bundleStateDraft,
+			Title:       "Test Bundle",
+			UpdatedAt:   &updatedAt,
+			ManagedBy:   ManagedByDataAdmin,
+		}
+
+		Convey("When ConvertBundleToBundleEvent is called", func() {
+			eventBundle, err := ConvertBundleToBundleEvent(bundle)
+
+			Convey("Then it should return no error and an EventBundle with matching fields", func() {
+				So(err, ShouldBeNil)
+				So(eventBundle.ID, ShouldEqual, bundle.ID)
+				So(eventBundle.BundleType, ShouldEqual, bundle.BundleType)
+				So(eventBundle.CreatedBy, ShouldResemble, bundle.CreatedBy)
+				So(eventBundle.CreatedAt.Equal(*bundle.CreatedAt), ShouldBeTrue)
+				So(eventBundle.LastUpdatedBy, ShouldResemble, bundle.LastUpdatedBy)
+				So(eventBundle.PreviewTeams, ShouldResemble, bundle.PreviewTeams)
+				So(eventBundle.ScheduledAt.Equal(*bundle.ScheduledAt), ShouldBeTrue)
+				So(eventBundle.State, ShouldEqual, bundle.State)
+				So(eventBundle.Title, ShouldEqual, bundle.Title)
+				So(eventBundle.UpdatedAt.Equal(*bundle.UpdatedAt), ShouldBeTrue)
+				So(eventBundle.ManagedBy, ShouldEqual, bundle.ManagedBy)
+			})
+		})
+	})
+}
+
+func TestConvertBundleToBundleEvent_Failure(t *testing.T) {
+	Convey("Given a nil Bundle object", t, func() {
+		var bundle *Bundle
+
+		Convey("When ConvertBundleToBundleEvent is called", func() {
+			eventBundle, err := ConvertBundleToBundleEvent(bundle)
+
+			Convey("Then it should return an error and a nil EventBundle", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "input bundle cannot be nil")
+				So(eventBundle, ShouldBeNil)
+			})
+		})
+	})
+}

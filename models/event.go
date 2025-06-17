@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -117,4 +118,23 @@ func (a Action) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+func ConvertBundleToBundleEvent(bundle *Bundle) (*EventBundle, error) {
+	if bundle == nil {
+		return nil, errors.New("input bundle cannot be nil")
+	}
+	return &EventBundle{
+		ID:            bundle.ID,
+		BundleType:    bundle.BundleType,
+		CreatedBy:     bundle.CreatedBy,
+		CreatedAt:     bundle.CreatedAt,
+		LastUpdatedBy: bundle.LastUpdatedBy,
+		PreviewTeams:  bundle.PreviewTeams,
+		ScheduledAt:   bundle.ScheduledAt,
+		State:         bundle.State,
+		Title:         bundle.Title,
+		UpdatedAt:     bundle.UpdatedAt,
+		ManagedBy:     bundle.ManagedBy,
+	}, nil
 }
