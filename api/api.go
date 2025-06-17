@@ -38,6 +38,10 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles",
 		authMiddleware.Require("bundles:read", pagination.Paginate(paginator, api.getBundles)),
 	)
+	api.post(
+		"/bundles",
+		authMiddleware.Require("bundles:create", api.createBundle),
+	)
 	api.get(
 		"/bundles/{bundle-id}",
 		authMiddleware.Require("bundles:read", api.getBundle),
@@ -49,11 +53,6 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 	api.post(
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:create", api.postBundleContents),
-	)
-
-	api.post(
-		"/bundles",
-		authMiddleware.Require("bundles:create", api.createBundle),
 	)
 	return api
 }
