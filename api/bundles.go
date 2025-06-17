@@ -106,7 +106,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	bundle, err := models.CreateBundle(r.Body)
 	if err != nil {
 		if err == errs.ErrUnableToParseJSON {
-			log.Error(ctx, "failed to create bundle from request body", err)
+			log.Error(ctx, "createBundle: failed to create bundle from request body", err)
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
@@ -115,7 +115,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
 			return
 		} else if err == errs.ErrUnableToParseTime {
-			log.Error(ctx, "invalid time format in request body", err)
+			log.Error(ctx, "createBundle: invalid time format in request body", err)
 			code := models.ErrInvalidParameters
 			e := &models.Error{
 				Code:        &code,
@@ -127,7 +127,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
 			return
 		} else {
-			log.Error(ctx, "failed to read request body", err)
+			log.Error(ctx, "createBundle: failed to read request body", err)
 			code := models.CodeInternalServerError
 			e := &models.Error{
 				Code:        &code,
@@ -140,7 +140,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	authToken := r.Header.Get("Authorization")
 	if authToken == "" {
-		log.Error(ctx, "authorization token is missing", nil)
+		log.Error(ctx, "createBundle: authorization token is missing", nil)
 		code := models.CodeUnauthorized
 		e := &models.Error{
 			Code:        &code,
@@ -155,7 +155,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	var entityData *permSDK.EntityData
 	entityData, err = api.authMiddleware.Parse(authToken)
 	if err != nil {
-		log.Error(ctx, "failed to parse auth token", err)
+		log.Error(ctx, "createBundle: failed to parse auth token", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
@@ -175,14 +175,14 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundleErrs := models.ValidateBundle(bundle)
 	if len(bundleErrs) > 0 {
-		log.Error(ctx, "failed to validate bundle", nil, log.Data{"errors": bundleErrs})
+		log.Error(ctx, "createBundle: failed to validate bundle", nil, log.Data{"errors": bundleErrs})
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: bundleErrs}, http.StatusBadRequest)
 		return
 	}
 
 	err = api.stateMachineBundleAPI.StateMachine.Transition(ctx, api.stateMachineBundleAPI, nil, bundle)
 	if err != nil {
-		log.Error(ctx, "failed to transition bundle state", err)
+		log.Error(ctx, "createBundle: failed to transition bundle state", err)
 		code := models.CodeBadRequest
 		e := &models.Error{
 			Code:        &code,
@@ -195,7 +195,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	_, err = api.stateMachineBundleAPI.GetBundleByTitle(ctx, bundle.Title)
 	if err != nil {
 		if err != errs.ErrBundleNotFound {
-			log.Error(ctx, "failed to check existing bundle by title", err)
+			log.Error(ctx, "createBundle: failed to check existing bundle by title", err)
 			code := models.CodeInternalServerError
 			e := &models.Error{
 				Code:        &code,
@@ -205,7 +205,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		log.Error(ctx, "bundle with the same title already exists", nil)
+		log.Error(ctx, "createBundle: bundle with the same title already exists", nil)
 		code := models.CodeConflict
 		e := &models.Error{
 			Code:        &code,
@@ -218,7 +218,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
 		if err == errs.ErrScheduledAtRequired {
-			log.Error(ctx, "scheduled_at is required for scheduled bundles", err)
+			log.Error(ctx, "createBundle: scheduled_at is required for scheduled bundles", err)
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
@@ -231,7 +231,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err == errs.ErrScheduledAtSet {
-			log.Error(ctx, "scheduled_at should not be set for manual bundles", err)
+			log.Error(ctx, "createBundle: scheduled_at should not be set for manual bundles", err)
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
@@ -244,7 +244,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err == errs.ErrScheduledAtInPast {
-			log.Error(ctx, "scheduled_at cannot be in the past", err)
+			log.Error(ctx, "createBundle: scheduled_at cannot be in the past", err)
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
@@ -256,7 +256,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
 			return
 		}
-		log.Error(ctx, "failed to create bundle in the database", err)
+		log.Error(ctx, "createBundle: failed to create bundle in the database", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
@@ -292,7 +292,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	err = models.ValidateEvent(event)
 	if err != nil {
-		log.Error(ctx, "failed to validate event", err)
+		log.Error(ctx, "createBundle: failed to validate event", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
@@ -304,7 +304,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
 	if err != nil {
-		log.Error(ctx, "failed to create bundle event", err)
+		log.Error(ctx, "createBundle: failed to create bundle event", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
@@ -316,7 +316,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	err = writeResponse(ctx, w, createdBundle)
 	if err != nil {
-		log.Error(ctx, "failed to write response", err)
+		log.Error(ctx, "createBundle: failed to write response", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
