@@ -17,6 +17,7 @@ var (
 	ErrorDescriptionMissingParameters = "Unable to process request due to missing required parameters in the request body or query parameters"
 	ErrorDescriptionNotFound          = "The requested resource does not exist"
 	ErrorDescriptionInternalError     = "Failed to process the request due to an internal error"
+	ErrorDescriptionInvalidTimeFormat = "Invalid time format in request body"
 )
 
 var (

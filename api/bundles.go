@@ -119,7 +119,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.ErrInvalidParameters
 			e := &models.Error{
 				Code:        &code,
-				Description: "Invalid time format in request body",
+				Description: errs.ErrorDescriptionInvalidTimeFormat,
 				Source: &models.Source{
 					Field: "scheduled_at",
 				},
