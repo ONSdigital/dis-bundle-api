@@ -110,7 +110,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.ErrInvalidParameters
 			e := &models.Error{
 				Code:        &code,
-				Description: errs.ErrDescription,
+				Description: errs.ErrorDescriptionMalformedRequest,
 			}
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
 			return
@@ -131,7 +131,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeInternalServerError
 			e := &models.Error{
 				Code:        &code,
-				Description: errs.ErrInternalErrorDescription,
+				Description: errs.ErrorDescriptionInternalError,
 			}
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 			return
@@ -159,7 +159,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrInternalErrorDescription,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
@@ -199,7 +199,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeInternalServerError
 			e := &models.Error{
 				Code:        &code,
-				Description: errs.ErrInternalErrorDescription,
+				Description: errs.ErrorDescriptionInternalError,
 			}
 			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 			return
@@ -260,7 +260,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrInternalErrorDescription,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
@@ -296,7 +296,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrInternalErrorDescription,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
@@ -308,7 +308,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrInternalErrorDescription,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
@@ -320,7 +320,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrInternalErrorDescription,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return

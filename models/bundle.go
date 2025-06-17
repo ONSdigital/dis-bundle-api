@@ -81,7 +81,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.ID == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/id",
 			},
@@ -91,7 +91,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.BundleType == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/bundle_type",
 			},
@@ -101,7 +101,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
 		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/bundle_type",
 			},
@@ -111,7 +111,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/created_by/email",
 			},
@@ -121,7 +121,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.LastUpdatedBy != nil && bundle.LastUpdatedBy.Email == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/last_updated_by/email",
 			},
@@ -131,7 +131,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if len(*bundle.PreviewTeams) == 0 {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/preview_teams",
 			},
@@ -141,7 +141,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 			if team.ID == "" {
 				missingFields = append(missingFields, &Error{
 					Code:        &code,
-					Description: errs.ErrDescription,
+					Description: errs.ErrorDescriptionMalformedRequest,
 					Source: &Source{
 						Field: fmt.Sprintf("/preview_teams/%d", i),
 					},
@@ -153,7 +153,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.State != nil && !bundle.State.IsValid() {
 		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/state",
 			},
@@ -163,7 +163,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.Title == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/title",
 			},
@@ -173,7 +173,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.ManagedBy == "" {
 		missingFields = append(missingFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/managed_by",
 			},
@@ -183,7 +183,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	if bundle.ManagedBy != "" && !bundle.ManagedBy.IsValid() {
 		invalidFields = append(invalidFields, &Error{
 			Code:        &code,
-			Description: errs.ErrDescription,
+			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/managed_by",
 			},

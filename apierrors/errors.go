@@ -29,11 +29,6 @@ var (
 )
 
 var (
-	ErrDescription              = "Unable to process request due to a malformed or invalid request body or query parameter."
-	ErrInternalErrorDescription = "An internal error occurred."
-)
-
-var (
 	ErrUnmarshalJSONObject    = "Failed to unmarshal bundle resource into bytes"
 	ErrMarshalJSONObject      = "Failed to Marshal bundle resource into bytes"
 	ErrWritingBytesToResponse = "Failed writing bytes to response"

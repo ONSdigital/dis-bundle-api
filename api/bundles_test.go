@@ -666,7 +666,7 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 			Convey("Then the response should be 400 Bad Request with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"ErrInvalidParameters"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrDescription+`"`)
+				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionMalformedRequest+`"`)
 			})
 		})
 	})
@@ -715,7 +715,7 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 		Convey("Then the response should be 500 Internal Server Error with an error message", func() {
 			So(w.Code, ShouldEqual, http.StatusInternalServerError)
 			So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-			So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrInternalErrorDescription+`"`)
+			So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionInternalError+`"`)
 		})
 	})
 }
@@ -744,7 +744,7 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 			Convey("Then the response should be 400 Bad Request with validation errors", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"ErrInvalidParameters"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrDescription+`"`)
+				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionMalformedRequest+`"`)
 				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/bundle_type"}`)
 				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/preview_teams"}`)
 				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/title"}`)
@@ -820,7 +820,7 @@ func TestCreateBundle_Failure_AuthTokenIsInvalid(t *testing.T) {
 			Convey("Then the response should be 500 internal server error with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrInternalErrorDescription)
+				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
 			})
 		})
 	})
@@ -850,7 +850,7 @@ func TestCreateBundle_Failure_GetBundleByTitleFails(t *testing.T) {
 			Convey("Then the response should be 500 internal server error with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrInternalErrorDescription)
+				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
 			})
 		})
 	})
@@ -913,7 +913,7 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 			Convey("Then the response should be 500 internal server error with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrInternalErrorDescription)
+				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
 			})
 		})
 	})
@@ -952,7 +952,7 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 			Convey("Then the response should be 500 internal server error with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
 				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrInternalErrorDescription)
+				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
 			})
 		})
 	})
