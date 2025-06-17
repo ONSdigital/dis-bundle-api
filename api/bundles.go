@@ -103,8 +103,6 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	log.Info(ctx, "createBundle: creating a new bundle")
-
 	bundle, err := models.CreateBundle(r.Body)
 	if err != nil {
 		if err == errs.ErrUnableToParseJSON {
@@ -140,8 +138,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Info(ctx, "createBundle: created bundle from request body", log.Data{"bundle": bundle})
-
 	authToken := r.Header.Get("Authorization")
 	if authToken == "" {
 		log.Error(ctx, "authorization token is missing", nil)
@@ -168,8 +164,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
 	}
-
-	log.Info(ctx, "createBundle: successfully parsed JWT", log.Data{"entityData": entityData})
 
 	bundle.CreatedBy = &models.User{
 		Email: entityData.UserID,
