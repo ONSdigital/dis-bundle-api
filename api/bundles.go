@@ -178,19 +178,18 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = api.stateMachineBundleAPI.GetBundleByTitle(ctx, bundle.Title)
+	bundleExist, err := api.stateMachineBundleAPI.CheckBundleExistsByTitle(ctx, bundle.Title)
 	if err != nil {
-		if err != errs.ErrBundleNotFound {
-			log.Error(ctx, "createBundle: failed to check existing bundle by title", err)
-			code := models.CodeInternalServerError
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionInternalError,
-			}
-			utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
-			return
+		log.Error(ctx, "createBundle: failed to check existing bundle by title", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
 		}
-	} else {
+		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
+		return
+	}
+	if bundleExist {
 		log.Error(ctx, "createBundle: bundle with the same title already exists", nil)
 		code := models.CodeConflict
 		e := &models.Error{

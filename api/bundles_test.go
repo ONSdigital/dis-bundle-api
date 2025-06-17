@@ -599,8 +599,8 @@ func TestCreateBundle_Success(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return nil
@@ -826,7 +826,7 @@ func TestCreateBundle_Failure_AuthTokenIsInvalid(t *testing.T) {
 	})
 }
 
-func TestCreateBundle_Failure_GetBundleByTitleFails(t *testing.T) {
+func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 	Convey("Given a valid payload", t, func() {
 		inputBundle := *validBundle
 		inputBundleJSON, err := json.Marshal(inputBundle)
@@ -838,8 +838,8 @@ func TestCreateBundle_Failure_GetBundleByTitleFails(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errors.New("failed to get bundle by title")
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, errors.New("failed to check bundle existence")
 				},
 			}
 
@@ -868,8 +868,8 @@ func TestCreateBundle_Failure_BundleWithSameTitleAlreadyExists(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return &inputBundle, nil
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return true, nil
 				},
 			}
 
@@ -898,8 +898,8 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return errors.New("failed to create bundle")
@@ -931,8 +931,8 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return nil
@@ -971,8 +971,8 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return errs.ErrScheduledAtRequired
@@ -1006,8 +1006,8 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return errs.ErrScheduledAtSet
@@ -1042,8 +1042,8 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{
-				GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return errs.ErrScheduledAtInPast

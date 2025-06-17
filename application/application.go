@@ -82,12 +82,12 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	return createdBundle, nil
 }
 
-func (s *StateMachineBundleAPI) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
-	bundle, err := s.Datastore.GetBundleByTitle(ctx, title)
+func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
+	exists, err := s.Datastore.CheckBundleExistsByTitle(ctx, title)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
-	return bundle, nil
+	return exists, nil
 }
 
 func ValidateScheduledAt(bundle *models.Bundle) error {

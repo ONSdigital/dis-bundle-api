@@ -29,6 +29,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
 //				panic("mock out the CheckBundleExists method")
 //			},
+//			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+//				panic("mock out the CheckBundleExistsByTitle method")
+//			},
 //			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error) {
 //				panic("mock out the CheckContentItemExistsByDatasetEditionVersion method")
 //			},
@@ -49,9 +52,6 @@ var _ store.MongoDB = &MongoDBMock{}
 //			},
 //			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 //				panic("mock out the GetBundle method")
-//			},
-//			GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
-//				panic("mock out the GetBundleByTitle method")
 //			},
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 //				panic("mock out the ListBundleEvents method")
@@ -75,6 +75,9 @@ type MongoDBMock struct {
 	// CheckBundleExistsFunc mocks the CheckBundleExists method.
 	CheckBundleExistsFunc func(ctx context.Context, bundleID string) (bool, error)
 
+	// CheckBundleExistsByTitleFunc mocks the CheckBundleExistsByTitle method.
+	CheckBundleExistsByTitleFunc func(ctx context.Context, title string) (bool, error)
+
 	// CheckContentItemExistsByDatasetEditionVersionFunc mocks the CheckContentItemExistsByDatasetEditionVersion method.
 	CheckContentItemExistsByDatasetEditionVersionFunc func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error)
 
@@ -95,9 +98,6 @@ type MongoDBMock struct {
 
 	// GetBundleFunc mocks the GetBundle method.
 	GetBundleFunc func(ctx context.Context, bundleID string) (*models.Bundle, error)
-
-	// GetBundleByTitleFunc mocks the GetBundleByTitle method.
-	GetBundleByTitleFunc func(ctx context.Context, title string) (*models.Bundle, error)
 
 	// ListBundleEventsFunc mocks the ListBundleEvents method.
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
@@ -123,6 +123,13 @@ type MongoDBMock struct {
 			Ctx context.Context
 			// BundleID is the bundleID argument value.
 			BundleID string
+		}
+		// CheckBundleExistsByTitle holds details about calls to the CheckBundleExistsByTitle method.
+		CheckBundleExistsByTitle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Title is the title argument value.
+			Title string
 		}
 		// CheckContentItemExistsByDatasetEditionVersion holds details about calls to the CheckContentItemExistsByDatasetEditionVersion method.
 		CheckContentItemExistsByDatasetEditionVersion []struct {
@@ -175,13 +182,6 @@ type MongoDBMock struct {
 			// BundleID is the bundleID argument value.
 			BundleID string
 		}
-		// GetBundleByTitle holds details about calls to the GetBundleByTitle method.
-		GetBundleByTitle []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Title is the title argument value.
-			Title string
-		}
 		// ListBundleEvents holds details about calls to the ListBundleEvents method.
 		ListBundleEvents []struct {
 			// Ctx is the ctx argument value.
@@ -220,6 +220,7 @@ type MongoDBMock struct {
 	}
 	lockCheckAllBundleContentsAreApproved             sync.RWMutex
 	lockCheckBundleExists                             sync.RWMutex
+	lockCheckBundleExistsByTitle                      sync.RWMutex
 	lockCheckContentItemExistsByDatasetEditionVersion sync.RWMutex
 	lockChecker                                       sync.RWMutex
 	lockClose                                         sync.RWMutex
@@ -227,7 +228,6 @@ type MongoDBMock struct {
 	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
-	lockGetBundleByTitle                              sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
@@ -302,6 +302,42 @@ func (mock *MongoDBMock) CheckBundleExistsCalls() []struct {
 	mock.lockCheckBundleExists.RLock()
 	calls = mock.calls.CheckBundleExists
 	mock.lockCheckBundleExists.RUnlock()
+	return calls
+}
+
+// CheckBundleExistsByTitle calls CheckBundleExistsByTitleFunc.
+func (mock *MongoDBMock) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
+	if mock.CheckBundleExistsByTitleFunc == nil {
+		panic("MongoDBMock.CheckBundleExistsByTitleFunc: method is nil but MongoDB.CheckBundleExistsByTitle was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Title string
+	}{
+		Ctx:   ctx,
+		Title: title,
+	}
+	mock.lockCheckBundleExistsByTitle.Lock()
+	mock.calls.CheckBundleExistsByTitle = append(mock.calls.CheckBundleExistsByTitle, callInfo)
+	mock.lockCheckBundleExistsByTitle.Unlock()
+	return mock.CheckBundleExistsByTitleFunc(ctx, title)
+}
+
+// CheckBundleExistsByTitleCalls gets all the calls that were made to CheckBundleExistsByTitle.
+// Check the length with:
+//
+//	len(mockedMongoDB.CheckBundleExistsByTitleCalls())
+func (mock *MongoDBMock) CheckBundleExistsByTitleCalls() []struct {
+	Ctx   context.Context
+	Title string
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Title string
+	}
+	mock.lockCheckBundleExistsByTitle.RLock()
+	calls = mock.calls.CheckBundleExistsByTitle
+	mock.lockCheckBundleExistsByTitle.RUnlock()
 	return calls
 }
 
@@ -558,42 +594,6 @@ func (mock *MongoDBMock) GetBundleCalls() []struct {
 	mock.lockGetBundle.RLock()
 	calls = mock.calls.GetBundle
 	mock.lockGetBundle.RUnlock()
-	return calls
-}
-
-// GetBundleByTitle calls GetBundleByTitleFunc.
-func (mock *MongoDBMock) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
-	if mock.GetBundleByTitleFunc == nil {
-		panic("MongoDBMock.GetBundleByTitleFunc: method is nil but MongoDB.GetBundleByTitle was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Title string
-	}{
-		Ctx:   ctx,
-		Title: title,
-	}
-	mock.lockGetBundleByTitle.Lock()
-	mock.calls.GetBundleByTitle = append(mock.calls.GetBundleByTitle, callInfo)
-	mock.lockGetBundleByTitle.Unlock()
-	return mock.GetBundleByTitleFunc(ctx, title)
-}
-
-// GetBundleByTitleCalls gets all the calls that were made to GetBundleByTitle.
-// Check the length with:
-//
-//	len(mockedMongoDB.GetBundleByTitleCalls())
-func (mock *MongoDBMock) GetBundleByTitleCalls() []struct {
-	Ctx   context.Context
-	Title string
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Title string
-	}
-	mock.lockGetBundleByTitle.RLock()
-	calls = mock.calls.GetBundleByTitle
-	mock.lockGetBundleByTitle.RUnlock()
 	return calls
 }
 

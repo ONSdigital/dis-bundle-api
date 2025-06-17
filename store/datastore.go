@@ -22,7 +22,7 @@ type dataMongoDB interface {
 	ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error)
 	ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error)
 	GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error)
-	GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error)
+	CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error)
 	UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error)
 	CheckBundleExists(ctx context.Context, bundleID string) (bool, error)
 	CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error
@@ -85,6 +85,6 @@ func (ds *Datastore) CreateBundle(ctx context.Context, bundle *models.Bundle) er
 	return ds.Backend.CreateBundle(ctx, bundle)
 }
 
-func (ds *Datastore) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
-	return ds.Backend.GetBundleByTitle(ctx, title)
+func (ds *Datastore) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
+	return ds.Backend.CheckBundleExistsByTitle(ctx, title)
 }

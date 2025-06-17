@@ -506,7 +506,7 @@ func TestCreateBundle_FailureToGetBundle(t *testing.T) {
 	})
 }
 
-func TestGetBundleByTitle(t *testing.T) {
+func TestCheckBundleExistsByTitle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 
@@ -516,11 +516,11 @@ func TestGetBundleByTitle(t *testing.T) {
 		}
 
 		mockedDatastore := &storetest.StorerMock{
-			GetBundleByTitleFunc: func(ctx context.Context, title string) (*models.Bundle, error) {
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
 				if title == expectedBundle.Title {
-					return expectedBundle, nil
+					return true, nil
 				}
-				return nil, errors.New("bundle not found")
+				return false, apierrors.ErrBundleNotFound
 			},
 		}
 
@@ -528,22 +528,21 @@ func TestGetBundleByTitle(t *testing.T) {
 			Datastore: store.Datastore{Backend: mockedDatastore},
 		}
 
-		Convey("When GetBundleByTitle is called and a bundle with the same title already exist", func() {
-			bundle, err := stateMachine.GetBundleByTitle(ctx, expectedBundle.Title)
+		Convey("When CheckBundleExistsByTitle is called and a bundle with the same title already exist", func() {
+			bundleExist, err := stateMachine.CheckBundleExistsByTitle(ctx, expectedBundle.Title)
 
-			Convey("Then it should return the expected bundle without error", func() {
+			Convey("Then it should return true without error", func() {
 				So(err, ShouldBeNil)
-				So(bundle, ShouldResemble, expectedBundle)
+				So(bundleExist, ShouldBeTrue)
 			})
 		})
 
-		Convey("When GetBundleByTitle is called and a bundle with the same title does not exist", func() {
-			bundle, err := stateMachine.GetBundleByTitle(ctx, "Nonexistent Bundle")
+		Convey("When CheckBundleExistsByTitle is called and a bundle with the same title does not exist", func() {
+			bundleExist, err := stateMachine.CheckBundleExistsByTitle(ctx, "Nonexistent Bundle")
 
-			Convey("Then it should return an error and nil bundle", func() {
+			Convey("Then it should return false without error", func() {
+				So(bundleExist, ShouldBeFalse)
 				So(err, ShouldNotBeNil)
-				So(bundle, ShouldBeNil)
-				So(err.Error(), ShouldContainSubstring, "bundle not found")
 			})
 		})
 	})

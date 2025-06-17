@@ -171,20 +171,14 @@ func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, e
 	return count > 0, nil
 }
 
-// GetBundleByTitle retrieves a bundle by its title
-func (m *Mongo) GetBundleByTitle(ctx context.Context, title string) (*models.Bundle, error) {
+// CheckBundleExistsByTitle retrieves a bundle by its title
+func (m *Mongo) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
 	filter := bson.M{"title": title}
 
-	var result models.Bundle
-	err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).
-		FindOne(ctx, filter, &result)
-
+	count, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Count(ctx, filter)
 	if err != nil {
-		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
-			return nil, apierrors.ErrBundleNotFound
-		}
-		return nil, err
+		return false, err
 	}
 
-	return &result, nil
+	return count > 0, nil
 }
