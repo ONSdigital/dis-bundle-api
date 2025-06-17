@@ -269,7 +269,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			Email: entityData.UserID,
 		},
 		Action:   models.ActionCreate,
-		Resource: "/bundles",
+		Resource: "/bundles/" + createdBundle.ID,
 		Bundle:   eventBundle,
 	}
 
