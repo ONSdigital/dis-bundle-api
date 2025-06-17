@@ -12,7 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
-	permsdk "github.com/ONSdigital/dp-permissions-api/sdk"
+	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 )
@@ -156,7 +156,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	authToken = strings.TrimPrefix(authToken, "Bearer ")
 
-	var entityData *permsdk.EntityData
+	var entityData *permSDK.EntityData
 	entityData, err = api.authMiddleware.Parse(authToken)
 	if err != nil {
 		log.Error(ctx, "failed to parse auth token", err)
