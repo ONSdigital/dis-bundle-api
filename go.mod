@@ -18,6 +18,8 @@ require (
 	github.com/smartystreets/goconvey v1.8.1
 )
 
+replace github.com/ONSdigital/dp-dataset-api v1.81.0 => /Users/geehan/src/github.com/ONSdigital/dp-dataset-api
+
 require (
 	github.com/chromedp/cdproto v0.0.0-20250527225801-8f9bc3ce9e31 // indirect
 	github.com/chromedp/chromedp v0.13.6 // indirect
@@ -71,9 +73,9 @@ require (
 	go.opentelemetry.io/otel v1.36.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.36.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 )

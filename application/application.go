@@ -7,17 +7,21 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type StateMachineBundleAPI struct {
-	Datastore    store.Datastore
-	StateMachine *StateMachine
+	Datastore        store.Datastore
+	StateMachine     *StateMachine
+	DatasetAPIClient datasetAPISDK.Clienter
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
-		Datastore:    datastore,
-		StateMachine: stateMachine,
+		Datastore:        datastore,
+		StateMachine:     stateMachine,
+		DatasetAPIClient: datasetAPIClient,
 	}
 }
 
@@ -65,11 +69,43 @@ func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *mo
 	return s.Datastore.CreateBundleEvent(ctx, event)
 }
 
-func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error) {
-	//check if the bundle is published
-	contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID string, offset, limit int, authHeaders datasetAPISDK.Headers) ([]*models.ContentItem, int, error) {
+	// Get bundle
+	bundle, err := s.Datastore.GetBundle(ctx, bundleID)
 	if err != nil {
 		return nil, 0, err
+	}
+	bundleState := bundle.State
+
+	contentResults := []*models.ContentItem{}
+	totalCount := 0
+
+	// If bundle is published, return its contents directly
+	if bundleState.String() == models.BundleStatePublished.String() {
+		contentResults, totalCount, err = s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+		if err != nil {
+			return nil, 0, err
+		}
+		return contentResults, totalCount, nil
+	}
+
+	// If bundle is not published, populate state & title by calling dataset API Client
+	contentResults, totalCount, err = s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for _, contentItem := range contentResults {
+		datasetID := contentItem.Metadata.DatasetID
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
+
+		if err != nil {
+			log.Error(ctx, "failed to fetch dataset", err, log.Data{"dataset_id": datasetID})
+			return nil, 0, err
+		}
+
+		contentItem.State = (*models.State)(&dataset.State)
+		contentItem.Metadata.Title = dataset.Title
 	}
 
 	return contentResults, totalCount, nil

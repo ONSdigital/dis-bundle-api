@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -222,21 +221,15 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 }
 
 func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, limit, offset int) (contents any, totalCount int, contentErrors *models.Error) {
-	fmt.Println("getBundleContents api pack : ")
-
 	//fetch bundle ID
 	ctx := r.Context()
 	vars := mux.Vars(r)
 	bundleID := vars["bundle-id"]
-	fmt.Println("bundleID: ", bundleID)
-
-	fmt.Println("getBundleContents api pack 2: ")
+	logdata := log.Data{"bundle_id": bundleID}
 
 	//check if the bundle exists
 	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
 	if err != nil {
-		fmt.Println("errxx inside: ")
-
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -244,63 +237,32 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 		}
 		return []*models.ContentItem{}, 0, errInfo
 	}
-	fmt.Println("getBundleContents api pack 3: ")
-	fmt.Println("bundleExists : ", bundleExists)
 
 	if !bundleExists {
-		fmt.Println("bundleExists inside: ")
-
 		code := models.CodeNotFound
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: "Bundle not found",
 		}
-		fmt.Println("bundleExists inside 2: ")
 		return []*models.ContentItem{}, 0, errInfo
 	}
 
-	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit)
-
-	// check for bundle state
-	bundle, _ := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
-	bundleState := bundle.State
-
-	//if bundle state is not published
-	if bundleState.String() != models.BundleStatePublished.String() {
-		var authHeaders datasetAPISDK.Headers
-		if r.Header.Get("X-Florence-Token") != "" {
-			authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
-		} else {
-			authHeaders.ServiceToken = r.Header.Get("Authorization")
-		}
-
-		// Loop through bundleContents and fetch dataset info using Metadata.DatasetID
-		for _, contentItem := range bundleContents {
-			datasetID := contentItem.Metadata.DatasetID
-			if datasetID == "" {
-				fmt.Println("Missing dataset ID for content item")
-			}
-
-			dataset, err := api.datasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
-			if err != nil {
-				fmt.Printf("Failed to fetch dataset for ID %s: %v\n", datasetID, err)
-			}
-
-			fmt.Println("dataset :", dataset)
-			// Assuming dataset has Title and State fields
-			fmt.Printf("Dataset ID: %s | Title: %s | State: %s\n", datasetID, dataset.Title, dataset.State)
-		}
+	authHeaders := datasetAPISDK.Headers{}
+	if r.Header.Get("X-Florence-Token") != "" {
+		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
+	} else {
+		authHeaders.ServiceToken = r.Header.Get("Authorization")
 	}
+
+	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit, authHeaders)
 
 	//handle errors
 	if err != nil {
 		code := models.InternalError
-		log.Error(ctx, "failed to get bundle contents", err)
+		log.Error(ctx, "failed to get bundle contents", err, logdata)
 		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
 		return nil, 0, errInfo
 	}
-
-	fmt.Println("totalCount: ", totalCount)
 
 	return bundleContents, totalCount, nil
 }
