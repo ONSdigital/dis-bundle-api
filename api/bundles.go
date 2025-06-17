@@ -138,22 +138,8 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	authToken := r.Header.Get("Authorization")
-	if authToken == "" {
-		log.Error(ctx, "createBundle: authorization token is missing", nil)
-		code := models.CodeUnauthorized
-		e := &models.Error{
-			Code:        &code,
-			Description: "Authorization token is required",
-		}
-		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusUnauthorized)
-		return
-	}
-
-	authToken = strings.TrimPrefix(authToken, "Bearer ")
-
 	var entityData *permSDK.EntityData
-	entityData, err = api.authMiddleware.Parse(authToken)
+	entityData, err = api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to parse auth token", err)
 		code := models.CodeInternalServerError

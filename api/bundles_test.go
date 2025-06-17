@@ -793,10 +793,10 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 401 Unauthorized with an error message", func() {
-				So(w.Code, ShouldEqual, http.StatusUnauthorized)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"unauthorized"`)
-				So(w.Body.String(), ShouldContainSubstring, "Authorization token is required")
+			Convey("Then the response should be 500 internal server error with an error message", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
+				So(w.Body.String(), ShouldContainSubstring, "Failed to process the request due to an internal error")
 			})
 		})
 	})
