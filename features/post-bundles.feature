@@ -81,7 +81,7 @@ Feature: Post Bundles functionality - POST /Bundles
         {
           "errors": [
               {
-                  "code": "ErrInvalidParameters",
+                  "code": "bad_request",
                   "description": "Unable to process request due to a malformed or invalid request body or query parameter"
               }
           ]

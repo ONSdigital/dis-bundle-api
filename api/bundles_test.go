@@ -665,7 +665,7 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 
 			Convey("Then the response should be 400 Bad Request with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"ErrInvalidParameters"`)
+				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
 				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionMalformedRequest+`"`)
 			})
 		})

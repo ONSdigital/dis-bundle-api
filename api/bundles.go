@@ -107,7 +107,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == errs.ErrUnableToParseJSON {
 			log.Error(ctx, "failed to create bundle from request body", err)
-			code := models.ErrInvalidParameters
+			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionMalformedRequest,
