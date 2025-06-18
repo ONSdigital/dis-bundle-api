@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -297,7 +296,25 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = writeResponse(ctx, w, createdBundle)
+	b, err := json.Marshal(createdBundle)
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to marshal created bundle", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
+		return
+	}
+
+	dpresponse.SetETag(w, createdBundle.ETag)
+	w.Header().Set("Cache-Control", "no-store")
+	location := "/bundles/" + createdBundle.ID
+	w.Header().Set("Location", location)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, err = w.Write(b)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to write response", err)
 		code := models.CodeInternalServerError
@@ -308,23 +325,5 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusInternalServerError)
 		return
 	}
-}
-
-func writeResponse(ctx context.Context, w http.ResponseWriter, bundle *models.Bundle) error {
-	b, err := json.Marshal(bundle)
-	if err != nil {
-		return err
-	}
-	dpresponse.SetETag(w, bundle.ETag)
-	w.Header().Set("Cache-Control", "no-store")
-	location := "/bundles/" + bundle.ID
-	w.Header().Set("Location", location)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(b)
-	if err != nil {
-		return err
-	}
 	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
-	return nil
 }
