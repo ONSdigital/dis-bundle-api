@@ -414,7 +414,7 @@ Feature: Post Bundles functionality - POST /Bundles
         "errors": [
           {
             "code": "bad_request",
-            "description": "Failed to transition bundle state: bundle state must be DRAFT when creating a new bundle"
+            "description": "state not allowed to transition"
           }
         ]
       }

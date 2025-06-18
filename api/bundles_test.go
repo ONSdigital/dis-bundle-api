@@ -591,10 +591,24 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 400 Bad Request with an error message", func() {
+			Convey("Then the response should be 400 Bad Request", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionMalformedRequest+`"`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionMalformedRequest,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -616,11 +630,27 @@ func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 400 Bad Request with an error message", func() {
+			Convey("Then the response should be 400 Bad Request", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"ErrInvalidParameters"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"Invalid time format in request body"`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"scheduled_at"}`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.ErrInvalidParameters
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInvalidTimeFormat,
+							Source: &models.Source{
+								Field: "scheduled_at",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -642,10 +672,24 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 
 		bundleAPI.Router.ServeHTTP(w, r)
 
-		Convey("Then the response should be 500 Internal Server Error with an error message", func() {
+		Convey("Then the response should be 500 Internal Server Error", func() {
 			So(w.Code, ShouldEqual, http.StatusInternalServerError)
-			So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-			So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionInternalError+`"`)
+		})
+		Convey("And the response body should contain an error message", func() {
+			var errResp models.ErrorList
+			err := json.NewDecoder(w.Body).Decode(&errResp)
+			So(err, ShouldBeNil)
+
+			code := models.CodeInternalServerError
+			expectedErrResp := models.ErrorList{
+				Errors: []*models.Error{
+					{
+						Code:        &code,
+						Description: errs.ErrorDescriptionInternalError,
+					},
+				},
+			}
+			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
 }
@@ -673,12 +717,46 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 
 			Convey("Then the response should be 400 Bad Request with validation errors", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"ErrInvalidParameters"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"`+errs.ErrorDescriptionMalformedRequest+`"`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/bundle_type"}`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/preview_teams"}`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/title"}`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/managed_by"}`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.ErrInvalidParameters
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionMalformedRequest,
+							Source: &models.Source{
+								Field: "/bundle_type",
+							},
+						},
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionMalformedRequest,
+							Source: &models.Source{
+								Field: "/preview_teams",
+							},
+						},
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionMalformedRequest,
+							Source: &models.Source{
+								Field: "/title",
+							},
+						},
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionMalformedRequest,
+							Source: &models.Source{
+								Field: "/managed_by",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -704,8 +782,22 @@ func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 
 			Convey("Then the response should be 400 Bad Request with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
-				So(w.Body.String(), ShouldContainSubstring, "Failed to transition bundle state")
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionStateNotAllowedToTransition,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -728,10 +820,24 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 500 internal server error with an error message", func() {
+			Convey("Then the response should be 500 internal server error", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, "Failed to process the request due to an internal error")
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -754,10 +860,24 @@ func TestCreateBundle_Failure_AuthTokenIsInvalid(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 500 internal server error with an error message", func() {
+			Convey("Then the response should be 500 internal server error", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -784,10 +904,24 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 500 internal server error with an error message", func() {
+			Convey("Then the response should be 500 internal server error", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -814,10 +948,24 @@ func TestCreateBundle_Failure_BundleWithSameTitleAlreadyExists(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 409 conflict with an error message", func() {
+			Convey("Then the response should be 409 conflict", func() {
 				So(w.Code, ShouldEqual, http.StatusConflict)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"conflict"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"A bundle with the same title already exists"`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeConflict
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -849,8 +997,22 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 
 			Convey("Then the response should be 500 internal server error with an error message", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -886,10 +1048,24 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 500 internal server error with an error message", func() {
+			Convey("Then the response should be 500 internal server error", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"internal_server_error"`)
-				So(w.Body.String(), ShouldContainSubstring, errs.ErrorDescriptionInternalError)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -920,11 +1096,27 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 400 Bad Request with an error message", func() {
+			Convey("Then the response should be 400 Bad Request", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"scheduled_at is required for scheduled bundles"`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/scheduled_at"}`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionScheduledAtIsRequired,
+							Source: &models.Source{
+								Field: "/scheduled_at",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -955,11 +1147,27 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 400 Bad Request with an error message", func() {
+			Convey("Then the response should be 400 Bad Request", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"scheduled_at should not be set for manual bundles"`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/scheduled_at"}`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
+							Source: &models.Source{
+								Field: "/scheduled_at",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
@@ -991,11 +1199,27 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
-			Convey("Then the response should be 400 Bad Request with an error message", func() {
+			Convey("Then the response should be 400 Bad Request", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				So(w.Body.String(), ShouldContainSubstring, `"code":"bad_request"`)
-				So(w.Body.String(), ShouldContainSubstring, `"description":"scheduled_at cannot be in the past"`)
-				So(w.Body.String(), ShouldContainSubstring, `"source":{"field":"/scheduled_at"}`)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionScheduledAtIsInPast,
+							Source: &models.Source{
+								Field: "/scheduled_at",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})

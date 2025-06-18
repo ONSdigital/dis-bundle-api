@@ -171,7 +171,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeBadRequest
 		e := &models.Error{
 			Code:        &code,
-			Description: fmt.Sprintf("Failed to transition bundle state: %s", err.Error()),
+			Description: errs.ErrorDescriptionStateNotAllowedToTransition,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusBadRequest)
 		return

@@ -13,11 +13,16 @@ func (e ErrInvalidPatch) Error() string {
 
 // Response error descriptions
 var (
-	ErrorDescriptionMalformedRequest  = "Unable to process request due to a malformed or invalid request body or query parameter"
-	ErrorDescriptionMissingParameters = "Unable to process request due to missing required parameters in the request body or query parameters"
-	ErrorDescriptionNotFound          = "The requested resource does not exist"
-	ErrorDescriptionInternalError     = "Failed to process the request due to an internal error"
-	ErrorDescriptionInvalidTimeFormat = "Invalid time format in request body"
+	ErrorDescriptionMalformedRequest            = "Unable to process request due to a malformed or invalid request body or query parameter"
+	ErrorDescriptionMissingParameters           = "Unable to process request due to missing required parameters in the request body or query parameters"
+	ErrorDescriptionNotFound                    = "The requested resource does not exist"
+	ErrorDescriptionInternalError               = "Failed to process the request due to an internal error"
+	ErrorDescriptionInvalidTimeFormat           = "Invalid time format in request body"
+	ErrorDescriptionScheduledAtIsInPast         = "scheduled_at cannot be in the past"
+	ErrorDescriptionScheduledAtShouldNotBeSet   = "scheduled_at should not be set for manual bundles"
+	ErrorDescriptionScheduledAtIsRequired       = "scheduled_at is required for scheduled bundles"
+	ErrorDescriptionBundleTitleAlreadyExist     = "A bundle with the same title already exists"
+	ErrorDescriptionStateNotAllowedToTransition = "state not allowed to transition"
 )
 
 var (
