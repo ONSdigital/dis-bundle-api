@@ -41,78 +41,6 @@ var (
 		Title:       "Scheduled Bundle 1",
 		ManagedBy:   models.ManagedByWagtail,
 	}
-
-	// missing closing quote for the "id" field
-	invalidBundlesPayload = `{
-	  "id": "bundle1,
-	  "bundle_type": "SCHEDULED",
-	  "created_by": {
-		"email": "example@example.com"
-	  },
-	  "last_updated_by": {
-		"email": "example@example.com"
-	  },
-	  "preview_teams": [
-		{
-		  "id": "team1"
-		},
-		{
-		  "id": "team2"
-		}
-	  ],
-	  "scheduled_at": "2125-06-05T07:00:00.000Z",
-	  "state": "DRAFT",
-	  "title": "Scheduled Bundle 1",
-	  "managed_by": "WAGTAIL"
-	}`
-
-	// scheduled_at is invalid
-	invalidTimeInBundlesPayload = `{
-	  "id": "bundle1",
-	  "bundle_type": "SCHEDULED",
-	  "created_by": {
-		"email": "example@example.com"
-	  },
-	  "last_updated_by": {
-		"email": "example@example.com"
-	  },
-	  "preview_teams": [
-		{
-		  "id": "team1"
-		},
-		{
-		  "id": "team2"
-		}
-	  ],
-	  "scheduled_at": "2125-06-05T07:00:00.000",
-	  "state": "DRAFT",
-	  "title": "Scheduled Bundle 1",
-	  "managed_by": "WAGTAIL"
-	}`
-
-	// payload with invalid state for creating a bundle
-	payloadWithInvalidState = `{
-	  "id": "bundle1",
-	  "bundle_type": "SCHEDULED",
-	  "created_by": {
-		"email": "example@example.com"
-	  },
-	  "last_updated_by": {
-		"email": "example@example.com"
-	  },
-	  "preview_teams": [
-		{
-		  "id": "team1"
-		},
-		{
-		  "id": "team2"
-		}
-	  ],
-	  "scheduled_at": "2125-06-05T07:00:00.000Z",
-	  "state": "IN_REVIEW",
-	  "title": "Scheduled Bundle 1",
-	  "managed_by": "WAGTAIL"
-	}`
 )
 
 func ptrBundleState(state models.BundleState) *models.BundleState {
@@ -651,7 +579,7 @@ func TestCreateBundle_Success(t *testing.T) {
 
 func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 	Convey("Given an invalid payload", t, func() {
-		b := invalidBundlesPayload
+		b := "{invalid_json"
 
 		Convey("When a POST request is made to /bundles endpoint with the invalid payload", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
@@ -674,7 +602,9 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 
 func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 	Convey("Given a payload with invalid scheduled_at format", t, func() {
-		b := invalidTimeInBundlesPayload
+		b := `{
+			"scheduled_at": "invalid-date-format"
+		}`
 
 		Convey("When a POST request is made to /bundles endpoint with the invalid payload", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
@@ -756,10 +686,13 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 
 func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 	Convey("Given a payload with invalid state for creating a bundle ", t, func() {
-		b := payloadWithInvalidState
+		inputBundle := *validBundle
+		inputBundle.State = ptrBundleState(models.BundleStateApproved)
+		inputBundleJSON, err := json.Marshal(inputBundle)
+		So(err, ShouldBeNil)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload", func() {
-			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()
 
@@ -780,10 +713,12 @@ func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 
 func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 	Convey("Given a payload for creating a bundle ", t, func() {
-		b := payloadWithInvalidState
+		inputBundle := *validBundle
+		inputBundleJSON, err := json.Marshal(inputBundle)
+		So(err, ShouldBeNil)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is missing", func() {
-			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "")
 			w := httptest.NewRecorder()
 
@@ -804,10 +739,12 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 
 func TestCreateBundle_Failure_AuthTokenIsInvalid(t *testing.T) {
 	Convey("Given a payload for creating a bundle ", t, func() {
-		b := payloadWithInvalidState
+		inputBundle := *validBundle
+		inputBundleJSON, err := json.Marshal(inputBundle)
+		So(err, ShouldBeNil)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is invalid", func() {
-			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "test auth token")
 			w := httptest.NewRecorder()
 
