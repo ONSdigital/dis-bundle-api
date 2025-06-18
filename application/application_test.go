@@ -370,9 +370,6 @@ func TestCreateBundleEvent(t *testing.T) {
 func TestCreateBundle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
-		now := time.Now().UTC()
-
-		tomorrow := now.Add(24 * time.Hour)
 		bundleToCreate := &models.Bundle{
 			ID:          "bundle-123",
 			Title:       "Example Bundle",
@@ -408,11 +405,10 @@ func TestCreateBundle_Success(t *testing.T) {
 func TestCreateBundle_ValidationFailure(t *testing.T) {
 	Convey("Given a bundle with an invalid ScheduledAt date", t, func() {
 		ctx := context.Background()
-		pastTime := time.Now().Add(-24 * time.Hour)
 		bundleToCreate := &models.Bundle{
 			ID:          "bundle-123",
 			Title:       "Example Bundle",
-			ScheduledAt: &pastTime,
+			ScheduledAt: &yesterday,
 			BundleType:  models.BundleTypeScheduled,
 			State:       ptrBundleState(models.BundleStateDraft),
 		}
@@ -438,7 +434,6 @@ func TestCreateBundle_ValidationFailure(t *testing.T) {
 func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 	Convey("Given a valid bundle", t, func() {
 		ctx := context.Background()
-		tomorrow := time.Now().Add(24 * time.Hour)
 		bundleToCreate := &models.Bundle{
 			ID:          "bundle-123",
 			Title:       "Example Bundle",
@@ -472,7 +467,6 @@ func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 func TestCreateBundle_FailureToGetBundle(t *testing.T) {
 	Convey("Given a valid bundle", t, func() {
 		ctx := context.Background()
-		tomorrow := time.Now().Add(24 * time.Hour)
 		bundleToCreate := &models.Bundle{
 			ID:          "bundle-123",
 			Title:       "Example Bundle",
@@ -550,9 +544,8 @@ func TestCheckBundleExistsByTitle(t *testing.T) {
 
 func TestValidateScheduledAt_Success(t *testing.T) {
 	Convey("Given a bundle with a valid ScheduledAt date", t, func() {
-		futureTime := time.Now().Add(24 * time.Hour)
 		bundle := &models.Bundle{
-			ScheduledAt: &futureTime,
+			ScheduledAt: &tomorrow,
 		}
 
 		Convey("When validateScheduledAt is called", func() {
@@ -584,10 +577,9 @@ func TestValidateScheduledAt_Failure_ScheduledAtNotSet(t *testing.T) {
 
 func TestValidateScheduledAt_Failure_ScheduledAtSet(t *testing.T) {
 	Convey("Given a bundle with ScheduledAt set for a manual bundle", t, func() {
-		futureTime := time.Now().Add(24 * time.Hour)
 		bundle := &models.Bundle{
 			BundleType:  models.BundleTypeManual,
-			ScheduledAt: &futureTime,
+			ScheduledAt: &tomorrow,
 		}
 
 		Convey("When validateScheduledAt is called", func() {
@@ -603,9 +595,8 @@ func TestValidateScheduledAt_Failure_ScheduledAtSet(t *testing.T) {
 
 func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 	Convey("Given a bundle with a ScheduledAt date in the past", t, func() {
-		pastTime := time.Now().Add(-24 * time.Hour)
 		bundle := &models.Bundle{
-			ScheduledAt: &pastTime,
+			ScheduledAt: &yesterday,
 		}
 
 		Convey("When validateScheduledAt is called", func() {
