@@ -42,7 +42,6 @@ func buildListBundleEventsQuery(bundleID string, after, before *time.Time) (filt
 	filter = bson.M{}
 
 	if bundleID != "" {
-
 		filter["$or"] = []bson.M{
 			{"bundle.id": bundleID},
 			{"content_item.bundle_id": bundleID},
