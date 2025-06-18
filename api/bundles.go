@@ -87,7 +87,13 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	// Set the required headers
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	dpresponse.SetETag(w, bundle.ETag)
+
+	// Set Etag
+	ETag := bundle.ETag
+	if ETag == "" {
+		ETag = dpresponse.GenerateETag(bundleBytes, false)
+	}
+	dpresponse.SetETag(w, ETag)
 
 	_, err = w.Write(bundleBytes)
 	if err != nil {
