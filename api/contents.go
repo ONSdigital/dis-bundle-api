@@ -256,13 +256,25 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 
 	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit, authHeaders)
 
-	//handle errors
 	if err != nil {
-		code := models.InternalError
-		log.Error(ctx, "failed to get bundle contents", err, logdata)
-		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
-		return nil, 0, errInfo
+		if strings.Contains(err.Error(), "not found") {
+			log.Error(ctx, "getBundleContents endpoint: dataset not found in dataset API", nil, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+				Source:      &models.Source{Field: "/metadata/dataset_id"},
+			}
+			return nil, 0, errInfo
+		} else {
+			log.Error(ctx, "getBundleContents endpoint: failed to get dataset from dataset API", err, logdata)
+			code := models.CodeInternalServerError
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: "Failed to get dataset from dataset API",
+			}
+			return nil, 0, errInfo
+		}
 	}
-
 	return bundleContents, totalCount, nil
 }
