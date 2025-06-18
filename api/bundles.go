@@ -193,7 +193,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeConflict
 		e := &models.Error{
 			Code:        &code,
-			Description: "A bundle with the same title already exists",
+			Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
 		}
 		utils.HandleBundleAPIErrors(w, r, models.ErrorList{Errors: []*models.Error{e}}, http.StatusConflict)
 		return
@@ -206,7 +206,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
-				Description: "scheduled_at is required for scheduled bundles",
+				Description: errs.ErrorDescriptionScheduledAtIsRequired,
 				Source: &models.Source{
 					Field: "/scheduled_at",
 				},
@@ -219,7 +219,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
-				Description: "scheduled_at should not be set for manual bundles",
+				Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
 				Source: &models.Source{
 					Field: "/scheduled_at",
 				},
@@ -232,7 +232,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeBadRequest
 			e := &models.Error{
 				Code:        &code,
-				Description: "scheduled_at cannot be in the past",
+				Description: errs.ErrorDescriptionScheduledAtIsInPast,
 				Source: &models.Source{
 					Field: "/scheduled_at",
 				},
