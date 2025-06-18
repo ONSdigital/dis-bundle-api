@@ -346,6 +346,28 @@ func TestGetBundle_Success(t *testing.T) {
 		},
 	}
 
+	validBundleWithoutETag := &models.Bundle{
+		ID:          "bundle-3",
+		Title:       "bundle-3",
+		ManagedBy:   models.ManagedByWagtail,
+		BundleType:  models.BundleTypeScheduled,
+		CreatedAt:   &createdAt,
+		UpdatedAt:   &updatedAt,
+		ScheduledAt: &scheduledAt,
+		State:       &state,
+		CreatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		LastUpdatedBy: &models.User{
+			Email: "publisher@ons.gov.uk",
+		},
+		PreviewTeams: &[]models.PreviewTeam{
+			{
+				ID: "c78d457e-98de-11ec-b909-0242ac120003",
+			},
+		},
+	}
+
 	Convey("Given a GET /bundles/{bundle-id} request", t, func() {
 		Convey("When the bundle-id is valid", func() {
 			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
@@ -390,6 +412,25 @@ func TestGetBundle_Success(t *testing.T) {
 				So(response.PreviewTeams, ShouldNotBeNil)
 				So(len(*response.PreviewTeams), ShouldEqual, 1)
 				So((*response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
+			})
+		})
+		Convey("When the bundle-id is valid but without ETag", func() {
+			req := httptest.NewRequest(http.MethodGet, "/bundles/valid-id", http.NoBody)
+			rec := httptest.NewRecorder()
+
+			mockStore := &storetest.StorerMock{
+				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+					return validBundleWithoutETag, nil
+				},
+			}
+
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore})
+			bundleAPI.Router.ServeHTTP(rec, req)
+
+			Convey("Then the response should have status 200, ETag and Cache-Control headers", func() {
+				So(rec.Code, ShouldEqual, http.StatusOK)
+				So(rec.Header().Get("ETag"), ShouldNotBeEmpty)
+				So(rec.Header().Get("Cache-Control"), ShouldEqual, "no-store")
 			})
 		})
 	})
