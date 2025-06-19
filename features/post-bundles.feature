@@ -150,7 +150,7 @@ Feature: Post Bundles functionality - POST /Bundles
       {
         "errors": [
           {
-            "code": "bad_request",
+            "code": "invalid_parameters",
             "description": "scheduled_at should not be set for manual bundles",
             "source": {
                 "field": "/scheduled_at"
@@ -185,7 +185,7 @@ Feature: Post Bundles functionality - POST /Bundles
       {
         "errors": [
           {
-            "code": "bad_request",
+            "code": "invalid_parameters",
             "description": "scheduled_at is required for scheduled bundles",
             "source": {
                 "field": "/scheduled_at"
@@ -221,7 +221,7 @@ Feature: Post Bundles functionality - POST /Bundles
       {
         "errors": [
           {
-            "code": "bad_request",
+            "code": "invalid_parameters",
             "description": "scheduled_at cannot be in the past",
             "source": {
                 "field": "/scheduled_at"
@@ -368,7 +368,7 @@ Feature: Post Bundles functionality - POST /Bundles
               "id": "team2"
             }
           ],
-          "scheduled_at": "2025-01-01T07:00:00Z",
+          "scheduled_at": "2125-01-01T07:00:00Z",
           "state": "DRAFT",
           "title": "bundle-1",
           "managed_by": "WAGTAIL"
@@ -401,7 +401,7 @@ Feature: Post Bundles functionality - POST /Bundles
               "id": "team2"
             }
           ],
-          "scheduled_at": "2025-01-01T07:00:00Z",
+          "scheduled_at": "2125-01-01T07:00:00Z",
           "state": "APPROVED",
           "title": "bundle-1",
           "managed_by": "WAGTAIL"

@@ -159,6 +159,45 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bundleErrs := models.ValidateBundle(bundle)
+	err = api.stateMachineBundleAPI.ValidateScheduledAt(bundle)
+	if err != nil {
+		if err == errs.ErrScheduledAtRequired {
+			log.Error(ctx, "createBundle: scheduled_at is required for scheduled bundles", err)
+			code := models.CodeInvalidParameters
+			e := &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionScheduledAtIsRequired,
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			bundleErrs = append(bundleErrs, e)
+		}
+		if err == errs.ErrScheduledAtSet {
+			log.Error(ctx, "createBundle: scheduled_at should not be set for manual bundles", err)
+			code := models.CodeInvalidParameters
+			e := &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			bundleErrs = append(bundleErrs, e)
+		}
+		if err == errs.ErrScheduledAtInPast {
+			log.Error(ctx, "createBundle: scheduled_at cannot be in the past", err)
+			code := models.CodeInvalidParameters
+			e := &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionScheduledAtIsInPast,
+				Source: &models.Source{
+					Field: "/scheduled_at",
+				},
+			}
+			bundleErrs = append(bundleErrs, e)
+		}
+	}
 	if len(bundleErrs) > 0 {
 		log.Error(ctx, "createBundle: failed to validate bundle", nil, log.Data{"errors": bundleErrs})
 		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, bundleErrs...)
@@ -199,48 +238,21 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdBundle, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
+	err = api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
-		if err == errs.ErrScheduledAtRequired {
-			log.Error(ctx, "createBundle: scheduled_at is required for scheduled bundles", err)
-			code := models.CodeBadRequest
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtIsRequired,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
-			return
+		log.Error(ctx, "createBundle: failed to create bundle", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
 		}
-		if err == errs.ErrScheduledAtSet {
-			log.Error(ctx, "createBundle: scheduled_at should not be set for manual bundles", err)
-			code := models.CodeBadRequest
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
-			return
-		}
-		if err == errs.ErrScheduledAtInPast {
-			log.Error(ctx, "createBundle: scheduled_at cannot be in the past", err)
-			code := models.CodeBadRequest
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtIsInPast,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
-			return
-		}
-		log.Error(ctx, "createBundle: failed to create bundle in the database", err)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		return
+	}
+
+	createdBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundle.ID)
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to retrieve created bundle", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,

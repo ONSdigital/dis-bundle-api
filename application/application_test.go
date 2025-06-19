@@ -382,9 +382,6 @@ func TestCreateBundle_Success(t *testing.T) {
 			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 				return nil
 			},
-			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				return bundleToCreate, nil
-			},
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
@@ -392,40 +389,10 @@ func TestCreateBundle_Success(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called", func() {
-			createdBundle, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			err := stateMachine.CreateBundle(ctx, bundleToCreate)
 
-			Convey("Then it should return the created bundle without error", func() {
+			Convey("Then it should return no error", func() {
 				So(err, ShouldBeNil)
-				So(createdBundle, ShouldResemble, bundleToCreate)
-			})
-		})
-	})
-}
-
-func TestCreateBundle_ValidationFailure(t *testing.T) {
-	Convey("Given a bundle with an invalid ScheduledAt date", t, func() {
-		ctx := context.Background()
-		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
-			Title:       "Example Bundle",
-			ScheduledAt: &yesterday,
-			BundleType:  models.BundleTypeScheduled,
-			State:       ptrBundleState(models.BundleStateDraft),
-		}
-
-		mockedDatastore := &storetest.StorerMock{}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateBundle is called", func() {
-			createdBundle, err := stateMachine.CreateBundle(ctx, bundleToCreate)
-
-			Convey("Then it should return an error indicating ScheduledAt cannot be in the past", func() {
-				So(err, ShouldNotBeNil)
-				So(createdBundle, ShouldBeNil)
-				So(err.Error(), ShouldContainSubstring, "scheduled_at cannot be in the past")
 			})
 		})
 	})
@@ -453,48 +420,11 @@ func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called and the bundle could not be created", func() {
-			createdBundle, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			err := stateMachine.CreateBundle(ctx, bundleToCreate)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
-				So(createdBundle, ShouldBeNil)
 				So(err.Error(), ShouldContainSubstring, "failed to create bundle")
-			})
-		})
-	})
-}
-
-func TestCreateBundle_FailureToGetBundle(t *testing.T) {
-	Convey("Given a valid bundle", t, func() {
-		ctx := context.Background()
-		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
-			Title:       "Example Bundle",
-			ScheduledAt: &tomorrow,
-			BundleType:  models.BundleTypeScheduled,
-			State:       ptrBundleState(models.BundleStateDraft),
-		}
-
-		mockedDatastore := &storetest.StorerMock{
-			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
-				return nil
-			},
-			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				return nil, errors.New("failed to get bundle")
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateBundle is called and the bundle could not be retrieved", func() {
-			createdBundle, err := stateMachine.CreateBundle(ctx, bundleToCreate)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(createdBundle, ShouldBeNil)
-				So(err.Error(), ShouldContainSubstring, "failed to get bundle")
 			})
 		})
 	})
@@ -549,7 +479,8 @@ func TestValidateScheduledAt_Success(t *testing.T) {
 		}
 
 		Convey("When validateScheduledAt is called", func() {
-			err := application.ValidateScheduledAt(bundle)
+			stateMachine := &application.StateMachineBundleAPI{}
+			err := stateMachine.ValidateScheduledAt(bundle)
 
 			Convey("Then it should not return an error", func() {
 				So(err, ShouldBeNil)
@@ -565,7 +496,8 @@ func TestValidateScheduledAt_Failure_ScheduledAtNotSet(t *testing.T) {
 		}
 
 		Convey("When validateScheduledAt is called", func() {
-			err := application.ValidateScheduledAt(bundle)
+			stateMachine := &application.StateMachineBundleAPI{}
+			err := stateMachine.ValidateScheduledAt(bundle)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
@@ -583,7 +515,8 @@ func TestValidateScheduledAt_Failure_ScheduledAtSet(t *testing.T) {
 		}
 
 		Convey("When validateScheduledAt is called", func() {
-			err := application.ValidateScheduledAt(bundle)
+			stateMachine := &application.StateMachineBundleAPI{}
+			err := stateMachine.ValidateScheduledAt(bundle)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
@@ -600,7 +533,8 @@ func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 		}
 
 		Convey("When validateScheduledAt is called", func() {
-			err := application.ValidateScheduledAt(bundle)
+			stateMachine := &application.StateMachineBundleAPI{}
+			err := stateMachine.ValidateScheduledAt(bundle)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)

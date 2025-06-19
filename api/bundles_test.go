@@ -1105,7 +1105,7 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeBadRequest
+				code := models.CodeInvalidParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1156,7 +1156,7 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeBadRequest
+				code := models.CodeInvalidParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1208,7 +1208,7 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeBadRequest
+				code := models.CodeInvalidParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{

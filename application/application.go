@@ -66,20 +66,8 @@ func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *mo
 	return s.Datastore.CreateBundleEvent(ctx, event)
 }
 
-func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (*models.Bundle, error) {
-	err := ValidateScheduledAt(bundle)
-	if err != nil {
-		return nil, err
-	}
-	err = s.Datastore.CreateBundle(ctx, bundle)
-	if err != nil {
-		return nil, err
-	}
-	createdBundle, err := s.Datastore.GetBundle(ctx, bundle.ID)
-	if err != nil {
-		return nil, err
-	}
-	return createdBundle, nil
+func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
+	return s.Datastore.CreateBundle(ctx, bundle)
 }
 
 func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
@@ -90,7 +78,7 @@ func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, ti
 	return exists, nil
 }
 
-func ValidateScheduledAt(bundle *models.Bundle) error {
+func (s *StateMachineBundleAPI) ValidateScheduledAt(bundle *models.Bundle) error {
 	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
 		return errs.ErrScheduledAtRequired
 	}
