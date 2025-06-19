@@ -280,22 +280,22 @@ Feature: Post Bundles functionality - POST /Bundles
         {
             "errors": [
               {
-                  "code": "ErrInvalidParameters",
-                  "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                  "code": "missing_parameters",
+                  "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                   "source": {
                     "field": "/bundle_type"
                   }
               },
               {
-                  "code": "ErrInvalidParameters",
-                  "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                  "code": "missing_parameters",
+                  "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                   "source": {
                     "field": "/preview_teams/0"
                   }
               },
               {
-                  "code": "ErrInvalidParameters",
-                  "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                  "code": "missing_parameters",
+                  "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                   "source": {
                       "field": "/preview_teams/1"
                   }
@@ -330,21 +330,21 @@ Feature: Post Bundles functionality - POST /Bundles
         {
             "errors": [
               {
-                  "code": "ErrInvalidParameters",
+                  "code": "invalid_parameters",
                   "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                   "source": {
                     "field": "/bundle_type"
                   }
               },
               {
-                  "code": "ErrInvalidParameters",
+                  "code": "invalid_parameters",
                   "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                   "source": {
                     "field": "/state"
                   }
               },
               {
-                  "code": "ErrInvalidParameters",
+                  "code": "invalid_parameters",
                   "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                   "source": {
                       "field": "/managed_by"

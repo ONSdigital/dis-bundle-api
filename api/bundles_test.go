@@ -723,33 +723,34 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.ErrInvalidParameters
+				codeMissingParameters := models.CodeMissingParameters
+
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &code,
-							Description: errs.ErrorDescriptionMalformedRequest,
+							Code:        &codeMissingParameters,
+							Description: errs.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/bundle_type",
 							},
 						},
 						{
-							Code:        &code,
-							Description: errs.ErrorDescriptionMalformedRequest,
+							Code:        &codeMissingParameters,
+							Description: errs.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/preview_teams",
 							},
 						},
 						{
-							Code:        &code,
-							Description: errs.ErrorDescriptionMalformedRequest,
+							Code:        &codeMissingParameters,
+							Description: errs.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/title",
 							},
 						},
 						{
-							Code:        &code,
-							Description: errs.ErrorDescriptionMalformedRequest,
+							Code:        &codeMissingParameters,
+							Description: errs.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/managed_by",
 							},
