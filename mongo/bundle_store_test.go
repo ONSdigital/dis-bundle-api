@@ -567,7 +567,6 @@ func TestCheckBundleExists_Failure(t *testing.T) {
 	})
 }
 
-// Test GetBundleByTitle
 func TestCheckBundleExistsByTitle_Success(t *testing.T) {
 	ctx := context.Background()
 
