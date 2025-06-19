@@ -242,6 +242,144 @@ func TestAction_IsValid_Failure(t *testing.T) {
 	})
 }
 
+func TestCreateRequestedBy(t *testing.T) {
+	Convey("When createRequestedBy is called with values", t, func() {
+		testUserID := "test-user-id"
+		testEmail := "test-value"
+		requestedBy := createReqestedBy(testUserID, testEmail)
+
+		Convey("Then an instance of RequestedBy is returned", func() {
+			So(requestedBy, ShouldNotBeNil)
+			So(requestedBy.Email, ShouldEqual, testEmail)
+			So(requestedBy.ID, ShouldEqual, testUserID)
+		})
+	})
+}
+
+const (
+	BundleID      = "test-bundle-id"
+	ContentItemID = "test-content-item-id"
+	UserID        = "test-user-id"
+	Email         = "test@email.com"
+	Resource      = "test-resource"
+)
+
+func TestCreateBundleResourceLocation(t *testing.T) {
+	Convey("When CreateBundleResourceLocation is called", t, func() {
+		testBundle := Bundle{
+			ID: BundleID,
+		}
+
+		location := CreateBundleResourceLocation(&testBundle)
+
+		Convey("Then the correct location string is returned", func() {
+			So(location, ShouldEqual, "/bundle/test-bundle-id")
+		})
+	})
+}
+
+func TestCreateBundleContentResourceLocation(t *testing.T) {
+	Convey("When CreateBundleContentResourceLocation is called", t, func() {
+		testContentItem := ContentItem{
+			BundleID: BundleID,
+			ID:       ContentItemID,
+		}
+
+		location := CreateBundleContentResourceLocation(&testContentItem)
+
+		Convey("Then the correct location string is returned", func() {
+			So(location, ShouldEqual, "/bundle/test-bundle-id/content/test-content-item-id")
+		})
+	})
+}
+
+func TestCreateEventModel(t *testing.T) {
+	Convey("When CreateEventModel is called", t, func() {
+		Convey("With valid parameters and no bundle", func() {
+			testContentItem := &ContentItem{
+				ID:       ContentItemID,
+				BundleID: BundleID,
+			}
+
+			event, err := CreateEventModel(UserID, Email, ActionCreate, Resource, testContentItem, nil)
+
+			Convey("Then a valid Event is returned", func() {
+				So(err, ShouldBeNil)
+				So(event, ShouldNotBeNil)
+				So(event.RequestedBy, ShouldNotBeNil)
+				So(event.Action, ShouldEqual, ActionCreate)
+				So(event.Resource, ShouldEqual, Resource)
+				So(event.ContentItem, ShouldEqual, testContentItem)
+				So(event.Bundle, ShouldBeNil)
+			})
+		})
+
+		Convey("With valid parameters and a bundle", func() {
+			testBundle := &Bundle{
+				ID:         BundleID,
+				BundleType: "test-type",
+				CreatedBy: &User{
+					Email: UserID,
+				},
+				Title: "Test Bundle",
+			}
+
+			testContentItem := &ContentItem{
+				ID:       ContentItemID,
+				BundleID: BundleID,
+			}
+
+			event, err := CreateEventModel(UserID, Email, ActionCreate, Resource, testContentItem, testBundle)
+
+			Convey("Then a valid Event with EventBundle is returned", func() {
+				So(err, ShouldBeNil)
+				So(event, ShouldNotBeNil)
+				So(event.RequestedBy, ShouldNotBeNil)
+				So(event.Action, ShouldEqual, ActionCreate)
+				So(event.Resource, ShouldEqual, Resource)
+				So(event.ContentItem, ShouldEqual, testContentItem)
+				So(event.Bundle, ShouldNotBeNil)
+				So(event.Bundle.ID, ShouldEqual, BundleID)
+				So(string(event.Bundle.BundleType), ShouldEqual, "test-type")
+				So(event.Bundle.Title, ShouldEqual, "Test Bundle")
+			})
+		})
+
+		Convey("With nil bundle parameter", func() {
+			testContentItem := &ContentItem{
+				ID:       ContentItemID,
+				BundleID: BundleID,
+			}
+
+			event, err := CreateEventModel(UserID, Email, ActionUpdate, Resource, testContentItem, nil)
+
+			Convey("Then a valid Event with nil Bundle is returned", func() {
+				So(err, ShouldBeNil)
+				So(event, ShouldNotBeNil)
+				So(event.Bundle, ShouldBeNil)
+			})
+		})
+
+		Convey("With empty userID", func() {
+			event, err := CreateEventModel("", Email, ActionCreate, Resource, nil, nil)
+
+			Convey("Then validation should fail", func() {
+				So(err, ShouldEqual, errs.ErrInternalServer)
+				So(event, ShouldBeNil)
+			})
+		})
+
+		Convey("With an invalid action", func() {
+			event, err := CreateEventModel(UserID, Email, Action("This is not a valid action"), Resource, nil, nil)
+
+			Convey("Then validation should fail", func() {
+				So(err, ShouldEqual, errs.ErrInternalServer)
+				So(event, ShouldBeNil)
+			})
+		})
+	})
+}
+
 func TestConvertBundleToBundleEvent_Success(t *testing.T) {
 	Convey("Given a Bundle object with all fields populated", t, func() {
 		createdAt := time.Now()
