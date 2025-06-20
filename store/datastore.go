@@ -24,9 +24,11 @@ type dataMongoDB interface {
 	GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error)
 	UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error)
 	CheckBundleExists(ctx context.Context, bundleID string) (bool, error)
+	GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error)
 	CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error)
+	DeleteContentItem(ctx context.Context, contentItemID string) error
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
@@ -63,6 +65,10 @@ func (ds *Datastore) CheckBundleExists(ctx context.Context, bundleID string) (bo
 	return ds.Backend.CheckBundleExists(ctx, bundleID)
 }
 
+func (ds *Datastore) GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+	return ds.Backend.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+}
+
 func (ds *Datastore) CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error {
 	return ds.Backend.CreateContentItem(ctx, contentItem)
 }
@@ -73,6 +79,10 @@ func (ds *Datastore) CheckAllBundleContentsAreApproved(ctx context.Context, bund
 
 func (ds *Datastore) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
 	return ds.Backend.CheckContentItemExistsByDatasetEditionVersion(ctx, datasetID, editionID, versionID)
+}
+
+func (ds *Datastore) DeleteContentItem(ctx context.Context, contentItemID string) error {
+	return ds.Backend.DeleteContentItem(ctx, contentItemID)
 }
 
 func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
