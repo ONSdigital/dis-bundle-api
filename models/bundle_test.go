@@ -172,6 +172,27 @@ func TestValidateBundle_Failure(t *testing.T) {
 	})
 }
 
+func TestValidateBundle_Failure_MissingPreviewTeamsID(t *testing.T) {
+	Convey("Given a bundle with missing PreviewTeams ID", t, func() {
+		bundle := Bundle{
+			ID:           "789",
+			BundleType:   BundleTypeManual,
+			PreviewTeams: &[]PreviewTeam{{ID: ""}},
+			Title:        "Bundle with Missing Preview Teams ID",
+			ManagedBy:    ManagedByWagtail,
+		}
+
+		Convey("When ValidateBundle is called", func() {
+			err := ValidateBundle(&bundle)
+
+			Convey("Then it should return an error indicating the missing PreviewTeams ID", func() {
+				So(err, ShouldNotBeNil)
+				So(err[0].Source.Field, ShouldEqual, "/preview_teams/0")
+			})
+		})
+	})
+}
+
 func TestBundleState_IsValid_Success(t *testing.T) {
 	Convey("Given a valid bundle state", t, func() {
 		state := BundleStateDraft
