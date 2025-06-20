@@ -171,7 +171,7 @@ func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, e
 	return count > 0, nil
 }
 
-// CheckBundleExistsByTitle retrieves a bundle by its title
+// CheckBundleExistsByTitle checks if a bundle exists by its title
 func (m *Mongo) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
 	filter := bson.M{"title": title}
 
