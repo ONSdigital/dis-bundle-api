@@ -243,3 +243,115 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		log.Error(ctx, "postBundleContents endpoint: error writing response body", err, logdata)
 	}
 }
+
+func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	bundleID := vars["bundle-id"]
+	contentID := vars["content-id"]
+
+	logdata := log.Data{"bundle_id": bundleID, "content_id": contentID}
+
+	contentItem, err := api.stateMachineBundleAPI.Datastore.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentID)
+	if err != nil {
+		if err == apierrors.ErrContentItemNotFound {
+			log.Error(ctx, "deleteContentItem endpoint: content item not found", err, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+			return
+		}
+		log.Error(ctx, "deleteContentItem endpoint: failed to get content item by ID", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	if contentItem.State != nil && *contentItem.State == models.StatePublished {
+		log.Error(ctx, "deleteContentItem endpoint: cannot delete content item in published state", nil, logdata)
+		code := models.CodeConflict
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionContentItemAlreadyPublished,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.DeleteContentItem(ctx, contentID)
+	if err != nil {
+		if err == apierrors.ErrContentItemNotFound {
+			log.Error(ctx, "deleteContentItem endpoint: content item not found for deletion", err, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+			return
+		}
+		log.Error(ctx, "deleteContentItem endpoint: failed to delete content item", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	event := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    JWTEntityData.UserID,
+			Email: JWTEntityData.UserID,
+		},
+		Action:      models.ActionDelete,
+		Resource:    "/bundles/" + bundleID + "/contents/" + contentID,
+		ContentItem: contentItem,
+	}
+
+	err = models.ValidateEvent(event)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: event validation failed", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logdata)
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
