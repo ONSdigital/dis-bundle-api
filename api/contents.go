@@ -309,7 +309,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 
 	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logdata)
+		log.Error(ctx, "deleteContentItem endpoint: failed to parse JWT from authorization header", err, logdata)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -331,7 +331,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 
 	err = models.ValidateEvent(event)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: event validation failed", err, logdata)
+		log.Error(ctx, "deleteContentItem endpoint: event validation failed", err, logdata)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -343,7 +343,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 
 	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logdata)
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event in database", err, logdata)
 		code := models.CodeInternalServerError
 		errInfo := &models.Error{
 			Code:        &code,
