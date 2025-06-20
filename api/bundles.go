@@ -233,6 +233,9 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
+			Source: &models.Source{
+				Field: "/title",
+			},
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, e)
 		return

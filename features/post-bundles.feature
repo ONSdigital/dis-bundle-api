@@ -381,7 +381,10 @@ Feature: Post Bundles functionality - POST /Bundles
         "errors": [
           {
             "code": "conflict",
-            "description": "A bundle with the same title already exists"
+            "description": "A bundle with the same title already exists",
+            "source": {
+              "field": "/title"
+            }
           }
         ]
       }

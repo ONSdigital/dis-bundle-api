@@ -963,6 +963,9 @@ func TestCreateBundle_Failure_BundleWithSameTitleAlreadyExists(t *testing.T) {
 						{
 							Code:        &code,
 							Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
+							Source: &models.Source{
+								Field: "/title",
+							},
 						},
 					},
 				}
