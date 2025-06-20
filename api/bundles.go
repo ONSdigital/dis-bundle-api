@@ -329,16 +329,8 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", bundlePath)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(b)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to write response", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
+	if _, err = w.Write(b); err != nil {
+		log.Error(ctx, "createBundle: error writing response body", err)
 	}
 	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
 }
