@@ -277,13 +277,14 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	bundlePath := "/bundles/" + createdBundle.ID
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
 			ID:    entityData.UserID,
 			Email: entityData.UserID,
 		},
 		Action:   models.ActionCreate,
-		Resource: "/bundles/" + createdBundle.ID,
+		Resource: bundlePath,
 		Bundle:   eventBundle,
 	}
 
@@ -325,8 +326,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	dpresponse.SetETag(w, createdBundle.ETag)
 	w.Header().Set("Cache-Control", "no-store")
-	location := "/bundles/" + createdBundle.ID
-	w.Header().Set("Location", location)
+	w.Header().Set("Location", bundlePath)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_, err = w.Write(b)
