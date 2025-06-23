@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -13,18 +12,18 @@ import (
 
 // Bundle represents the response body when retrieving a bundle
 type Bundle struct {
-	ID            string         `bson:"id"                        json:"id"`
-	BundleType    BundleType     `bson:"bundle_type"               json:"bundle_type"`
-	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
-	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
-	LastUpdatedBy *User          `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
-	PreviewTeams  *[]PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
-	ScheduledAt   *time.Time     `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
-	State         *BundleState   `bson:"state,omitempty"           json:"state,omitempty"`
-	Title         string         `bson:"title"                     json:"title"`
-	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
-	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
-	ETag          string         `bson:"e_tag"                     json:"-"`
+	ID            string        `bson:"id"                        json:"id"`
+	BundleType    BundleType    `bson:"bundle_type"               json:"bundle_type"`
+	CreatedBy     *User         `bson:"created_by,omitempty"      json:"created_by,omitempty"`
+	CreatedAt     *time.Time    `bson:"created_at,omitempty"      json:"created_at,omitempty"`
+	LastUpdatedBy *User         `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
+	PreviewTeams  []PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
+	ScheduledAt   *time.Time    `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
+	State         BundleState   `bson:"state"                     json:"state"`
+	Title         string        `bson:"title"                     json:"title"`
+	UpdatedAt     *time.Time    `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
+	ManagedBy     ManagedBy     `bson:"managed_by"                json:"managed_by"`
+	ETag          string        `bson:"e_tag"                     json:"-"`
 }
 
 // Bundles represents a list of bundles
@@ -70,6 +69,33 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 	bundle.ID = id.String()
 
 	return &bundle, nil
+}
+
+// CleanBundle removes any whitespace from the Bundle fields (except for the CreatedAt, UpdatedAt, ScheduledAt and etag fields)
+func CleanBundle(bundle *Bundle) {
+	bundle.ID = strings.TrimSpace(bundle.ID)
+
+	bundle.BundleType = BundleType(strings.TrimSpace(bundle.BundleType.String()))
+
+	if bundle.CreatedBy != nil {
+		bundle.CreatedBy.Email = strings.TrimSpace(bundle.CreatedBy.Email)
+	}
+
+	if bundle.LastUpdatedBy != nil {
+		bundle.LastUpdatedBy.Email = strings.TrimSpace(bundle.LastUpdatedBy.Email)
+	}
+
+	if len(bundle.PreviewTeams) > 0 {
+		for i := range bundle.PreviewTeams {
+			bundle.PreviewTeams[i].ID = strings.TrimSpace(bundle.PreviewTeams[i].ID)
+		}
+	}
+
+	bundle.State = BundleState(strings.TrimSpace(bundle.State.String()))
+
+	bundle.Title = strings.TrimSpace(bundle.Title)
+
+	bundle.ManagedBy = ManagedBy(strings.TrimSpace(bundle.ManagedBy.String()))
 }
 
 // ValidateBundle checks that the Bundle has all mandatory fields and valid values
@@ -129,7 +155,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 		})
 	}
 
-	if len(*bundle.PreviewTeams) == 0 {
+	if len(bundle.PreviewTeams) == 0 {
 		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 			Code:        &codeMissingParameters,
 			Description: errs.ErrorDescriptionMissingParameters,
@@ -138,20 +164,31 @@ func ValidateBundle(bundle *Bundle) []*Error {
 			},
 		})
 	} else {
-		for i, team := range *bundle.PreviewTeams {
+		for _, team := range bundle.PreviewTeams {
 			if team.ID == "" {
 				invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 					Code:        &codeMissingParameters,
 					Description: errs.ErrorDescriptionMissingParameters,
 					Source: &Source{
-						Field: fmt.Sprintf("/preview_teams/%d", i),
+						Field: "/preview_teams/id",
 					},
 				})
+				break
 			}
 		}
 	}
 
-	if bundle.State != nil && !bundle.State.IsValid() {
+	if bundle.State.String() == "" {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+			Code:        &codeMissingParameters,
+			Description: errs.ErrorDescriptionMissingParameters,
+			Source: &Source{
+				Field: "/state",
+			},
+		})
+	}
+
+	if bundle.State.String() != "" && !bundle.State.IsValid() {
 		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 			Code:        &codeInvalidParameters,
 			Description: errs.ErrorDescriptionMalformedRequest,
@@ -217,6 +254,11 @@ func (bt BundleType) IsValid() bool {
 	}
 }
 
+// String returns the string value of the BundleType
+func (bt BundleType) String() string {
+	return string(bt)
+}
+
 // BundleState enum type representing the state of the bundle
 type BundleState string
 
@@ -260,4 +302,9 @@ func (mb ManagedBy) IsValid() bool {
 	default:
 		return false
 	}
+}
+
+// String returns the string value of the ManagedBy
+func (mb ManagedBy) String() string {
+	return string(mb)
 }

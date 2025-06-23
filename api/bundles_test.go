@@ -32,20 +32,16 @@ var (
 	scheduledTime = time.Date(2125, 6, 5, 7, 0, 0, 0, time.UTC)
 	validBundle   = &models.Bundle{
 		BundleType: models.BundleTypeScheduled,
-		PreviewTeams: &[]models.PreviewTeam{
+		PreviewTeams: []models.PreviewTeam{
 			{ID: "team1"},
 			{ID: "team2"},
 		},
 		ScheduledAt: &scheduledTime,
-		State:       ptrBundleState(models.BundleStateDraft),
+		State:       models.BundleStateDraft,
 		Title:       "Scheduled Bundle 1",
 		ManagedBy:   models.ManagedByWagtail,
 	}
 )
-
-func ptrBundleState(state models.BundleState) *models.BundleState {
-	return &state
-}
 
 func newAuthMiddlwareMock() *authorisationMock.MiddlewareMock {
 	return &authorisationMock.MiddlewareMock{
@@ -129,9 +125,9 @@ func TestGetBundles_Success(t *testing.T) {
 				CreatedBy:     &models.User{Email: "creator@example.com"},
 				CreatedAt:     &now,
 				LastUpdatedBy: &models.User{Email: "updater@example.com"},
-				PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+				PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 				ScheduledAt:   &oneDayLater,
-				State:         ptrBundleState(models.BundleStatePublished),
+				State:         models.BundleStatePublished,
 				Title:         "Scheduled Bundle 1",
 				UpdatedAt:     &now,
 				ManagedBy:     models.ManagedByDataAdmin,
@@ -142,9 +138,9 @@ func TestGetBundles_Success(t *testing.T) {
 				CreatedBy:     &models.User{Email: "creator2@example.com"},
 				CreatedAt:     &now,
 				LastUpdatedBy: &models.User{Email: "updater2@example.com"},
-				PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
+				PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
 				ScheduledAt:   &twoDaysLater,
-				State:         ptrBundleState(models.BundleStateDraft),
+				State:         models.BundleStateDraft,
 				Title:         "Manual Bundle 2",
 				UpdatedAt:     &now,
 				ManagedBy:     models.ManagedByWagtail,
@@ -347,7 +343,6 @@ func TestGetBundle_Success(t *testing.T) {
 	scheduledAt := time.Date(2025, 4, 25, 9, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2025, 3, 10, 11, 20, 0, 0, time.UTC)
 	updatedAt := time.Date(2025, 3, 25, 14, 30, 0, 0, time.UTC)
-	state := models.BundleStateDraft
 
 	validBundle := &models.Bundle{
 		ID:          "bundle-2",
@@ -358,14 +353,14 @@ func TestGetBundle_Success(t *testing.T) {
 		CreatedAt:   &createdAt,
 		UpdatedAt:   &updatedAt,
 		ScheduledAt: &scheduledAt,
-		State:       &state,
+		State:       models.BundleStateDraft,
 		CreatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
 		LastUpdatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
-		PreviewTeams: &[]models.PreviewTeam{
+		PreviewTeams: []models.PreviewTeam{
 			{
 				ID: "c78d457e-98de-11ec-b909-0242ac120002",
 			},
@@ -411,11 +406,11 @@ func TestGetBundle_Success(t *testing.T) {
 				So(response.LastUpdatedBy.Email, ShouldEqual, validBundle.LastUpdatedBy.Email)
 
 				So(response.State, ShouldNotBeNil)
-				So(*response.State, ShouldEqual, *validBundle.State)
+				So(response.State, ShouldEqual, validBundle.State)
 
 				So(response.PreviewTeams, ShouldNotBeNil)
-				So(len(*response.PreviewTeams), ShouldEqual, 1)
-				So((*response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
+				So(len(response.PreviewTeams), ShouldEqual, 1)
+				So((response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
 			})
 		})
 	})
@@ -696,16 +691,8 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 
 func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 	Convey("Given a payload with missing mandatory fields", t, func() {
-		bundle := `{
-			"id": "",
-			"bundle_type": "",
-			"preview_teams": [],
-			"title": "",
-			"managed_by": ""
-		}`
-
 		Convey("When a POST request is made to /bundles endpoint with the invalid payload", func() {
-			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(bundle))
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader([]byte("{}")))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()
 
@@ -745,6 +732,13 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 							Code:        &codeMissingParameters,
 							Description: errs.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
+								Field: "/state",
+							},
+						},
+						{
+							Code:        &codeMissingParameters,
+							Description: errs.ErrorDescriptionMissingParameters,
+							Source: &models.Source{
 								Field: "/title",
 							},
 						},
@@ -764,9 +758,9 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 }
 
 func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
-	Convey("Given a payload with invalid state for creating a bundle ", t, func() {
+	Convey("Given a payload with invalid state for creating a bundle", t, func() {
 		inputBundle := *validBundle
-		inputBundle.State = ptrBundleState(models.BundleStateApproved)
+		inputBundle.State = models.BundleStateApproved
 		inputBundleJSON, err := json.Marshal(inputBundle)
 		So(err, ShouldBeNil)
 

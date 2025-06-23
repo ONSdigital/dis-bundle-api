@@ -10,10 +10,9 @@ import (
 )
 
 var (
-	today            = time.Now()
-	yesterday        = today.Add(-24 * time.Hour)
-	tomorrow         = today.Add(24 * time.Hour)
-	bundleStateDraft = models.BundleStateDraft
+	today     = time.Now()
+	yesterday = today.Add(-24 * time.Hour)
+	tomorrow  = today.Add(24 * time.Hour)
 
 	bundleEvent = &models.Event{
 		CreatedAt: &today,
@@ -44,7 +43,7 @@ var (
 			LastUpdatedBy: &models.User{
 				Email: "user123@ons.gov.uk",
 			},
-			PreviewTeams: &[]models.PreviewTeam{
+			PreviewTeams: []models.PreviewTeam{
 				{
 					ID: "team1",
 				},
@@ -53,7 +52,7 @@ var (
 				},
 			},
 			ScheduledAt: &tomorrow,
-			State:       &bundleStateDraft,
+			State:       models.BundleStateDraft,
 			Title:       "Test Bundle",
 			UpdatedAt:   &today,
 			ManagedBy:   models.ManagedByDataAdmin,

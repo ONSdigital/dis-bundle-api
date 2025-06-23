@@ -15,9 +15,9 @@ var fullyPopulatedBundle = Bundle{
 	CreatedBy:     &User{Email: "example@example.com"},
 	CreatedAt:     &today,
 	LastUpdatedBy: &User{Email: "example@example.com"},
-	PreviewTeams:  &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	PreviewTeams:  []PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 	ScheduledAt:   &tomorrow,
-	State:         &bundleStateDraft,
+	State:         BundleStateDraft,
 	Title:         "Fully Populated Bundle",
 	UpdatedAt:     &today,
 	ManagedBy:     ManagedByWagtail,
@@ -27,7 +27,8 @@ var fullyPopulatedBundle = Bundle{
 var minimallyPopulatedBundle = Bundle{
 	ID:           "456",
 	BundleType:   BundleTypeManual,
-	PreviewTeams: &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	PreviewTeams: []PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	State:        BundleStateDraft,
 	Title:        "Minimally Populated Bundle",
 	ManagedBy:    ManagedByWagtail,
 	ETag:         "3c897c1081faa19bff0c20ffd1ca99cc54640f0e",
@@ -79,7 +80,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(bundle.LastUpdatedBy, ShouldBeNil)
 				So(bundle.PreviewTeams, ShouldResemble, minimallyPopulatedBundle.PreviewTeams)
 				So(bundle.ScheduledAt, ShouldBeNil)
-				So(bundle.State, ShouldBeNil)
+				So(bundle.State, ShouldResemble, minimallyPopulatedBundle.State)
 				So(bundle.Title, ShouldEqual, minimallyPopulatedBundle.Title)
 				So(bundle.UpdatedAt, ShouldBeNil)
 				So(bundle.ManagedBy, ShouldEqual, minimallyPopulatedBundle.ManagedBy)
@@ -113,6 +114,37 @@ func TestCreateBundle_Failure(t *testing.T) {
 	})
 }
 
+func TestCleanBundle_Success(t *testing.T) {
+	Convey("Given a Bundle with leading and trailing whitespace", t, func() {
+		bundle := &Bundle{
+			ID:            " 123 ",
+			BundleType:    BundleType(" MANUAL "),
+			CreatedBy:     &User{Email: " test@example.com "},
+			LastUpdatedBy: &User{Email: " test@example.com "},
+			PreviewTeams:  []PreviewTeam{{ID: " team1 "}, {ID: " team2 "}},
+			State:         BundleState(" DRAFT "),
+			Title:         " Bundle Title ",
+			ManagedBy:     ManagedBy(" WAGTAIL "),
+		}
+
+		Convey("When CleanBundle is called", func() {
+			CleanBundle(bundle)
+
+			Convey("Then it should remove the whitespace from all fields", func() {
+				So(bundle.ID, ShouldEqual, "123")
+				So(bundle.BundleType, ShouldEqual, BundleTypeManual)
+				So(bundle.CreatedBy.Email, ShouldEqual, "test@example.com")
+				So(bundle.LastUpdatedBy.Email, ShouldEqual, "test@example.com")
+				So(bundle.PreviewTeams[0].ID, ShouldEqual, "team1")
+				So(bundle.PreviewTeams[1].ID, ShouldEqual, "team2")
+				So(bundle.State, ShouldEqual, BundleStateDraft)
+				So(bundle.Title, ShouldEqual, "Bundle Title")
+				So(bundle.ManagedBy, ShouldEqual, ManagedByWagtail)
+			})
+		})
+	})
+}
+
 func TestValidateBundle_Success(t *testing.T) {
 	Convey("Given a minimally populated bundle", t, func() {
 		Convey("When ValidateBundle is called", func() {
@@ -128,13 +160,8 @@ func TestValidateBundle_Success(t *testing.T) {
 func TestValidateBundle_Failure(t *testing.T) {
 	Convey("Given a bundle with missing mandatory fields (CreatedBy and LastUpdatedBy email only checked if field exists)", t, func() {
 		bundle := Bundle{
-			ID:            "",
-			BundleType:    "",
 			CreatedBy:     &User{Email: ""},
 			LastUpdatedBy: &User{Email: ""},
-			PreviewTeams:  &[]PreviewTeam{},
-			Title:         "",
-			ManagedBy:     "",
 		}
 
 		Convey("When ValidateBundle is called", func() {
@@ -147,8 +174,9 @@ func TestValidateBundle_Failure(t *testing.T) {
 				So(err[2].Source.Field, ShouldEqual, "/created_by/email")
 				So(err[3].Source.Field, ShouldEqual, "/last_updated_by/email")
 				So(err[4].Source.Field, ShouldEqual, "/preview_teams")
-				So(err[5].Source.Field, ShouldEqual, "/title")
-				So(err[6].Source.Field, ShouldEqual, "/managed_by")
+				So(err[5].Source.Field, ShouldEqual, "/state")
+				So(err[6].Source.Field, ShouldEqual, "/title")
+				So(err[7].Source.Field, ShouldEqual, "/managed_by")
 			})
 		})
 	})
@@ -156,7 +184,7 @@ func TestValidateBundle_Failure(t *testing.T) {
 	Convey("Given a bundle with invalid fields (State only checked if field exists)", t, func() {
 		bundle := fullyPopulatedBundle
 		bundle.BundleType = BundleType("invalid-type")
-		bundle.State = &bundleStateInvalid
+		bundle.State = BundleState("Invalid")
 		bundle.ManagedBy = ManagedBy("invalid-managed-by")
 
 		Convey("When ValidateBundle is called", func() {
@@ -177,7 +205,7 @@ func TestValidateBundle_Failure_MissingPreviewTeamsID(t *testing.T) {
 		bundle := Bundle{
 			ID:           "789",
 			BundleType:   BundleTypeManual,
-			PreviewTeams: &[]PreviewTeam{{ID: ""}},
+			PreviewTeams: []PreviewTeam{{ID: ""}},
 			Title:        "Bundle with Missing Preview Teams ID",
 			ManagedBy:    ManagedByWagtail,
 		}
@@ -185,9 +213,9 @@ func TestValidateBundle_Failure_MissingPreviewTeamsID(t *testing.T) {
 		Convey("When ValidateBundle is called", func() {
 			err := ValidateBundle(&bundle)
 
-			Convey("Then it should return an error indicating the missing PreviewTeams ID", func() {
+			Convey("Then it should return an error indicating the id is missing", func() {
 				So(err, ShouldNotBeNil)
-				So(err[0].Source.Field, ShouldEqual, "/preview_teams/0")
+				So(err[0].Source.Field, ShouldEqual, "/preview_teams/id")
 			})
 		})
 	})

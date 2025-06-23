@@ -16,9 +16,6 @@ var (
 	tomorrow  = today.Add(24 * time.Hour)
 )
 
-var bundleStateDraft = BundleStateDraft
-var bundleStateInvalid = BundleState("Invalid")
-
 var fullyPopulatedEvent = Event{
 	CreatedAt: &today,
 	RequestedBy: &RequestedBy{
@@ -48,7 +45,7 @@ var fullyPopulatedEvent = Event{
 		LastUpdatedBy: &User{
 			Email: "user123@ons.gov.uk",
 		},
-		PreviewTeams: &[]PreviewTeam{
+		PreviewTeams: []PreviewTeam{
 			{
 				ID: "team1",
 			},
@@ -57,7 +54,7 @@ var fullyPopulatedEvent = Event{
 			},
 		},
 		ScheduledAt: &tomorrow,
-		State:       &bundleStateDraft,
+		State:       BundleStateDraft,
 		Title:       "Test Bundle",
 		UpdatedAt:   &today,
 		ManagedBy:   ManagedByDataAdmin,
@@ -72,7 +69,7 @@ var minimallyPopulatedEvent = Event{
 		CreatedBy: &User{
 			Email: "user123@ons.gov.uk",
 		},
-		PreviewTeams: &[]PreviewTeam{
+		PreviewTeams: []PreviewTeam{
 			{
 				ID: "team1",
 			},
@@ -80,6 +77,7 @@ var minimallyPopulatedEvent = Event{
 				ID: "team2",
 			},
 		},
+		State:     BundleStateDraft,
 		Title:     "Test Bundle",
 		ManagedBy: ManagedByDataAdmin,
 	},
@@ -260,12 +258,12 @@ func TestConvertBundleToBundleEvent_Success(t *testing.T) {
 			LastUpdatedBy: &User{
 				Email: "user@ons.gov.uk",
 			},
-			PreviewTeams: &[]PreviewTeam{
+			PreviewTeams: []PreviewTeam{
 				{ID: "team1"},
 				{ID: "team2"},
 			},
 			ScheduledAt: &scheduledAt,
-			State:       &bundleStateDraft,
+			State:       BundleStateDraft,
 			Title:       "Test Bundle",
 			UpdatedAt:   &updatedAt,
 			ManagedBy:   ManagedByDataAdmin,

@@ -158,6 +158,8 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		Email: entityData.UserID,
 	}
 
+	models.CleanBundle(bundle)
+
 	bundleErrs := models.ValidateBundle(bundle)
 	err = api.stateMachineBundleAPI.ValidateScheduledAt(bundle)
 	if err != nil {

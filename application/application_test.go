@@ -32,7 +32,7 @@ func TestListBundles(t *testing.T) {
 				CreatedAt:  &yesterday,
 				UpdatedAt:  &today,
 				BundleType: models.BundleTypeScheduled,
-				State:      ptrBundleState(models.BundleStatePublished),
+				State:      models.BundleStatePublished,
 			},
 		}
 
@@ -72,7 +72,7 @@ func TestGetBundle(t *testing.T) {
 			CreatedAt:  &yesterday,
 			UpdatedAt:  &today,
 			BundleType: models.BundleTypeScheduled,
-			State:      ptrBundleState(models.BundleStatePublished),
+			State:      models.BundleStatePublished,
 		}
 
 		mockedDatastore := &storetest.StorerMock{
@@ -121,7 +121,7 @@ func TestUpdateBundleETag(t *testing.T) {
 				Email: "old-email",
 			},
 			BundleType: models.BundleTypeScheduled,
-			State:      ptrBundleState(models.BundleStatePublished),
+			State:      models.BundleStatePublished,
 			ETag:       "12345",
 		}
 
@@ -375,7 +375,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
-			State:       ptrBundleState(models.BundleStateDraft),
+			State:       models.BundleStateDraft,
 		}
 
 		mockedDatastore := &storetest.StorerMock{
@@ -406,7 +406,7 @@ func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
-			State:       ptrBundleState(models.BundleStateDraft),
+			State:       models.BundleStateDraft,
 		}
 
 		mockedDatastore := &storetest.StorerMock{
@@ -542,10 +542,6 @@ func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 			})
 		})
 	})
-}
-
-func ptrBundleState(s models.BundleState) *models.BundleState {
-	return &s
 }
 
 func ptrContentItemState(s models.State) *models.State {
