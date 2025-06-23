@@ -221,13 +221,13 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 }
 
 func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, limit, offset int) (contents any, totalCount int, contentErrors *models.Error) {
-	//fetch bundle ID
+	// Fetch bundle ID
 	ctx := r.Context()
 	vars := mux.Vars(r)
 	bundleID := vars["bundle-id"]
 	logdata := log.Data{"bundle_id": bundleID}
 
-	//check if the bundle exists
+	// Check if the bundle exists
 	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
 	if err != nil {
 		code := models.CodeInternalServerError

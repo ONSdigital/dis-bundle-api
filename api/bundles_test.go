@@ -47,7 +47,9 @@ func newAuthMiddlwareMock() *authorisationMock.MiddlewareMock {
 
 func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 	ctx := context.Background()
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		DefaultMaxLimit: 100,
+	}
 	r := mux.NewRouter()
 
 	mockStates := []application.State{
@@ -81,11 +83,13 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 	}
 
 	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
-	stateMachineBundleAPI := &application.StateMachineBundleAPI{
-		Datastore:    datastore,
-		StateMachine: stateMachine,
-	}
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+
+	stateMachineBundleAPI := &application.StateMachineBundleAPI{
+		Datastore:        datastore,
+		StateMachine:     stateMachine,
+		DatasetAPIClient: mockDatasetAPIClient,
+	}
 	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, mockDatasetAPIClient, newAuthMiddlwareMock())
 }
 

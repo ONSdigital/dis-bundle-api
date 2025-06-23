@@ -77,12 +77,11 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	}
 	bundleState := bundle.State
 
-	contentResults := []*models.ContentItem{}
 	totalCount := 0
 
 	// If bundle is published, return its contents directly
 	if bundleState.String() == models.BundleStatePublished.String() {
-		contentResults, totalCount, err = s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+		contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -90,7 +89,7 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	}
 
 	// If bundle is not published, populate state & title by calling dataset API Client
-	contentResults, totalCount, err = s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+	contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}
