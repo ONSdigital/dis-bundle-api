@@ -42,18 +42,19 @@ func buildListBundleEventsQuery(bundleID string, after, before *time.Time) (filt
 	filter = bson.M{}
 
 	if bundleID != "" {
-		filter["bundle.id"] = bundleID
+		filter["$or"] = []bson.M{
+			{"bundle.id": bundleID},
+			{"content_item.bundle_id": bundleID},
+		}
 	}
 
 	if after != nil || before != nil {
 		dateFilter := bson.M{}
 		if after != nil {
-			afterStr := after.Format(time.RFC3339)
-			dateFilter["$gte"] = afterStr
+			dateFilter["$gte"] = *after
 		}
 		if before != nil {
-			beforeStr := before.Format(time.RFC3339)
-			dateFilter["$lte"] = beforeStr
+			dateFilter["$lte"] = *before
 		}
 		filter["created_at"] = dateFilter
 	}

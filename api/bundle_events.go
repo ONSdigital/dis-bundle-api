@@ -72,7 +72,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 
 	if len(validationErrors) > 0 {
 		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, validationErrors...)
-		return []*models.Event{}, 0, nil
+		return nil, 0, validationErrors[0]
 	}
 
 	events, totalCount, err := api.stateMachineBundleAPI.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
@@ -88,7 +88,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 		code := models.NotFound
 		errInfo := &models.Error{Code: &code, Description: "The requested resource does not exist."}
 		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
-		return []*models.Event{}, 0, nil
+		return nil, 0, errInfo
 	}
 
 	return events, totalCount, nil

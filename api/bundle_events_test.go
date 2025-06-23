@@ -141,7 +141,7 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 			_, totalCount, err := api.getBundleEvents(w, req, 20, 0)
 
 			Convey("Then it should handle the error gracefully", func() {
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 				So(totalCount, ShouldEqual, 0)
 				So(w.Code, ShouldEqual, 400)
 			})
@@ -167,7 +167,7 @@ func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 			_, totalCount, err := api.getBundleEvents(w, req, 20, 0)
 
 			Convey("Then it should return a 400 error", func() {
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 				So(totalCount, ShouldEqual, 0)
 				So(w.Code, ShouldEqual, 400)
 			})
@@ -230,7 +230,7 @@ func TestGetBundleEvents_NoResults(t *testing.T) {
 			_, totalCount, err := api.getBundleEvents(w, req, 20, 0)
 
 			Convey("Then it should return a 404 error", func() {
-				So(err, ShouldBeNil)
+				So(err, ShouldNotBeNil)
 				So(totalCount, ShouldEqual, 0)
 				So(w.Code, ShouldEqual, 404)
 			})

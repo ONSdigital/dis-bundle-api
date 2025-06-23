@@ -344,6 +344,8 @@ paths:
           $ref: "#/responses/NotFound"
         403:
           $ref: "#/responses/ForbiddenError"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}/contents/{content_id}:

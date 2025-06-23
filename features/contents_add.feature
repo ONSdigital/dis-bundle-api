@@ -91,11 +91,12 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             }
             """
     
-    Scenario: POST /bundles/{id}/contents with an invalid body (missing content_type)
+    Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type and missing edit link)
         Given I am an admin user
         When I POST "/bundles/bundle-1/contents"
             """
                 {
+                    "content_type": "INVALID",
                     "metadata": {
                         "dataset_id": "dataset1",
                         "edition_id": "edition1",
@@ -103,7 +104,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "title": "Test Dataset"
                     },
                     "links": {
-                        "edit": "edit/link",
                         "preview": "preview/link"
                     }
                 }
@@ -113,10 +113,17 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             {
                 "errors": [
                     {
-                        "code": "missing_parameters",
+                        "code": "invalid_parameters",
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                         "source": {
                             "field": "/content_type"
+                        }
+                    },
+                    {
+                        "code": "missing_parameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters",
+                        "source": {
+                            "field": "/links/edit"
                         }
                     }
                 ]
@@ -160,7 +167,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 {
                     "content_type": "DATASET",
                     "metadata": {
-                        "dataset_id": "fail-get-version",
+                        "dataset_id": "dataset-not-found",
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
@@ -180,6 +187,72 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "description": "The requested resource does not exist",
                         "source": {
                             "field": "/metadata/dataset_id"
+                        }
+                    }
+                ]
+            }
+            """
+
+    Scenario: POST /bundles/{id}/contents with an edition that doesn't exist
+        Given I am an admin user
+        When I POST "/bundles/bundle-1/contents"
+            """
+                {
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset1",
+                        "edition_id": "edition-not-found",
+                        "version_id": 1,
+                        "title": "Test Dataset"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    }
+                }
+            """
+        Then I should receive the following JSON response with status "404":
+            """
+            {
+                "errors": [
+                    {
+                        "code": "not_found",
+                        "description": "The requested resource does not exist",
+                        "source": {
+                            "field": "/metadata/edition_id"
+                        }
+                    }
+                ]
+            }
+            """
+
+    Scenario: POST /bundles/{id}/contents with a version that doesn't exist
+        Given I am an admin user
+        When I POST "/bundles/bundle-1/contents"
+            """
+                {
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset1",
+                        "edition_id": "edition1",
+                        "version_id": 404,
+                        "title": "Test Dataset"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    }
+                }
+            """
+        Then I should receive the following JSON response with status "404":
+            """
+            {
+                "errors": [
+                    {
+                        "code": "not_found",
+                        "description": "The requested resource does not exist",
+                        "source": {
+                            "field": "/metadata/version_id"
                         }
                     }
                 ]

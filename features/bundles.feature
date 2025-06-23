@@ -5,7 +5,7 @@ Feature: List Bundles functionality - GET /Bundles
             """
             [
                 {
-                    "id": "6835899f001ff18689225631",
+                    "id": "bundle-1",
                     "bundle_type": "SCHEDULED",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -26,7 +26,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "managed_by": "WAGTAIL"
                 },
                 {
-                    "id": "6835899f001ff1868922562c",
+                    "id": "bundle-2",
                     "bundle_type": "MANUAL",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -46,7 +46,7 @@ Feature: List Bundles functionality - GET /Bundles
                     "managed_by": "WAGTAIL"
                 },
                 {
-                    "id": "6835899f001ff1868922562e",
+                    "id": "bundle-3",
                     "bundle_type": "MANUAL",
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
@@ -78,7 +78,7 @@ Feature: List Bundles functionality - GET /Bundles
             {
                 "items": [
                     {
-                        "id": "6835899f001ff1868922562e",
+                        "id": "bundle-3",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -98,7 +98,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "managed_by": "WAGTAIL"
                     },
                     {
-                        "id": "6835899f001ff1868922562c",
+                        "id": "bundle-2",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -118,7 +118,7 @@ Feature: List Bundles functionality - GET /Bundles
                         "managed_by": "WAGTAIL"
                     },
                     {
-                        "id": "6835899f001ff18689225631",
+                        "id": "bundle-1",
                         "bundle_type": "SCHEDULED",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -158,7 +158,7 @@ Feature: List Bundles functionality - GET /Bundles
             {
                 "items": [
                     {
-                        "id": "6835899f001ff1868922562e",
+                        "id": "bundle-3",
                         "bundle_type": "MANUAL",
                         "created_by": {
                             "email": "publisher@ons.gov.uk"
@@ -228,5 +228,3 @@ Feature: List Bundles functionality - GET /Bundles
         When I GET "/bundles"
         Then the HTTP status code should be "401"
         And the response body should be empty
-
-

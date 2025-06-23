@@ -214,38 +214,95 @@ func TestValidateContentItem_Success(t *testing.T) {
 }
 
 func TestValidateContentItem_Failure(t *testing.T) {
-	Convey("Given a ContentItem with missing mandatory fields", t, func() {
-		contentItem := ContentItem{}
+	Convey("Given a ContentItem with all fields missing/invalid", t, func() {
+		contentItem := ContentItem{State: &contentItemStateInvalid}
 
-		Convey("When ValidateContentItem is called", func() {
-			err := ValidateContentItem(&contentItem)
+		Convey("When ValidateContentItem is called (content_type missing)", func() {
+			validationErrs := ValidateContentItem(&contentItem)
 
-			Convey("Then it should return an error indicating the missing fields", func() {
-				So(err, ShouldNotBeNil)
-				So(err[0].Source.Field, ShouldEqual, "/bundle_id")
-				So(err[1].Source.Field, ShouldEqual, "/content_type")
-				So(err[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
-				So(err[3].Source.Field, ShouldEqual, "/metadata/edition_id")
-				So(err[4].Source.Field, ShouldEqual, "/links/edit")
-				So(err[5].Source.Field, ShouldEqual, "/links/preview")
+			Convey("Then it should return validation errors for all missing/invalid fields", func() {
+				So(validationErrs, ShouldNotBeEmpty)
+				So(len(validationErrs), ShouldBeGreaterThan, 0)
+
+				codeMissingParameters := CodeMissingParameters
+				codeInvalidParameters := CodeInvalidParameters
+
+				So(validationErrs[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(validationErrs[0].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[0].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[1].Source.Field, ShouldEqual, "/content_type")
+				So(validationErrs[1].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[1].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(validationErrs[2].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[2].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(validationErrs[3].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[3].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[4].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(validationErrs[4].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[4].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
+				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
+				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
+				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
 			})
 		})
-	})
 
-	Convey("Given a ContentItem with invalid fields", t, func() {
-		contentItem := fullyPopulatedContentItem
-		contentItem.ContentType = "invalid_content_type"
-		contentItem.Metadata.VersionID = -1
-		contentItem.State = &contentItemStateInvalid
+		Convey("When ValidateContentItem is called (content_type invalid)", func() {
+			contentItem.ContentType = ContentType("InvalidContentType")
+			validationErrs := ValidateContentItem(&contentItem)
 
-		Convey("When ValidateContentItem is called", func() {
-			err := ValidateContentItem(&contentItem)
+			Convey("Then it should return validation errors for all missing/invalid fields", func() {
+				So(validationErrs, ShouldNotBeEmpty)
+				So(len(validationErrs), ShouldBeGreaterThan, 0)
 
-			Convey("Then it should return an error indicating the invalid fields", func() {
-				So(err, ShouldNotBeNil)
-				So(err[0].Source.Field, ShouldEqual, "/content_type")
-				So(err[1].Source.Field, ShouldEqual, "/metadata/version_id")
-				So(err[2].Source.Field, ShouldEqual, "/state")
+				codeMissingParameters := CodeMissingParameters
+				codeInvalidParameters := CodeInvalidParameters
+
+				So(validationErrs[0].Source.Field, ShouldEqual, "/bundle_id")
+				So(validationErrs[0].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[0].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[1].Source.Field, ShouldEqual, "/content_type")
+				So(validationErrs[1].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[1].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[2].Source.Field, ShouldEqual, "/metadata/dataset_id")
+				So(validationErrs[2].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[2].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[3].Source.Field, ShouldEqual, "/metadata/edition_id")
+				So(validationErrs[3].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[3].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[4].Source.Field, ShouldEqual, "/metadata/version_id")
+				So(validationErrs[4].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[4].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
+				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
+				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
+
+				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
+				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
+
+				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
+				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
+				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
 			})
 		})
 	})

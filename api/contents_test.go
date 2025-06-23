@@ -178,7 +178,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 	})
 }
 
-func TestPostBundleContents_Failure(t *testing.T) {
+func TestPostBundleContents_MalformedJSON_Failure(t *testing.T) {
 	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a malformed JSON body", t, func() {
@@ -212,6 +212,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_InvalidBody_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with an invalid body", t, func() {
 		invalidContentItem := &models.ContentItem{
@@ -224,7 +228,6 @@ func TestPostBundleContents_Failure(t *testing.T) {
 				VersionID: 1,
 			},
 			Links: models.Links{
-				Edit:    "/edit",
 				Preview: "/preview",
 			},
 		}
@@ -253,8 +256,13 @@ func TestPostBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeMissingParameters,
-							Description: apierrors.ErrorDescriptionMalformedRequest,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source:      &models.Source{Field: "/metadata/edition_id"},
+						},
+						{
+							Code:        &codeMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
+							Source:      &models.Source{Field: "/links/edit"},
 						},
 					},
 				}
@@ -262,6 +270,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a non-existent bundle", t, func() {
 		newContentItem := &models.ContentItem{
@@ -348,8 +360,12 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
 
-	Convey("Given a POST request to /bundles/{bundle-id}/contents with a dataset version that does not exist", t, func() {
+func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a POST request to /bundles/{bundle-id}/contents with a dataset, edition or version that does not exist", t, func() {
 		newContentItem := &models.ContentItem{
 			BundleID:    "bundle-1",
 			ContentType: models.ContentTypeDataset,
@@ -375,7 +391,13 @@ func TestPostBundleContents_Failure(t *testing.T) {
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+				if datasetID == "dataset-1" {
+					return datasetAPIModels.Version{}, errors.New("dataset not found")
+				}
+				if editionID == "edition-1" {
+					return datasetAPIModels.Version{}, errors.New("edition not found")
+				}
+				if versionID == "1" {
 					return datasetAPIModels.Version{}, errors.New("version not found")
 				}
 				return datasetAPIModels.Version{}, errors.New("unexpected error")
@@ -385,7 +407,7 @@ func TestPostBundleContents_Failure(t *testing.T) {
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
 
-		Convey("When postBundleContents is called with a non-existent dataset version", func() {
+		Convey("When postBundleContents is called with a non-existent dataset", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 			r.Header.Set("X-Florence-Token", "test-auth-token")
 			w := httptest.NewRecorder()
@@ -415,7 +437,78 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 
+		Convey("When postBundleContents is called with a non-existent edition", func() {
+			newContentItem.Metadata.DatasetID = "dataset-2"
+			newContentItemJSON, err := json.Marshal(newContentItem)
+			So(err, ShouldBeNil)
+
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("X-Florence-Token", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 404 Not Found status code", func() {
+				So(w.Code, ShouldEqual, 404)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeNotFound := models.CodeNotFound
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeNotFound,
+							Description: apierrors.ErrorDescriptionNotFound,
+							Source:      &models.Source{Field: "/metadata/edition_id"},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+
+		Convey("When postBundleContents is called with a non-existent version", func() {
+			newContentItem.Metadata.DatasetID = "dataset-2"
+			newContentItem.Metadata.EditionID = "edition-2"
+			newContentItemJSON, err := json.Marshal(newContentItem)
+			So(err, ShouldBeNil)
+
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("X-Florence-Token", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 404 Not Found status code", func() {
+				So(w.Code, ShouldEqual, 404)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeNotFound := models.CodeNotFound
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeNotFound,
+							Description: apierrors.ErrorDescriptionNotFound,
+							Source:      &models.Source{Field: "/metadata/version_id"},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+
 		Convey("When postBundleContents is called and getVersion fails", func() {
+			newContentItem.Metadata.DatasetID = "dataset-2"
+			newContentItem.Metadata.EditionID = "edition-2"
 			newContentItem.Metadata.VersionID = 2
 			newContentItemJSON, err := json.Marshal(newContentItem)
 			So(err, ShouldBeNil)
@@ -448,6 +541,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a content item that already contains the same dataset, edition, and version", t, func() {
 		newContentItem := &models.ContentItem{
@@ -550,6 +647,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and the datastore fails to create the content item", t, func() {
 		newContentItem := &models.ContentItem{
@@ -619,6 +720,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and parsing the JWT fails", t, func() {
 		newContentItem := &models.ContentItem{
@@ -682,6 +787,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
+}
+
+func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and bundle event creation fails", t, func() {
 		newContentItem := &models.ContentItem{
@@ -752,6 +861,10 @@ func TestPostBundleContents_Failure(t *testing.T) {
 			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
+}
+
+func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
+	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents and updating the bundle ETag fails", t, func() {
 		newContentItem := &models.ContentItem{

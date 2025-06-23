@@ -79,8 +79,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	_, err = api.datasetAPIClient.GetVersion(ctx, authHeaders, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			log.Error(ctx, "postBundleContents endpoint: version not found in dataset API", nil, logdata)
+		switch {
+		case strings.Contains(err.Error(), "dataset not found"):
+			log.Error(ctx, "postBundleContents endpoint: dataset not found in dataset API", nil, logdata)
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
@@ -89,7 +90,30 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 			return
-		} else {
+
+		case strings.Contains(err.Error(), "edition not found"):
+			log.Error(ctx, "postBundleContents endpoint: edition not found in dataset API", nil, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+				Source:      &models.Source{Field: "/metadata/edition_id"},
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+			return
+
+		case strings.Contains(err.Error(), "version not found"):
+			log.Error(ctx, "postBundleContents endpoint: version not found in dataset API", nil, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+				Source:      &models.Source{Field: "/metadata/version_id"},
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+			return
+
+		default:
 			log.Error(ctx, "postBundleContents endpoint: failed to get version from dataset API", err, logdata)
 			code := models.CodeInternalServerError
 			errInfo := &models.Error{
