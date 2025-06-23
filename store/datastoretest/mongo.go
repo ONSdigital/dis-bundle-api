@@ -50,8 +50,14 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 //				panic("mock out the CreateContentItem method")
 //			},
+//			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+//				panic("mock out the DeleteContentItem method")
+//			},
 //			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 //				panic("mock out the GetBundle method")
+//			},
+//			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error) {
+//				panic("mock out the GetContentItemByBundleIDAndContentItemID method")
 //			},
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 //				panic("mock out the ListBundleEvents method")
@@ -96,8 +102,14 @@ type MongoDBMock struct {
 	// CreateContentItemFunc mocks the CreateContentItem method.
 	CreateContentItemFunc func(ctx context.Context, contentItem *models.ContentItem) error
 
+	// DeleteContentItemFunc mocks the DeleteContentItem method.
+	DeleteContentItemFunc func(ctx context.Context, contentItemID string) error
+
 	// GetBundleFunc mocks the GetBundle method.
 	GetBundleFunc func(ctx context.Context, bundleID string) (*models.Bundle, error)
+
+	// GetContentItemByBundleIDAndContentItemIDFunc mocks the GetContentItemByBundleIDAndContentItemID method.
+	GetContentItemByBundleIDAndContentItemIDFunc func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error)
 
 	// ListBundleEventsFunc mocks the ListBundleEvents method.
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
@@ -175,12 +187,28 @@ type MongoDBMock struct {
 			// ContentItem is the contentItem argument value.
 			ContentItem *models.ContentItem
 		}
+		// DeleteContentItem holds details about calls to the DeleteContentItem method.
+		DeleteContentItem []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ContentItemID is the contentItemID argument value.
+			ContentItemID string
+		}
 		// GetBundle holds details about calls to the GetBundle method.
 		GetBundle []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// BundleID is the bundleID argument value.
 			BundleID string
+		}
+		// GetContentItemByBundleIDAndContentItemID holds details about calls to the GetContentItemByBundleIDAndContentItemID method.
+		GetContentItemByBundleIDAndContentItemID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+			// ContentItemID is the contentItemID argument value.
+			ContentItemID string
 		}
 		// ListBundleEvents holds details about calls to the ListBundleEvents method.
 		ListBundleEvents []struct {
@@ -227,7 +255,9 @@ type MongoDBMock struct {
 	lockCreateBundle                                  sync.RWMutex
 	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
+	lockDeleteContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
+	lockGetContentItemByBundleIDAndContentItemID      sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
@@ -561,6 +591,42 @@ func (mock *MongoDBMock) CreateContentItemCalls() []struct {
 	return calls
 }
 
+// DeleteContentItem calls DeleteContentItemFunc.
+func (mock *MongoDBMock) DeleteContentItem(ctx context.Context, contentItemID string) error {
+	if mock.DeleteContentItemFunc == nil {
+		panic("MongoDBMock.DeleteContentItemFunc: method is nil but MongoDB.DeleteContentItem was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ContentItemID string
+	}{
+		Ctx:           ctx,
+		ContentItemID: contentItemID,
+	}
+	mock.lockDeleteContentItem.Lock()
+	mock.calls.DeleteContentItem = append(mock.calls.DeleteContentItem, callInfo)
+	mock.lockDeleteContentItem.Unlock()
+	return mock.DeleteContentItemFunc(ctx, contentItemID)
+}
+
+// DeleteContentItemCalls gets all the calls that were made to DeleteContentItem.
+// Check the length with:
+//
+//	len(mockedMongoDB.DeleteContentItemCalls())
+func (mock *MongoDBMock) DeleteContentItemCalls() []struct {
+	Ctx           context.Context
+	ContentItemID string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ContentItemID string
+	}
+	mock.lockDeleteContentItem.RLock()
+	calls = mock.calls.DeleteContentItem
+	mock.lockDeleteContentItem.RUnlock()
+	return calls
+}
+
 // GetBundle calls GetBundleFunc.
 func (mock *MongoDBMock) GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error) {
 	if mock.GetBundleFunc == nil {
@@ -594,6 +660,46 @@ func (mock *MongoDBMock) GetBundleCalls() []struct {
 	mock.lockGetBundle.RLock()
 	calls = mock.calls.GetBundle
 	mock.lockGetBundle.RUnlock()
+	return calls
+}
+
+// GetContentItemByBundleIDAndContentItemID calls GetContentItemByBundleIDAndContentItemIDFunc.
+func (mock *MongoDBMock) GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error) {
+	if mock.GetContentItemByBundleIDAndContentItemIDFunc == nil {
+		panic("MongoDBMock.GetContentItemByBundleIDAndContentItemIDFunc: method is nil but MongoDB.GetContentItemByBundleIDAndContentItemID was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		BundleID      string
+		ContentItemID string
+	}{
+		Ctx:           ctx,
+		BundleID:      bundleID,
+		ContentItemID: contentItemID,
+	}
+	mock.lockGetContentItemByBundleIDAndContentItemID.Lock()
+	mock.calls.GetContentItemByBundleIDAndContentItemID = append(mock.calls.GetContentItemByBundleIDAndContentItemID, callInfo)
+	mock.lockGetContentItemByBundleIDAndContentItemID.Unlock()
+	return mock.GetContentItemByBundleIDAndContentItemIDFunc(ctx, bundleID, contentItemID)
+}
+
+// GetContentItemByBundleIDAndContentItemIDCalls gets all the calls that were made to GetContentItemByBundleIDAndContentItemID.
+// Check the length with:
+//
+//	len(mockedMongoDB.GetContentItemByBundleIDAndContentItemIDCalls())
+func (mock *MongoDBMock) GetContentItemByBundleIDAndContentItemIDCalls() []struct {
+	Ctx           context.Context
+	BundleID      string
+	ContentItemID string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		BundleID      string
+		ContentItemID string
+	}
+	mock.lockGetContentItemByBundleIDAndContentItemID.RLock()
+	calls = mock.calls.GetContentItemByBundleIDAndContentItemID
+	mock.lockGetContentItemByBundleIDAndContentItemID.RUnlock()
 	return calls
 }
 

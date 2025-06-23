@@ -92,6 +92,9 @@ issues:
     - path: api/contents_test.go
       linters:
         - goconst
+    - path: mongo/bundle_contents_store_test.go
+      linters:
+        - goconst
     # Allow dot import in test files for goconvey
     - path: _test.go
       text: "dot-imports"

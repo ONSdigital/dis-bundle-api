@@ -17,6 +17,7 @@ var (
 	ErrorDescriptionMissingParameters           = "Unable to process request due to missing required parameters in the request body or query parameters"
 	ErrorDescriptionNotFound                    = "The requested resource does not exist"
 	ErrorDescriptionInternalError               = "Failed to process the request due to an internal error"
+	ErrorDescriptionContentItemAlreadyPublished = "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
 	ErrorDescriptionInvalidTimeFormat           = "Invalid time format in request body"
 	ErrorDescriptionScheduledAtIsInPast         = "scheduled_at cannot be in the past"
 	ErrorDescriptionScheduledAtShouldNotBeSet   = "scheduled_at should not be set for manual bundles"
@@ -57,6 +58,9 @@ var (
 	ErrInvalidBundleReference = errors.New("invalid bundle reference")
 	ErrBundleEventNotFound    = errors.New("bundle event not found")
 
+	// Content-Specific
+	ErrContentItemNotFound = errors.New("content item not found")
+
 	// Validation
 	ErrMissingParameters      = errors.New("missing required parameters in request")
 	ErrInvalidQueryParameter  = errors.New("invalid query parameter")
@@ -71,6 +75,7 @@ var (
 var NotFoundMap = map[error]bool{
 	ErrBundleNotFound:      true,
 	ErrBundleEventNotFound: true,
+	ErrContentItemNotFound: true,
 }
 
 // 400 Bad Request
