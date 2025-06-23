@@ -123,7 +123,9 @@ func (p *Paginator) Paginate(paginatedHandler PaginatedHandler) func(w http.Resp
 
 		items, totalCount, requestError := paginatedHandler(w, r, limit, offset)
 		if requestError != nil {
-			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, requestError)
+			if w.Header().Get("Content-Type") == "" {
+				utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, requestError)
+			}
 			return
 		}
 
