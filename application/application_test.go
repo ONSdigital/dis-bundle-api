@@ -430,7 +430,7 @@ func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 	})
 }
 
-func TestCheckBundleExistsByTitle(t *testing.T) {
+func TestCheckBundleExistsByTitle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 
@@ -467,6 +467,37 @@ func TestCheckBundleExistsByTitle(t *testing.T) {
 			Convey("Then it should return false without error", func() {
 				So(bundleExist, ShouldBeFalse)
 				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+func TestCheckBundleExistsByTitle_Failure(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		expectedBundle := &models.Bundle{
+			ID:    "bundle-123",
+			Title: "Example Bundle",
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return false, apierrors.ErrBundleNotFound
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CheckBundleExistsByTitle is called and a bundle with the datastore returns an error", func() {
+			bundleExist, err := stateMachine.CheckBundleExistsByTitle(ctx, expectedBundle.Title)
+
+			Convey("Then it should return false and an error", func() {
+				So(bundleExist, ShouldBeFalse)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, apierrors.ErrBundleNotFound.Error())
 			})
 		})
 	})
