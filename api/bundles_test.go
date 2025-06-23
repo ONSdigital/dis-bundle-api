@@ -375,14 +375,14 @@ func TestGetBundle_Success(t *testing.T) {
 		CreatedAt:   &createdAt,
 		UpdatedAt:   &updatedAt,
 		ScheduledAt: &scheduledAt,
-		State:       &state,
+		State:       models.BundleStateDraft,
 		CreatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
 		LastUpdatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
-		PreviewTeams: &[]models.PreviewTeam{
+		PreviewTeams: []models.PreviewTeam{
 			{
 				ID: "c78d457e-98de-11ec-b909-0242ac120003",
 			},
