@@ -1,4 +1,4 @@
-Feature: List Bundles functionality - GET /Bundles
+Feature: List bundles - GET /Bundles
 
     Background:
         Given I have these bundles:

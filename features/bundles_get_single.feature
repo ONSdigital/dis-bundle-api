@@ -1,4 +1,4 @@
-Feature: List Single Bundle functionality - GET /Bundles/{bundle-id}
+Feature: Get individual bundle - GET /Bundles/{bundle-id}
 
     Background:
         Given I have these bundles:
