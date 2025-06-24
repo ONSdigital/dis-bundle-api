@@ -42,7 +42,7 @@ type PreviewTeam struct {
 }
 
 // CreateBundle creates a new Bundle from the provided reader
-func CreateBundle(reader io.Reader) (*Bundle, error) {
+func CreateBundle(reader io.Reader, email string) (*Bundle, error) {
 	b, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errs.ErrUnableToReadMessage
@@ -57,6 +57,16 @@ func CreateBundle(reader io.Reader) (*Bundle, error) {
 		}
 		return nil, errs.ErrUnableToParseJSON
 	}
+
+	bundle.CreatedBy = &User{
+		Email: email,
+	}
+
+	bundle.LastUpdatedBy = &User{
+		Email: email,
+	}
+
+	CleanBundle(&bundle)
 
 	etag := dpresponse.GenerateETag(b, false)
 	etag = strings.Trim(etag, "\"")

@@ -42,7 +42,7 @@ func TestCreateBundle_Success(t *testing.T) {
 		reader := bytes.NewReader(b)
 
 		Convey("When CreateBundle is called", func() {
-			bundle, err := CreateBundle(reader)
+			bundle, err := CreateBundle(reader, "example@example.com")
 			So(err, ShouldBeNil)
 
 			Convey("Then it should return a bundle with the expected values", func() {
@@ -69,15 +69,15 @@ func TestCreateBundle_Success(t *testing.T) {
 		reader := bytes.NewReader(b)
 
 		Convey("When CreateBundle is called", func() {
-			bundle, err := CreateBundle(reader)
+			bundle, err := CreateBundle(reader, "example@example.com")
 			So(err, ShouldBeNil)
 
 			Convey("Then it should return a bundle with the expected values", func() {
 				So(bundle.ID, ShouldNotBeEmpty)
 				So(bundle.BundleType, ShouldEqual, minimallyPopulatedBundle.BundleType)
-				So(bundle.CreatedBy, ShouldBeNil)
+				So(bundle.CreatedBy.Email, ShouldEqual, "example@example.com")
 				So(bundle.CreatedAt, ShouldBeNil)
-				So(bundle.LastUpdatedBy, ShouldBeNil)
+				So(bundle.LastUpdatedBy.Email, ShouldEqual, "example@example.com")
 				So(bundle.PreviewTeams, ShouldResemble, minimallyPopulatedBundle.PreviewTeams)
 				So(bundle.ScheduledAt, ShouldBeNil)
 				So(bundle.State, ShouldResemble, minimallyPopulatedBundle.State)
@@ -93,7 +93,7 @@ func TestCreateBundle_Failure(t *testing.T) {
 	Convey("Given a reader that fails to read", t, func() {
 		reader := &ErrorReader{}
 		Convey("When CreateBundle is called", func() {
-			_, err := CreateBundle(reader)
+			_, err := CreateBundle(reader, "example@example.com")
 			Convey("Then it should return an unable to read message error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, errs.ErrUnableToReadMessage.Error())
@@ -105,7 +105,7 @@ func TestCreateBundle_Failure(t *testing.T) {
 		b := `{"state":"invalid-body}`
 		reader := bytes.NewReader([]byte(b))
 		Convey("When CreateBundle is called", func() {
-			_, err := CreateBundle(reader)
+			_, err := CreateBundle(reader, "example@example.com")
 			Convey("Then it should return an unable to parse json error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, errs.ErrUnableToParseJSON.Error())

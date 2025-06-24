@@ -621,6 +621,7 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 
 		Convey("When a POST request is made to /bundles endpoint with the invalid payload", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{}
@@ -660,6 +661,7 @@ func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 
 		Convey("When a POST request is made to /bundles endpoint with the invalid payload", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewBufferString(b))
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			mockedDatastore := &storetest.StorerMock{}

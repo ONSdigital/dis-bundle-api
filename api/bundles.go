@@ -108,7 +108,20 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	bundle, err := models.CreateBundle(r.Body)
+	var entityData *permSDK.EntityData
+	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to parse auth token", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		return
+	}
+
+	bundle, err := models.CreateBundle(r.Body, entityData.UserID)
 	if err != nil {
 		if err == errs.ErrUnableToParseJSON {
 			log.Error(ctx, "createBundle: failed to create bundle from request body", err)
@@ -142,29 +155,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	var entityData *permSDK.EntityData
-	entityData, err = api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to parse auth token", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
-	}
-
-	bundle.CreatedBy = &models.User{
-		Email: entityData.UserID,
-	}
-
-	bundle.LastUpdatedBy = &models.User{
-		Email: entityData.UserID,
-	}
-
-	models.CleanBundle(bundle)
 
 	bundleErrs := models.ValidateBundle(bundle)
 	err = api.stateMachineBundleAPI.ValidateScheduledAt(bundle)
