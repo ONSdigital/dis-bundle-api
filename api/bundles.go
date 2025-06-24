@@ -333,12 +333,13 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dpresponse.SetETag(w, createdBundle.ETag)
+
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Location", bundlePath)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+
 	if _, err = w.Write(b); err != nil {
 		log.Error(ctx, "createBundle: error writing response body", err)
 	}
-	log.Info(ctx, "createBundle: successfully created bundle", log.Data{"bundle_id": bundle.ID})
 }

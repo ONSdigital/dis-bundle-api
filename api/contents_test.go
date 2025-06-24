@@ -97,7 +97,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		Convey("When postBundleContents is called", func() {
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -356,7 +356,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		Convey("When postBundleContents is called with a non-existent dataset", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
@@ -534,7 +534,7 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		Convey("When postBundleContents is called with an existing content item", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
@@ -640,7 +640,7 @@ func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		Convey("When postBundleContents is called", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
@@ -713,7 +713,7 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 		r.Header.Set("Authorization", "invalid-auth-token")
@@ -783,7 +783,7 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 		r.Header.Set("Authorization", "test-auth-token")
@@ -860,7 +860,7 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
-		bundleAPI.datasetAPIClient = &mockDatasetAPIClient
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 		r.Header.Set("Authorization", "test-auth-token")

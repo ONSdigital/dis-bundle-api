@@ -132,12 +132,12 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
-	// Setup state machine
-	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm)
-
 	// Get Dataset API Client
 	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+
+	// Setup state machine
+	sm := GetStateMachine(ctx, datastore)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient)
 
 	// Get Permissions
 	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
@@ -147,7 +147,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	}
 
 	// Setup API
-	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, svc.datasetAPIClient, auth)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth)
 
 	svc.HealthCheck.Start(ctx)
 

@@ -8,6 +8,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -127,8 +128,9 @@ func TestTransition_success(t *testing.T) {
 		},
 	}
 
+	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine)
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient)
 
 	Convey("When transitioning from 'DRAFT' to 'IN_REVIEW'", t, func() {
 		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateDraft, bundleUpdateWithStateInReview)
@@ -193,9 +195,10 @@ func TestTransition_failure(t *testing.T) {
 	transitions := getMockTransitions()
 
 	mockedDatastore := &storetest.StorerMock{}
+	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine)
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient)
 
 	Convey("When transitioning from a state that is not in the transition list", t, func() {
 		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateUnknown, bundleUpdateWithStateInReview)

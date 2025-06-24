@@ -9,7 +9,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/pagination"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/gorilla/mux"
 )
 
@@ -18,17 +17,15 @@ type BundleAPI struct {
 	Router                *mux.Router
 	Store                 *store.Datastore
 	stateMachineBundleAPI *application.StateMachineBundleAPI
-	datasetAPIClient      datasetAPISDK.Clienter
 	authMiddleware        auth.Middleware
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, datasetAPIClient datasetAPISDK.Clienter, authMiddleware auth.Middleware) *BundleAPI {
+func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware) *BundleAPI {
 	api := &BundleAPI{
 		Router:                router,
 		Store:                 store,
 		stateMachineBundleAPI: stateMachineBundleAPI,
-		datasetAPIClient:      datasetAPIClient,
 		authMiddleware:        authMiddleware,
 	}
 

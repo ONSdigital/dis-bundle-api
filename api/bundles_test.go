@@ -94,13 +94,15 @@ func GetBundleAPIWithMocks(datastore store.Datastore) *BundleAPI {
 		},
 	}
 
+	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
 	stateMachineBundleAPI := &application.StateMachineBundleAPI{
-		Datastore:    datastore,
-		StateMachine: stateMachine,
+		Datastore:        datastore,
+		StateMachine:     stateMachine,
+		DatasetAPIClient: mockDatasetAPIClient,
 	}
-	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, mockDatasetAPIClient, newAuthMiddlwareMock())
+
+	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, newAuthMiddlwareMock())
 }
 
 func createRequestWithAuth(method, target string, body io.Reader) *http.Request {
@@ -540,7 +542,7 @@ func TestGetBundle_Failure(t *testing.T) {
 				},
 			}
 
-			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, nil, authMiddleware)
+			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware)
 			bundleAPI.Router.HandleFunc("/bundles/{bundle-id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
 			bundleAPI.Router.ServeHTTP(rec, req)
 

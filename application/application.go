@@ -8,17 +8,20 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 )
 
 type StateMachineBundleAPI struct {
-	Datastore    store.Datastore
-	StateMachine *StateMachine
+	Datastore        store.Datastore
+	StateMachine     *StateMachine
+	DatasetAPIClient datasetAPISDK.Clienter
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
-		Datastore:    datastore,
-		StateMachine: stateMachine,
+		Datastore:        datastore,
+		StateMachine:     stateMachine,
+		DatasetAPIClient: datasetAPIClient,
 	}
 }
 

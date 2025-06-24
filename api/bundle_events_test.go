@@ -12,6 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -28,8 +29,9 @@ func TestGetBundleEvents_Success(t *testing.T) {
 			},
 		}
 
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -59,8 +61,9 @@ func TestGetBundleEvents_WithBundleFilter(t *testing.T) {
 			},
 		}
 
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -97,8 +100,9 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 			},
 		}
 
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -122,8 +126,9 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 	Convey("Given a request with invalid date format", t, func() {
 		mockDatastore := &storetest.StorerMock{}
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -147,8 +152,9 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 	Convey("Given a request with unknown query parameter", t, func() {
 		mockDatastore := &storetest.StorerMock{}
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -177,8 +183,9 @@ func TestGetBundleEvents_InternalError(t *testing.T) {
 			},
 		}
 
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -208,8 +215,9 @@ func TestGetBundleEvents_NoResults(t *testing.T) {
 			},
 		}
 
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
