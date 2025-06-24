@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func setupBundleContentsTestData(ctx context.Context, mongodb *Mongo) error {
-	stateApproved := models.StateApproved
-
-	testData := []*models.ContentItem{
+var (
+	stateApproved    = models.StateApproved
+	contentsTestData = []*models.ContentItem{
 		{
 			ID:          "f3ee8348-9956-44e1-9c83-55fd2d7b2fb1",
 			BundleID:    "bundle1",
@@ -61,14 +61,89 @@ func setupBundleContentsTestData(ctx context.Context, mongodb *Mongo) error {
 			},
 		},
 	}
+)
 
-	for _, data := range testData {
+func setupBundleContentsTestData(ctx context.Context, mongodb *Mongo) error {
+	for _, data := range contentsTestData {
 		if _, err := mongodb.Connection.Collection(mongodb.ActualCollectionName(config.BundleContentsCollection)).InsertOne(ctx, data); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func TestGetContentItemByBundleIDAndContentItemID_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetContentItemByBundleIDAndContentItemID is called with a valid bundleID and ContentItemID", func() {
+			contentItemID := contentsTestData[0].ID
+			bundleID := contentsTestData[0].BundleID
+			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+
+			Convey("Then it returns the content item without error", func() {
+				So(err, ShouldBeNil)
+				So(contentItem, ShouldNotBeNil)
+				So(contentItem, ShouldResemble, contentsTestData[0])
+			})
+		})
+	})
+}
+
+func TestGetContentItemByBundleIDAndContentItemID_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetContentItemByBundleIDAndContentItemID is called with a non-existent content item ID", func() {
+			contentItemID := "non-existent-id"
+			bundleID := contentsTestData[0].BundleID
+			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+
+			Convey("Then it returns a content item not found error", func() {
+				So(err, ShouldNotBeNil)
+				So(contentItem, ShouldBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+
+		Convey("When GetContentItemByBundleIDAndContentItemID is called with a non-existent bundle ID", func() {
+			contentItemID := contentsTestData[0].ID
+			bundleID := "non-existent-bundle"
+			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+
+			Convey("Then it returns a content item not found error", func() {
+				So(err, ShouldNotBeNil)
+				So(contentItem, ShouldBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+
+		Convey("When GetContentItemByBundleIDAndContentItemID is called and the connection fails", func() {
+			mongodb.Connection.Close(ctx)
+			contentItemID := contentsTestData[0].ID
+			bundleID := contentsTestData[0].BundleID
+			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+
+			Convey("Then it returns an error", func() {
+				So(err, ShouldNotBeNil)
+				So(contentItem, ShouldBeNil)
+				So(err, ShouldNotEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+	})
 }
 
 func TestCreateContentItem_Success(t *testing.T) {
@@ -213,7 +288,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Success(t *testing.T) {
 		err = setupBundleContentsTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When CheckContentItemExistsByDatasetEditionVersion is called with existing dataset edition version", func() {
+		Convey("When CheckContentItemExistsByDatasetEditionVersion is called with an existing dataset edition version", func() {
 			exists, err := mongodb.CheckContentItemExistsByDatasetEditionVersion(ctx, "dataset1", "2025", 1)
 
 			Convey("Then it returns true without error", func() {
@@ -222,7 +297,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Success(t *testing.T) {
 			})
 		})
 
-		Convey("When CheckContentItemExistsByDatasetEditionVersion is called with non-existing dataset edition version", func() {
+		Convey("When CheckContentItemExistsByDatasetEditionVersion is called with a non-existent dataset edition version", func() {
 			exists, err := mongodb.CheckContentItemExistsByDatasetEditionVersion(ctx, "dataset4", "2025", 1)
 
 			Convey("Then it returns false without error", func() {
@@ -250,6 +325,66 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Failure(t *testing.T) {
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "client is disconnected")
+			})
+		})
+	})
+}
+
+func TestDeleteContentItem_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When DeleteContentItem is called with a valid content item ID", func() {
+			contentItemID := contentsTestData[0].ID
+			bundleID := contentsTestData[0].BundleID
+			err := mongodb.DeleteContentItem(ctx, contentItemID)
+
+			Convey("Then it deletes the content item without error", func() {
+				So(err, ShouldBeNil)
+
+				deletedContentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+				So(err, ShouldNotBeNil)
+				So(deletedContentItem, ShouldBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+	})
+}
+
+func TestDeleteContentItem_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When DeleteContentItem is called with a non-existent content item ID", func() {
+			contentItemID := "non-existent-id"
+			err := mongodb.DeleteContentItem(ctx, contentItemID)
+
+			Convey("Then it returns a content item not found error", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+
+		Convey("When DeleteContentItem is called and the connection is closed", func() {
+			mongodb.Connection.Close(ctx)
+			contentItemID := contentsTestData[0].ID
+			err := mongodb.DeleteContentItem(ctx, contentItemID)
+
+			Convey("Then it returns an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldNotEqual, apierrors.ErrContentItemNotFound)
 			})
 		})
 	})

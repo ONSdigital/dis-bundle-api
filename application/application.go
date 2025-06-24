@@ -49,6 +49,10 @@ func (s *StateMachineBundleAPI) CreateContentItem(ctx context.Context, contentIt
 	return s.Datastore.CreateContentItem(ctx, contentItem)
 }
 
+func (s *StateMachineBundleAPI) GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+	return s.Datastore.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
+}
+
 func (s *StateMachineBundleAPI) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {
 	results, totalCount, err := s.Datastore.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
 	if err != nil {
@@ -63,6 +67,10 @@ func (s *StateMachineBundleAPI) CheckAllBundleContentsAreApproved(ctx context.Co
 
 func (s *StateMachineBundleAPI) CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
 	return s.Datastore.CheckContentItemExistsByDatasetEditionVersion(ctx, datasetID, editionID, versionID)
+}
+
+func (s *StateMachineBundleAPI) DeleteContentItem(ctx context.Context, contentItemID string) error {
+	return s.Datastore.DeleteContentItem(ctx, contentItemID)
 }
 
 func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {

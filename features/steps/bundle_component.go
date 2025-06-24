@@ -122,6 +122,13 @@ func getPermissionsBundle() *permissionsSDK.Bundle {
 				},
 			},
 		},
+		"bundles:delete": {
+			"groups/role-admin": {
+				{
+					ID: "1",
+				},
+			},
+		},
 	}
 }
 

@@ -54,6 +54,10 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:create", api.postBundleContents),
 	)
+	api.delete(
+		"/bundles/{bundle-id}/contents/{content-id}",
+		authMiddleware.Require("bundles:delete", api.deleteContentItem),
+	)
 
 	return api
 }
@@ -66,4 +70,9 @@ func (api *BundleAPI) get(path string, handler http.HandlerFunc) {
 // post registers a POST http.HandlerFunc.
 func (api *BundleAPI) post(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodPost)
+}
+
+// delete registers a DELETE http.HandlerFunc.
+func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
+	api.Router.HandleFunc(path, handler).Methods(http.MethodDelete)
 }

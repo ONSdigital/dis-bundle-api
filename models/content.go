@@ -11,7 +11,7 @@ import (
 
 // ContentItem represents information about the datasets to be published as part of the bundle
 type ContentItem struct {
-	ID          string      `bson:"id,omitempty"    json:"id,omitempty"`
+	ID          string      `bson:"id"              json:"id"`
 	BundleID    string      `bson:"bundle_id"       json:"bundle_id"`
 	ContentType ContentType `bson:"content_type"    json:"content_type"`
 	Metadata    Metadata    `bson:"metadata"        json:"metadata"`

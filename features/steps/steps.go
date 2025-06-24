@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
+	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	"github.com/cucumber/godog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -18,17 +20,18 @@ import (
 
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
+	ctx.Step(`^I am an admin user$`, c.adminJWTToken)
+	ctx.Step(`^I am not authenticated$`, c.iAmNotAuthenticated)
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
-	ctx.Step(`^I am an admin user$`, c.adminJWTToken)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
-	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
+	ctx.Step(`^the content item in the database for id "([^"]*)" should not exist$`, c.theContentItemInTheDatabaseForIDShouldNotExist)
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
-	ctx.Step(`^I am not authenticated$`, c.iAmNotAuthenticated)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
+	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
 }
 
@@ -78,25 +81,6 @@ func (c *BundleComponent) putBundleInDatabase(ctx context.Context, collectionNam
 	return nil
 }
 
-func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) error {
-	ctx := context.Background()
-
-	var mapEvents []map[string]interface{}
-	err := json.Unmarshal([]byte(eventsJSON.Content), &mapEvents)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal events JSON: %w", err)
-	}
-
-	bundleEventsCollection := c.MongoClient.ActualCollectionName("BundleEventsCollection")
-
-	for _, event := range mapEvents {
-		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
-			return fmt.Errorf("failed to insert event: %w", err)
-		}
-	}
-	return nil
-}
-
 func (c *BundleComponent) iHaveTheseContentItems(contentItemsJSON *godog.DocString) error {
 	ctx := context.Background()
 	contentItems := []models.ContentItem{}
@@ -106,33 +90,13 @@ func (c *BundleComponent) iHaveTheseContentItems(contentItemsJSON *godog.DocStri
 		return err
 	}
 
+	bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
+
 	for contentItem := range contentItems {
-		bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
 		if err := c.putContentItemInDatabase(ctx, bundleContentsCollection, contentItems[contentItem]); err != nil {
 			return err
 		}
 	}
-	return nil
-}
-
-func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event map[string]interface{}) error {
-	if event["_id"] == nil {
-		event["_id"] = primitive.NewObjectID()
-	}
-
-	if createdAtStr, ok := event["created_at"].(string); ok {
-		parsedTime, err := time.Parse(time.RFC3339, createdAtStr)
-		if err != nil {
-			return fmt.Errorf("failed to parse created_at: %w", err)
-		}
-		event["created_at"] = parsedTime
-	}
-
-	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
-	if err != nil {
-		return fmt.Errorf("failed to insert event: %w", err)
-	}
-
 	return nil
 }
 
@@ -165,6 +129,62 @@ func (c *BundleComponent) theResponseBodyShouldBeEmpty() error {
 		return fmt.Errorf("expected empty body, but got: %q", string(bodyBytes))
 	}
 	return nil
+}
+
+func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) error {
+	ctx := context.Background()
+
+	var mapEvents []map[string]interface{}
+	err := json.Unmarshal([]byte(eventsJSON.Content), &mapEvents)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal events JSON: %w", err)
+	}
+
+	bundleEventsCollection := c.MongoClient.ActualCollectionName("BundleEventsCollection")
+
+	for _, event := range mapEvents {
+		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
+			return fmt.Errorf("failed to insert event: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event map[string]interface{}) error {
+	if event["_id"] == nil {
+		event["_id"] = primitive.NewObjectID()
+	}
+
+	if createdAtStr, ok := event["created_at"].(string); ok {
+		parsedTime, err := time.Parse(time.RFC3339, createdAtStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse created_at: %w", err)
+		}
+		event["created_at"] = parsedTime
+	}
+
+	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
+	if err != nil {
+		return fmt.Errorf("failed to insert event: %w", err)
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) theContentItemInTheDatabaseForIDShouldNotExist(id string) error {
+	bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
+
+	var contentItem models.ContentItem
+
+	err := c.MongoClient.Connection.Collection(bundleContentsCollection).FindOne(context.Background(), bson.M{"id": id}, contentItem)
+
+	if err == nil {
+		return fmt.Errorf("expected content item with ID %q to not exist, but it was found in the database: %+v", id, contentItem)
+	} else if errors.Is(err, mongodriver.ErrNoDocumentFound) {
+		return nil
+	} else {
+		return fmt.Errorf("error checking for content item with ID %q: %w", id, err)
+	}
 }
 
 func (c *BundleComponent) theResponseHeaderShouldNotBeEmpty(header string) error {

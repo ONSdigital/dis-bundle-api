@@ -10,7 +10,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "created_by": {
                     "email": "publisher@ons.gov.uk"
                 },
-                "created_at": "2025-06-09T07:00:00Z",
+                "created_at": "2025-01-01T07:00:00Z",
                 "last_updated_by": {
                     "email": "publisher@ons.gov.uk"
                 },
@@ -19,10 +19,10 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "id": "890m231k-98df-11ec-b909-0242ac120002"
                     }
                 ],
-                "scheduled_at": "2025-05-05T08:00:00Z",
+                "scheduled_at": "2025-01-03T07:00:00Z",
                 "state": "DRAFT",
                 "title": "bundle-1",
-                "updated_at": "2025-06-10T07:00:00Z",
+                "updated_at": "2025-01-02T07:00:00Z",
                 "managed_by": "WAGTAIL",
                 "e_tag": "original-etag"
             }
