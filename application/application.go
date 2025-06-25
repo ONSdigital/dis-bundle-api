@@ -184,6 +184,12 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 		return http.StatusInternalServerError, nil, e, err
 	}
 
+	errObject, err := s.CreateEventFromBundle(ctx, bundle, createdBundle.CreatedBy.Email)
+	if err != nil {
+		log.Error(ctx, "failed to create event from bundle", err)
+		return http.StatusInternalServerError, nil, errObject, err
+	}
+
 	return http.StatusCreated, createdBundle, nil, nil
 }
 

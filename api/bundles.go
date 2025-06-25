@@ -209,13 +209,6 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createEventErr, err := api.stateMachineBundleAPI.CreateEventFromBundle(ctx, createdBundle, entityData.UserID)
-	if createEventErr != nil {
-		log.Error(ctx, "createBundle: failed to create event from bundle", err, log.Data{"bundle-id": createdBundle.ID})
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, createEventErr)
-		return
-	}
-
 	b, err := json.Marshal(createdBundle)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to marshal created bundle", err)
