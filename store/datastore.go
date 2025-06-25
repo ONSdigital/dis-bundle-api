@@ -31,6 +31,7 @@ type dataMongoDB interface {
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error)
 	DeleteContentItem(ctx context.Context, contentItemID string) error
+	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
@@ -97,4 +98,8 @@ func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event)
 
 func (ds *Datastore) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
 	return ds.Backend.CheckBundleExistsByTitle(ctx, title)
+}
+
+func (ds *Datastore) ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error) {
+	return ds.Backend.ListBundleContents(ctx, bundleID, offset, limit)
 }

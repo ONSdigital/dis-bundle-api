@@ -210,3 +210,44 @@ func (s *StateMachineBundleAPI) ValidateScheduledAt(bundle *models.Bundle) error
 
 	return nil
 }
+
+func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID string, offset, limit int, authHeaders datasetAPISDK.Headers) ([]*models.ContentItem, int, error) {
+	// Get bundle
+	bundle, err := s.Datastore.GetBundle(ctx, bundleID)
+	if err != nil {
+		return nil, 0, err
+	}
+	bundleState := bundle.State
+
+	totalCount := 0
+
+	// If bundle is published, return its contents directly
+	if bundleState.String() == models.BundleStatePublished.String() {
+		contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+		if err != nil {
+			return nil, 0, err
+		}
+		return contentResults, totalCount, nil
+	}
+
+	// If bundle is not published, populate state & title by calling dataset API Client
+	contentResults, totalCount, err := s.Datastore.ListBundleContents(ctx, bundleID, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for _, contentItem := range contentResults {
+		datasetID := contentItem.Metadata.DatasetID
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
+
+		if err != nil {
+			log.Error(ctx, "failed to fetch dataset", err, log.Data{"dataset_id": datasetID})
+			return nil, 0, err
+		}
+
+		contentItem.State = (*models.State)(&dataset.State)
+		contentItem.Metadata.Title = dataset.Title
+	}
+
+	return contentResults, totalCount, nil
+}

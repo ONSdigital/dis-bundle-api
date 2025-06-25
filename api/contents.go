@@ -355,3 +355,62 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, limit, offset int) (contents any, totalCount int, contentErrors *models.Error) {
+	// Fetch bundle ID
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	bundleID := vars["bundle-id"]
+	logdata := log.Data{"bundle_id": bundleID}
+
+	// Check if the bundle exists
+	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
+	if err != nil {
+		code := models.CodeInternalServerError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Failed to check if bundle exists",
+		}
+		return []*models.ContentItem{}, 0, errInfo
+	}
+
+	if !bundleExists {
+		code := models.CodeNotFound
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: "Bundle not found",
+		}
+		return []*models.ContentItem{}, 0, errInfo
+	}
+
+	authHeaders := datasetAPISDK.Headers{}
+	if r.Header.Get("X-Florence-Token") != "" {
+		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
+	} else {
+		authHeaders.ServiceToken = r.Header.Get("Authorization")
+	}
+
+	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit, authHeaders)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			log.Error(ctx, "getBundleContents endpoint: dataset not found in dataset API", nil, logdata)
+			code := models.CodeNotFound
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionNotFound,
+				Source:      &models.Source{Field: "/metadata/dataset_id"},
+			}
+			return nil, 0, errInfo
+		} else {
+			log.Error(ctx, "getBundleContents endpoint: failed to get dataset from dataset API", err, logdata)
+			code := models.CodeInternalServerError
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: "Failed to get dataset from dataset API",
+			}
+			return nil, 0, errInfo
+		}
+	}
+	return bundleContents, totalCount, nil
+}

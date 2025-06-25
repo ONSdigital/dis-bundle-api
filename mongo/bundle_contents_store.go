@@ -86,3 +86,29 @@ func (m *Mongo) DeleteContentItem(ctx context.Context, contentItemID string) err
 
 	return nil
 }
+
+func (m *Mongo) ListBundleContents(ctx context.Context, bundleID string, offset, limit int) (contents []*models.ContentItem, totalCount int, err error) {
+	var results []*models.ContentItem
+
+	filter, sort := buildListBundleContentsQuery(bundleID)
+
+	totalCount, err = m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		Find(ctx, filter, &results, mongodriver.Sort(sort), mongodriver.Offset(offset), mongodriver.Limit(limit))
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return results, totalCount, nil
+}
+
+func buildListBundleContentsQuery(bundleID string) (filter, sort bson.M) {
+	filter = bson.M{}
+
+	if bundleID != "" {
+		filter["bundle_id"] = bundleID
+	}
+
+	sort = bson.M{"id": -1}
+	return
+}

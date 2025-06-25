@@ -10,15 +10,64 @@ import (
 	"testing"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/application"
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+func GetBundleAPIWithDatasetAPIMocks(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter) *BundleAPI {
+	ctx := context.Background()
+	cfg := &config.Config{
+		DefaultMaxLimit: 100,
+	}
+	r := mux.NewRouter()
+
+	mockStates := []application.State{
+		application.Draft,
+		application.InReview,
+		application.Approved,
+		application.Published,
+	}
+
+	mockTransitions := []application.Transition{
+		{
+			Label:               "DRAFT",
+			TargetState:         application.Draft,
+			AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
+		},
+		{
+			Label:               "IN_REVIEW",
+			TargetState:         application.InReview,
+			AllowedSourceStates: []string{"DRAFT", "APPROVED"},
+		},
+		{
+			Label:               "APPROVED",
+			TargetState:         application.Approved,
+			AllowedSourceStates: []string{"IN_REVIEW"},
+		},
+		{
+			Label:               "PUBLISHED",
+			TargetState:         application.Published,
+			AllowedSourceStates: []string{"APPROVED"},
+		},
+	}
+
+	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
+
+	stateMachineBundleAPI := &application.StateMachineBundleAPI{
+		Datastore:        datastore,
+		StateMachine:     stateMachine,
+		DatasetAPIClient: datasetAPIClient,
+	}
+	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, newAuthMiddlwareMock())
+}
 func TestPostBundleContents_Success(t *testing.T) {
 	t.Parallel()
 
@@ -1248,6 +1297,428 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 						{
 							Code:        &codeInternalServerError,
 							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestGetBundleContents_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a GET /bundles/{bundle-id}/contents request with valid bundle and default pagination", t, func() {
+		bundleID := "bundle-1"
+		statePublished := models.State(models.BundleStatePublished.String())
+
+		expectedContents := []*models.ContentItem{
+			{
+				ID:          "1",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "2023-01",
+					Title:     "Dataset One Title",
+					VersionID: 1,
+				},
+				State: &statePublished,
+				Links: models.Links{},
+			},
+			{
+				ID:          "2",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-2",
+					EditionID: "2023-02",
+					Title:     "Dataset Two Title",
+					VersionID: 2,
+				},
+				State: &statePublished,
+				Links: models.Links{},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return id == bundleID, nil
+			},
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				state := models.BundleStatePublished
+				return &models.Bundle{
+					ID:    bundleID,
+					ETag:  "dummy-etag",
+					State: state,
+				}, nil
+			},
+			ListBundleContentsFunc: func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return expectedContents, len(expectedContents), nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When the handler is called with no pagination params", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should respond 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And response contains expected contents with default pagination", func() {
+				var resp struct {
+					Items      []*models.ContentItem `json:"items"`
+					TotalCount int                   `json:"total_count"`
+				}
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				So(err, ShouldBeNil)
+				So(resp.Items, ShouldResemble, expectedContents)
+				So(resp.TotalCount, ShouldEqual, len(expectedContents))
+			})
+
+			Convey("And response headers include ETag and Cache-Control", func() {
+				So(w.Header().Get("ETag"), ShouldNotBeEmpty)
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+			})
+		})
+	})
+
+	Convey("Given a GET request with custom pagination params", t, func() {
+		bundleID := "bundle-1"
+		statePublished := models.State(models.BundleStatePublished.String())
+
+		expectedContents := []*models.ContentItem{
+			{
+				ID:          "1",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "2023-01",
+					Title:     "Dataset One Title",
+					VersionID: 1,
+				},
+				State: &statePublished,
+				Links: models.Links{},
+			},
+			{
+				ID:          "2",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-2",
+					EditionID: "2023-02",
+					Title:     "Dataset Two Title",
+					VersionID: 2,
+				},
+				State: &statePublished,
+				Links: models.Links{},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return id == bundleID, nil
+			},
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				state := models.BundleStatePublished
+				return &models.Bundle{
+					ID:    bundleID,
+					ETag:  "dummy-etag",
+					State: state,
+				}, nil
+			},
+			ListBundleContentsFunc: func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return expectedContents, len(expectedContents), nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
+		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents"+"?offset=1&limit=1", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When the handler is called with custom pagination params", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should respond 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And response contains expected contents with default pagination", func() {
+				var resp struct {
+					Items      []*models.ContentItem `json:"items"`
+					TotalCount int                   `json:"total_count"`
+				}
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				So(err, ShouldBeNil)
+				So(resp.Items, ShouldResemble, expectedContents)
+				So(resp.TotalCount, ShouldEqual, len(expectedContents))
+			})
+
+			Convey("And response headers include ETag and Cache-Control", func() {
+				So(w.Header().Get("ETag"), ShouldNotBeEmpty)
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+			})
+		})
+	})
+
+	Convey("Given a bundle with state NOT published, enrichment is applied", t, func() {
+		bundleID := "bundle-2"
+
+		originalContents := []*models.ContentItem{
+			{
+				ID:          "10",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-10",
+					EditionID: "2023-10",
+					Title:     "",
+					VersionID: 1,
+				},
+				State: nil,
+				Links: models.Links{},
+			},
+		}
+
+		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				state := models.BundleStateDraft
+				return &models.Bundle{
+					ID:    bundleID,
+					ETag:  "dummy-etag",
+					State: state,
+				}, nil
+			},
+			ListBundleContentsFunc: func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return originalContents, len(originalContents), nil
+			},
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return id == bundleID, nil
+			},
+		}
+
+		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID string, DatasetID string) (datasetAPIModels.Dataset, error) {
+				dataset := datasetAPIModels.Dataset{
+					ID:    "dataset-10",
+					Title: "Test Title",
+					State: "DRAFT",
+				}
+				return dataset, nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithDatasetAPIMocks(store.Datastore{Backend: mockedDatastore}, &mockDatasetAPIClient)
+
+		Convey("When the handler is called for unpublished bundle", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should respond 200 OK and enrich content items", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+
+				var resp struct {
+					Items      []*models.ContentItem `json:"items"`
+					TotalCount int                   `json:"total_count"`
+				}
+				err := json.NewDecoder(w.Body).Decode(&resp)
+				So(err, ShouldBeNil)
+				So(len(resp.Items), ShouldEqual, 1)
+				So(resp.Items[0].Metadata.Title, ShouldEqual, "Test Title")
+				So(resp.Items[0].State.String(), ShouldEqual, "DRAFT")
+			})
+		})
+	})
+}
+
+func TestGetBundleContents_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given invalid pagination params", t, func() {
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{})
+		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents?offset=-1", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When called", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			So(w.Code, ShouldEqual, http.StatusBadRequest)
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeBadRequest := models.CodeBadRequest
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeBadRequest,
+							Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+							Source: &models.Source{
+								Parameter: " offset",
+							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+
+	Convey("Given a nonexistent bundle", t, func() {
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return false, nil
+			},
+		}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		r := httptest.NewRequest("GET", "/bundles/non-existent-bundle-id/contents", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When called", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			So(w.Code, ShouldEqual, http.StatusNotFound)
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeNotFound := models.CodeNotFound
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeNotFound,
+							Description: "Bundle not found",
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+
+	Convey("Given internal error from datastore", t, func() {
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return true, nil
+			},
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return nil, errors.New("datastore failure")
+			},
+		}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When called", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			So(w.Code, ShouldEqual, http.StatusInternalServerError)
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalServerError := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalServerError,
+							Description: "Failed to get dataset from dataset API",
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+
+	Convey("Given a bundle whose datasetID does not exist in the dataset API", t, func() {
+		bundleID := "bundle-1"
+		originalContents := []*models.ContentItem{
+			{
+				ID:          "10",
+				BundleID:    bundleID,
+				ContentType: models.ContentType("dataset"),
+				Metadata: models.Metadata{
+					DatasetID: "dataset-10",
+					EditionID: "2023-10",
+					Title:     "",
+					VersionID: 1,
+				},
+				State: nil,
+				Links: models.Links{},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, id string) (bool, error) {
+				return true, nil
+			},
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				state := models.BundleStateDraft
+				return &models.Bundle{
+					ID:    bundleID,
+					ETag:  "dummy-etag",
+					State: state,
+				}, nil
+			},
+			ListBundleContentsFunc: func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return originalContents, len(originalContents), nil
+			},
+		}
+
+		// Mock dataset API client to return not found error
+		mockedDatasetAPI := &datasetAPISDKMock.ClienterMock{
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID string, DatasetID string) (datasetAPIModels.Dataset, error) {
+				dataset := datasetAPIModels.Dataset{}
+				return dataset, errors.New("Dataset not found")
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithDatasetAPIMocks(store.Datastore{Backend: mockedDatastore}, mockedDatasetAPI)
+		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
+		r.Header.Set("Authorization", "valid-token")
+		w := httptest.NewRecorder()
+
+		Convey("When called", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			So(w.Code, ShouldEqual, http.StatusNotFound)
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeNotFound := models.CodeNotFound
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeNotFound,
+							Description: "The requested resource does not exist",
+							Source: &models.Source{
+								Field: "/metadata/dataset_id",
+							},
 						},
 					},
 				}

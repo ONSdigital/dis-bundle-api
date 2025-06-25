@@ -12,6 +12,10 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
+	"github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPIMocks "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -900,4 +904,154 @@ func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 
 func ptrContentItemState(s models.State) *models.State {
 	return &s
+}
+
+func TestGetBundleContents(t *testing.T) {
+	ctx := context.Background()
+	authHeaders := sdk.Headers{}
+
+	Convey("Given a GetBundleContents application method", t, func() {
+		mockedDatastore := &storetest.StorerMock{}
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{}
+
+		app := application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+		}
+
+		Convey("When the bundle is not found", func() {
+			mockedDatastore.GetBundleFunc = func(ctx context.Context, id string) (*models.Bundle, error) {
+				return nil, errors.New("bundle not found")
+			}
+
+			items, total, err := app.GetBundleContents(ctx, "missing-bundle", 0, 10, authHeaders)
+
+			So(err, ShouldNotBeNil)
+			So(items, ShouldBeNil)
+			So(total, ShouldEqual, 0)
+		})
+
+		Convey("When the bundle is published", func() {
+			state := models.BundleStatePublished
+			mockedDatastore.GetBundleFunc = func(ctx context.Context, id string) (*models.Bundle, error) {
+				t := time.Now()
+				return &models.Bundle{
+					ID:            id,
+					BundleType:    models.BundleTypeScheduled,
+					Title:         "Published Bundle",
+					CreatedBy:     &models.User{Email: "creator@example.com"},
+					CreatedAt:     &t,
+					LastUpdatedBy: &models.User{Email: "updater@example.com"},
+					PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+					State:         state,
+					UpdatedAt:     &t,
+				}, nil
+			}
+
+			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return []*models.ContentItem{{
+					ID:          "1",
+					BundleID:    "bundle-1",
+					ContentType: models.ContentTypeDataset,
+					Metadata:    models.Metadata{DatasetID: "dataset-1"},
+				}}, 1, nil
+			}
+
+			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+
+			So(err, ShouldBeNil)
+			So(items, ShouldHaveLength, 1)
+			So(total, ShouldEqual, 1)
+		})
+
+		Convey("When the bundle is unpublished and enrichment succeeds", func() {
+			state := models.BundleStateDraft
+			mockedDatastore.GetBundleFunc = func(ctx context.Context, id string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:    id,
+					Title: "Unpublished Bundle",
+					State: state,
+				}, nil
+			}
+
+			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return []*models.ContentItem{{
+					ID:          "1",
+					BundleID:    "bundle-1",
+					ContentType: models.ContentTypeDataset,
+					Metadata:    models.Metadata{DatasetID: "dataset-1"},
+				}}, 1, nil
+			}
+
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+				return datasetAPIModels.Dataset{
+					ID:          datasetID,
+					Title:       "Dataset Title",
+					Description: "Description of dataset",
+					Keywords:    []string{"economy", "gdp"},
+					Publisher:   &datasetAPIModels.Publisher{Name: "ONS"},
+					State:       "published",
+				}, nil
+			}
+
+			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+
+			So(err, ShouldBeNil)
+			So(items, ShouldHaveLength, 1)
+			So(items[0].State.String(), ShouldEqual, "published")
+			So(items[0].Metadata.Title, ShouldEqual, "Dataset Title")
+			So(total, ShouldEqual, 1)
+		})
+
+		Convey("When enrichment fails for a dataset", func() {
+			state := models.BundleStateDraft
+			mockedDatastore.GetBundleFunc = func(ctx context.Context, id string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:    id,
+					Title: "Draft Bundle",
+					State: state,
+				}, nil
+			}
+
+			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return []*models.ContentItem{{
+					ID:          "1",
+					BundleID:    "bundle-1",
+					ContentType: models.ContentTypeDataset,
+					Metadata:    models.Metadata{DatasetID: "dataset-1"},
+				}}, 1, nil
+			}
+
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+				return datasetAPIModels.Dataset{}, errors.New("dataset fetch failed")
+			}
+
+			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+
+			So(err, ShouldNotBeNil)
+			So(items, ShouldBeNil)
+			So(total, ShouldEqual, 0)
+		})
+
+		Convey("When bundle contents are empty", func() {
+			state := models.BundleStateDraft
+			mockedDatastore.GetBundleFunc = func(ctx context.Context, id string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:    id,
+					Title: "Empty Bundle",
+					State: state,
+				}, nil
+			}
+
+			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
+				return []*models.ContentItem{}, 0, nil
+			}
+
+			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+
+			So(err, ShouldBeNil)
+			So(items, ShouldBeEmpty)
+			So(total, ShouldEqual, 0)
+		})
+	})
 }
