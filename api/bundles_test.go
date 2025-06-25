@@ -852,14 +852,13 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 		inputBundleJSON, err := json.Marshal(inputBundle)
 		So(err, ShouldBeNil)
 
+		mockedDatastore := &storetest.StorerMock{}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is missing", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "")
 			w := httptest.NewRecorder()
-
-			mockedDatastore := &storetest.StorerMock{}
-
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -883,23 +882,11 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
-	})
-}
-
-func TestCreateBundle_Failure_AuthTokenIsInvalid(t *testing.T) {
-	Convey("Given a payload for creating a bundle ", t, func() {
-		inputBundle := *validBundle
-		inputBundleJSON, err := json.Marshal(inputBundle)
-		So(err, ShouldBeNil)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is invalid", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "test auth token")
 			w := httptest.NewRecorder()
-
-			mockedDatastore := &storetest.StorerMock{}
-
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
