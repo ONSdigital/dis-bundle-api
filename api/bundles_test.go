@@ -1049,6 +1049,9 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 		inputBundleJSON, err := json.Marshal(inputBundle)
 		So(err, ShouldBeNil)
 
+		createdBundle := *validBundle
+		createdBundle.CreatedBy = &models.User{Email: "example@example.com"}
+
 		Convey("When a POST request is made to /bundles endpoint with the payload and CreateBundleEvent returns an error", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
@@ -1065,7 +1068,7 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 					return errors.New("failed to create bundle event")
 				},
 				GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
-					return &models.Bundle{}, nil
+					return &createdBundle, nil
 				},
 			}
 
