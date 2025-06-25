@@ -50,13 +50,14 @@ var (
 	ErrUnauthorised   = errors.New("unauthorised access to API")
 
 	// Bundle-Specific
-	ErrBundleNotFound         = errors.New("bundle not found")
-	ErrDeleteBundleForbidden  = errors.New("cannot delete a published bundle")
-	ErrBundleAlreadyExists    = errors.New("bundle already exists")
-	ErrInvalidBundleState     = errors.New("invalid bundle state")
-	ErrMissingBundleID        = errors.New("missing bundle ID")
-	ErrInvalidBundleReference = errors.New("invalid bundle reference")
-	ErrBundleEventNotFound    = errors.New("bundle event not found")
+	ErrBundleNotFound           = errors.New("bundle not found")
+	ErrDeleteBundleForbidden    = errors.New("cannot delete a published bundle")
+	ErrBundleAlreadyExists      = errors.New("bundle already exists")
+	ErrBundleTitleAlreadyExists = errors.New("bundle with the same title already exists")
+	ErrInvalidBundleState       = errors.New("invalid bundle state")
+	ErrMissingBundleID          = errors.New("missing bundle ID")
+	ErrInvalidBundleReference   = errors.New("invalid bundle reference")
+	ErrBundleEventNotFound      = errors.New("bundle event not found")
 
 	// Content-Specific
 	ErrContentItemNotFound = errors.New("content item not found")

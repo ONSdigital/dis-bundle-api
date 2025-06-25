@@ -202,111 +202,17 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = api.stateMachineBundleAPI.StateMachine.Transition(ctx, api.stateMachineBundleAPI, nil, bundle)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to transition bundle state", err)
-		code := models.CodeBadRequest
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionStateNotAllowedToTransition,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
-		return
-	}
-
-	bundleExist, err := api.stateMachineBundleAPI.CheckBundleExistsByTitle(ctx, bundle.Title)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to check existing bundle by title", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
-	}
-	if bundleExist {
-		log.Error(ctx, "createBundle: bundle with the same title already exists", nil)
-		code := models.CodeConflict
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
-			Source: &models.Source{
-				Field: "/title",
-			},
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusConflict, e)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
+	statusCode, createdBundle, errObject, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to create bundle", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		utils.HandleBundleAPIErr(w, r, statusCode, errObject)
 		return
 	}
 
-	createdBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundle.ID)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to retrieve created bundle", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
-	}
-
-	eventBundle, err := models.ConvertBundleToBundleEvent(createdBundle)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to convert bundle to bundle event", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
-	}
-
-	bundlePath := "/bundles/" + createdBundle.ID
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    entityData.UserID,
-			Email: entityData.UserID,
-		},
-		Action:   models.ActionCreate,
-		Resource: bundlePath,
-		Bundle:   eventBundle,
-	}
-
-	err = models.ValidateEvent(event)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to validate event", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
-	if err != nil {
-		log.Error(ctx, "createBundle: failed to create bundle event", err)
-		code := models.CodeInternalServerError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+	createEventErr, err := api.stateMachineBundleAPI.CreateEventFromBundle(ctx, createdBundle, entityData.UserID)
+	if createEventErr != nil {
+		log.Error(ctx, "createBundle: failed to create event from bundle", err, log.Data{"bundle-id": createdBundle.ID})
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, createEventErr)
 		return
 	}
 
@@ -325,7 +231,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	dpresponse.SetETag(w, createdBundle.ETag)
 
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Location", bundlePath)
+	w.Header().Set("Location", "/bundles/"+createdBundle.ID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 

@@ -21,6 +21,21 @@ var (
 	tomorrow  = today.Add(24 * time.Hour)
 )
 
+var fullyPopulatedBundle = models.Bundle{
+	ID:            "123",
+	BundleType:    models.BundleTypeManual,
+	CreatedBy:     &models.User{Email: "example@example.com"},
+	CreatedAt:     &today,
+	LastUpdatedBy: &models.User{Email: "example@example.com"},
+	PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	ScheduledAt:   &tomorrow,
+	State:         models.BundleStateDraft,
+	Title:         "Fully Populated Bundle",
+	UpdatedAt:     &today,
+	ManagedBy:     models.ManagedByWagtail,
+	ETag:          "f9226b8eb338ac139b1c39d2bb69f5abad8bea09",
+}
+
 func TestListBundles(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
@@ -328,6 +343,99 @@ func TestCheckContentItemExistsByDatasetEditionVersion(t *testing.T) {
 	})
 }
 
+func TestCreateEventFromBundle_Success(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateEventFromBundle is called with a valid bundle", func() {
+			errorObject, err := stateMachine.CreateEventFromBundle(ctx, &fullyPopulatedBundle, "test@email.com")
+
+			Convey("Then it should return no error", func() {
+				So(errorObject, ShouldBeNil)
+				So(err, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestCreateEventFromBundle_ConvertBundleToBundleEvent_Failure(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateEventFromBundle is called with a nil bundle", func() {
+			errorObject, err := stateMachine.CreateEventFromBundle(ctx, nil, "test@email.com")
+
+			Convey("Then it should return an input bundle cannot be nil error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "input bundle cannot be nil")
+			})
+
+			Convey("And errorObject should be an internal server error", func() {
+				code := models.CodeInternalServerError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errorObject, ShouldResemble, expectedErr)
+			})
+		})
+	})
+}
+
+func TestCreateEventFromBundle_CreateBundleEvent_Failure(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return errors.New("failed to create bundle event")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateEventFromBundle is called with a valid bundle", func() {
+			errorObject, err := stateMachine.CreateEventFromBundle(ctx, &fullyPopulatedBundle, "test@email.com")
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "failed to create bundle event")
+			})
+
+			Convey("And errorObject should be an internal server error", func() {
+				code := models.CodeInternalServerError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errorObject, ShouldResemble, expectedErr)
+			})
+		})
+	})
+}
+
 func TestCreateBundleEvent(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
@@ -382,6 +490,12 @@ func TestCreateBundle_Success(t *testing.T) {
 			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 				return nil
 			},
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return false, nil
+			},
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return bundleToCreate, nil
+			},
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
@@ -389,17 +503,159 @@ func TestCreateBundle_Success(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called", func() {
-			err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
 
-			Convey("Then it should return no error", func() {
+			Convey("Then it shouldn't return any errors", func() {
 				So(err, ShouldBeNil)
+				So(errObject, ShouldBeNil)
+			})
+
+			Convey("And it should return the created bundle with a status code of 201", func() {
+				So(statusCode, ShouldEqual, 201)
+				So(createdBundle, ShouldResemble, bundleToCreate)
 			})
 		})
 	})
 }
 
-func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
+func TestCreateBundle_Failure_Transition(t *testing.T) {
 	Convey("Given a valid bundle", t, func() {
+		ctx := context.Background()
+		bundleToCreate := &models.Bundle{
+			ID:          "bundle-123",
+			Title:       "Example Bundle",
+			ScheduledAt: &tomorrow,
+			BundleType:  models.BundleTypeScheduled,
+			State:       models.BundleStateApproved,
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{}
+
+		Convey("When CreateBundle is called and the bundle is not in state DRAFT", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+
+			Convey("Then it should return the expected error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "bundle state must be DRAFT when creating a new bundle")
+
+				code := models.CodeBadRequest
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionStateNotAllowedToTransition,
+				}
+				So(errObject, ShouldNotBeNil)
+				So(errObject, ShouldResemble, expectedErr)
+			})
+
+			Convey("And it should return a status code of 400 and nil for createdBundle", func() {
+				So(statusCode, ShouldEqual, 400)
+				So(createdBundle, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestCreateBundle_Failure_CheckBundleExistsByTitle(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+		bundleToCreate := &models.Bundle{
+			ID:          "bundle-123",
+			Title:       "Example Bundle",
+			ScheduledAt: &tomorrow,
+			BundleType:  models.BundleTypeScheduled,
+			State:       models.BundleStateDraft,
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+				return nil
+			},
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return true, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateBundle is called and a bundle with the same title already exists", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+
+			Convey("Then it should return an error indicating the bundle already exists", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldResemble, apierrors.ErrBundleTitleAlreadyExists)
+
+				code := models.CodeConflict
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionBundleTitleAlreadyExist,
+					Source: &models.Source{
+						Field: "/title",
+					},
+				}
+				So(errObject, ShouldNotBeNil)
+				So(errObject, ShouldResemble, expectedErr)
+			})
+
+			Convey("And it should return a status code of 409 and nil for createdBundle", func() {
+				So(statusCode, ShouldEqual, 409)
+				So(createdBundle, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestCreateBundle_Failure_Backend_CheckBundleExistsByTitle(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+		bundleToCreate := &models.Bundle{
+			ID:          "bundle-123",
+			Title:       "Example Bundle",
+			ScheduledAt: &tomorrow,
+			BundleType:  models.BundleTypeScheduled,
+			State:       models.BundleStateDraft,
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+				return nil
+			},
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return false, errors.New("backend error")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateBundle is called and the backend returns an error when checking for existing bundles", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+
+			Convey("Then it should return an error indicating the backend failure", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "backend error")
+
+				code := models.CodeInternalServerError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errObject, ShouldNotBeNil)
+				So(errObject, ShouldResemble, expectedErr)
+			})
+
+			Convey("And it should return a status code of 500 and nil for createdBundle", func() {
+				So(statusCode, ShouldEqual, 500)
+				So(createdBundle, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestCreateBundle_Failure_CreateBundle(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
 			ID:          "bundle-123",
@@ -413,18 +669,85 @@ func TestCreateBundle_FailureWhenSavingBundle(t *testing.T) {
 			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 				return errors.New("failed to create bundle")
 			},
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return false, nil
+			},
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
 			Datastore: store.Datastore{Backend: mockedDatastore},
 		}
 
-		Convey("When CreateBundle is called and the bundle could not be created", func() {
-			err := stateMachine.CreateBundle(ctx, bundleToCreate)
+		Convey("When CreateBundle is called and the datastore fails to create the bundle", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
 
-			Convey("Then it should return an error", func() {
+			Convey("Then it should return an error indicating the failure", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "failed to create bundle")
+				So(err.Error(), ShouldEqual, "failed to create bundle")
+
+				code := models.CodeInternalServerError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errObject, ShouldNotBeNil)
+				So(errObject, ShouldResemble, expectedErr)
+			})
+
+			Convey("And it should return a status code of 500 and nil for createdBundle", func() {
+				So(statusCode, ShouldEqual, 500)
+				So(createdBundle, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestCreateBundle_Failure_GetBundle(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+		bundleToCreate := &models.Bundle{
+			ID:          "bundle-123",
+			Title:       "Example Bundle",
+			ScheduledAt: &tomorrow,
+			BundleType:  models.BundleTypeScheduled,
+			State:       models.BundleStateDraft,
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+				return nil
+			},
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				return false, nil
+			},
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return nil, errors.New("failed to retrieve created bundle")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When CreateBundle is called and the datastore fails to retrieve the created bundle", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+
+			Convey("Then it should return an error indicating the failure", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "failed to retrieve created bundle")
+
+				code := models.CodeInternalServerError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errObject, ShouldNotBeNil)
+				So(errObject, ShouldResemble, expectedErr)
+			})
+
+			Convey("And it should return a status code of 500 and nil for createdBundle", func() {
+				So(statusCode, ShouldEqual, 500)
+				So(createdBundle, ShouldBeNil)
 			})
 		})
 	})

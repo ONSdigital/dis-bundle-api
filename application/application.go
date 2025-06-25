@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -9,6 +10,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type StateMachineBundleAPI struct {
@@ -73,12 +75,116 @@ func (s *StateMachineBundleAPI) DeleteContentItem(ctx context.Context, contentIt
 	return s.Datastore.DeleteContentItem(ctx, contentItemID)
 }
 
+func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundle *models.Bundle, email string) (*models.Error, error) {
+	bundleEvent, err := models.ConvertBundleToBundleEvent(bundle)
+	if err != nil {
+		log.Error(ctx, "failed to convert bundle to bundle event", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return e, err
+	}
+
+	event := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    email,
+			Email: email,
+		},
+		Action:   models.ActionCreate,
+		Resource: "/bundles/" + bundle.ID,
+		Bundle:   bundleEvent,
+	}
+
+	err = models.ValidateEvent(event)
+	if err != nil {
+		log.Error(ctx, "failed to validate event", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return e, err
+	}
+
+	err = s.CreateBundleEvent(ctx, event)
+	if err != nil {
+		log.Error(ctx, "failed to create bundle event", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return e, err
+	}
+
+	return nil, nil
+}
+
 func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
 	return s.Datastore.CreateBundleEvent(ctx, event)
 }
 
-func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
-	return s.Datastore.CreateBundle(ctx, bundle)
+func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (int, *models.Bundle, *models.Error, error) {
+	err := s.StateMachine.Transition(ctx, s, nil, bundle)
+	if err != nil {
+		log.Error(ctx, "failed to transition bundle state", err)
+		code := models.CodeBadRequest
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionStateNotAllowedToTransition,
+		}
+		return http.StatusBadRequest, nil, e, err
+	}
+
+	bundleExists, err := s.CheckBundleExistsByTitle(ctx, bundle.Title)
+	if err != nil {
+		log.Error(ctx, "failed to check existing bundle by title", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return http.StatusInternalServerError, nil, e, err
+	}
+
+	if bundleExists {
+		log.Error(ctx, "bundle with the same title already exists", errs.ErrBundleTitleAlreadyExists)
+		code := models.CodeConflict
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
+			Source: &models.Source{
+				Field: "/title",
+			},
+		}
+		return http.StatusConflict, nil, e, errs.ErrBundleTitleAlreadyExists
+	}
+
+	err = s.Datastore.CreateBundle(ctx, bundle)
+	if err != nil {
+		log.Error(ctx, "failed to create bundle", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return http.StatusInternalServerError, nil, e, err
+	}
+
+	createdBundle, err := s.GetBundle(ctx, bundle.ID)
+	if err != nil {
+		log.Error(ctx, "failed to retrieve created bundle", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		return http.StatusInternalServerError, nil, e, err
+	}
+
+	return http.StatusCreated, createdBundle, nil, nil
 }
 
 func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {
