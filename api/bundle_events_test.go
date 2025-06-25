@@ -126,9 +126,8 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 	Convey("Given a request with invalid date format", t, func() {
 		mockDatastore := &storetest.StorerMock{}
-		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		mockDatasetAPIClient = &datasetAPISDKMock.ClienterMock{}
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
 		api := &BundleAPI{
@@ -152,9 +151,8 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 
 func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 	Convey("Given a request with unknown query parameter", t, func() {
-		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		mockDatastore := &storetest.StorerMock{}
-		mockDatasetAPIClient = &datasetAPISDKMock.ClienterMock{}
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
 		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
 
