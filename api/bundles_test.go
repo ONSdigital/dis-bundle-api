@@ -932,18 +932,26 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 		inputBundleJSON, err := json.Marshal(inputBundle)
 		So(err, ShouldBeNil)
 
+		inputBundleNonExistentTitle := *validBundle
+		inputBundleNonExistentTitle.Title = "unique title"
+		inputBundleNonExistentTitleJSON, err := json.Marshal(inputBundleNonExistentTitle)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+				if title == "Scheduled Bundle 1" {
+					return true, nil
+				}
+				return false, errors.New("failed to check bundle existence")
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+
 		Convey("When a POST request is made to /bundles endpoint with the payload and GetBundleByTitle fails", func() {
-			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleNonExistentTitleJSON))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()
-
-			mockedDatastore := &storetest.StorerMock{
-				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
-					return false, errors.New("failed to check bundle existence")
-				},
-			}
-
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -967,27 +975,11 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
-	})
-}
-
-func TestCreateBundle_Failure_BundleWithSameTitleAlreadyExists(t *testing.T) {
-	Convey("Given a valid payload", t, func() {
-		inputBundle := *validBundle
-		inputBundleJSON, err := json.Marshal(inputBundle)
-		So(err, ShouldBeNil)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and there is a bundle with the same title", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()
-
-			mockedDatastore := &storetest.StorerMock{
-				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
-					return true, nil
-				},
-			}
-
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
