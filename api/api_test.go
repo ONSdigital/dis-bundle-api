@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ONSdigital/dis-bundle-api/store"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -12,7 +13,7 @@ import (
 func TestSetup(t *testing.T) {
 	Convey("Given an API instance", t, func() {
 		store := &store.Datastore{}
-		api := GetBundleAPIWithMocks(*store)
+		api := GetBundleAPIWithMocks(*store, &datasetAPISDKMock.ClienterMock{}, false)
 
 		Convey("When created the following routes should have been added", func() {
 			So(hasRoute(api.Router, "/bundles", "GET"), ShouldBeTrue)
@@ -22,6 +23,8 @@ func TestSetup(t *testing.T) {
 			So(hasRoute(api.Router, "/bundles/{bundle-id}/contents", "POST"), ShouldBeTrue)
 			So(hasRoute(api.Router, "/bundles/{bundle-id}/contents/{content-id}", "DELETE"), ShouldBeTrue)
 			So(hasRoute(api.Router, "/bundle-events", "GET"), ShouldBeTrue)
+
+			So(hasRoute(api.Router, "/bundles/{bundle-id}/state", "PUT"), ShouldBeTrue)
 		})
 	})
 }

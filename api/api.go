@@ -31,6 +31,7 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 
 	paginator := pagination.NewPaginator(cfg.DefaultLimit, cfg.DefaultOffset, cfg.DefaultMaxLimit)
 
+	// get
 	api.get(
 		"/bundles",
 		authMiddleware.Require("bundles:read", pagination.Paginate(paginator, api.getBundles)),
@@ -55,14 +56,21 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleContents)),
 	)
+
+	// post
 	api.post(
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:create", api.postBundleContents),
 	)
+
 	api.delete(
 		"/bundles/{bundle-id}/contents/{content-id}",
 		authMiddleware.Require("bundles:delete", api.deleteContentItem),
 	)
+
+	// put
+	api.put("/bundles/{bundle-id}/state",
+		authMiddleware.Require("bundles:update", api.putBundleState))
 
 	return api
 }
@@ -80,4 +88,9 @@ func (api *BundleAPI) post(path string, handler http.HandlerFunc) {
 // delete registers a DELETE http.HandlerFunc.
 func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodDelete)
+}
+
+// put registers a PUT http.HandlerFunc.
+func (api *BundleAPI) put(path string, handler http.HandlerFunc) {
+	api.Router.HandleFunc(path, handler).Methods(http.MethodPut)
 }

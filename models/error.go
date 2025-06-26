@@ -43,6 +43,13 @@ func CreateError(reader io.Reader) (*Error, error) {
 	return &errorObj, nil
 }
 
+func CreateModelError(code Code, description string) *Error {
+	return &Error{
+		Code:        &code,
+		Description: description,
+	}
+}
+
 func ValidateError(e *Error) error {
 	if e == nil {
 		return fmt.Errorf("error cannot be nil")
@@ -106,4 +113,46 @@ func (c Code) IsValid() bool {
 // String returns the string value of the Code
 func (c Code) String() string {
 	return string(c)
+}
+
+var (
+	notFoundError          = CreateModelError(CodeNotFound, errs.ErrorDescriptionNotFound)
+	internalError          = CreateModelError(CodeInternalServerError, errs.ErrorDescriptionInternalError)
+	invalidTransitionError = CreateModelError(CodeBadRequest, errs.ErrorDescriptionInvalidStateTransition)
+	malformedRequestError  = CreateModelError(CodeBadRequest, errs.ErrorDescriptionMalformedRequest)
+)
+
+// API Errors -> Error map
+var ErrorToModelErrorMap = map[error]*Error{
+	// Not found
+	errs.ErrBundleNotFound:          notFoundError,
+	errs.ErrNotFound:                notFoundError,
+	errs.ErrBundleHasNoContentItems: notFoundError,
+	errs.ErrContentItemNotFound:     notFoundError,
+
+	// Validation - Headers
+	errs.ErrMissingIfMatchHeader: CreateModelError(CodeBadRequest, errs.ErrorDescriptionMissingIfMatchHeader),
+	errs.ErrInvalidIfMatchHeader: CreateModelError(CodeConflict, errs.ErrorDescriptionInvalidIfMatchHeader),
+
+	// Validation - State
+	errs.ErrInvalidBundleState: invalidTransitionError,
+	errs.ErrInvalidTransition:  invalidTransitionError,
+
+	// Validation - Body and/or params
+	errs.ErrInvalidBody: malformedRequestError,
+
+	// Internal error
+	errs.ErrInternalServer: internalError,
+
+	// Auth
+	errs.ErrUnauthorised: CreateModelError(Unauthorised, errs.ErrorDescriptionAccessDenied),
+}
+
+func GetMatchingModelError(err error) *Error {
+	modelError, exists := ErrorToModelErrorMap[err]
+	if exists {
+		return modelError
+	}
+
+	return internalError
 }

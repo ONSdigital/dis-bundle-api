@@ -245,6 +245,14 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	return nil
 }
 
+func (b *Bundle) GenerateETag(bytes *[]byte) string {
+	etag := dpresponse.GenerateETag(*bytes, false)
+	etag = strings.Trim(etag, "\"")
+	b.ETag = etag
+
+	return b.ETag
+}
+
 // BundleType enum type representing the type of the bundle
 type BundleType string
 

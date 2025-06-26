@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
+	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	"github.com/cucumber/godog"
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,6 +27,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
+	ctx.Step(`^I have these dataset versions:$`, c.iHaveTheseDatasetVersions)
 	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
@@ -33,6 +36,11 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
+	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
+	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
+	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
+	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
 }
 
 func (c *BundleComponent) adminJWTToken() error {
@@ -266,4 +274,169 @@ func (c *BundleComponent) theResponseHeaderShouldBePresent(headerName string) er
 
 func (c *BundleComponent) theResponseShouldContain(expectedJSON *godog.DocString) error {
 	return c.apiFeature.IShouldReceiveTheFollowingJSONResponse(expectedJSON)
+}
+
+func (c *BundleComponent) iHaveTheseDatasetVersions(contentItemsJSON *godog.DocString) error {
+	versions := []*datasetAPIModels.Version{}
+
+	err := json.Unmarshal([]byte(contentItemsJSON.Content), &versions)
+	if err != nil {
+		return err
+	}
+
+	c.DatasetAPIVersions = append(c.DatasetAPIVersions, versions...)
+
+	return nil
+}
+
+func (c *BundleComponent) bundleShouldHaveState(bundleID, expectedState string) error {
+	bundle, err := c.getBundleByID(bundleID)
+	if err != nil {
+		return err
+	}
+
+	if bundle.State.String() != expectedState {
+		return fmt.Errorf("expected state %s but actual state is %s", expectedState, bundle.State.String())
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) getBundleByID(bundleID string) (*models.Bundle, error) {
+	ctx := context.Background()
+	bundlesCollection := c.MongoClient.ActualCollectionName("BundlesCollection")
+
+	var bundle models.Bundle
+	err := c.MongoClient.Connection.Collection(bundlesCollection).FindOne(ctx, bson.M{"id": bundleID}, &bundle)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if bundle.ID != bundleID {
+		return nil, errors.New("no error was returned fetching bundle but the bundle does not appear valid")
+	}
+
+	return &bundle, nil
+}
+
+func (c *BundleComponent) contentItemsShouldMatchState(expectedContentItemsJSON *godog.DocString) error {
+	var expectedContentItems []models.ContentItem
+	if err := json.Unmarshal([]byte(expectedContentItemsJSON.Content), &expectedContentItems); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	ctx := context.Background()
+	contentsCollection := c.MongoClient.ActualCollectionName(config.BundleContentsCollection)
+
+	var actualContentItems []models.ContentItem
+	_, err := c.MongoClient.Connection.Collection(contentsCollection).Find(ctx, bson.M{}, &actualContentItems)
+
+	if err != nil {
+		return err
+	}
+
+	if len(actualContentItems) == 0 {
+		return errors.New("no content items returned")
+	}
+
+	idSelector := func(content models.ContentItem) string { return content.ID }
+	predicate := func(actual, expected models.ContentItem) string {
+		if actual.State.String() != expected.State.String() {
+			return fmt.Sprintf("content item %s state does not match. expected %s but is actually %s", expected.ID, expected.State, actual.State)
+		}
+
+		return ""
+	}
+
+	errs := compareSlices(expectedContentItems, actualContentItems, predicate, idSelector)
+
+	if len(errs) > 0 {
+		return fmt.Errorf("content items do not match:\n%s", strings.Join(errs, "\n"))
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) bundleETagShouldMatch(bundleID, etag string) error {
+	return c.bundleETagValueMatch(bundleID, etag, true)
+}
+
+func (c *BundleComponent) bundleETagShouldNotMatch(bundleID, etag string) error {
+	return c.bundleETagValueMatch(bundleID, etag, false)
+}
+
+func (c *BundleComponent) bundleETagValueMatch(bundleID, etag string, shouldMatch bool) error {
+	bundle, err := c.getBundleByID(bundleID)
+
+	if err != nil {
+		return err
+	}
+
+	etagMatches := bundle.ETag == etag
+
+	if etagMatches != shouldMatch {
+		return fmt.Errorf("bundle %s has unexpected etag %s", bundleID, bundle.ETag)
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) theseVersionsShouldHaveTheseStates(expectedVersionsJSON *godog.DocString) error {
+	var expectedVersions []datasetAPIModels.Version
+	if err := json.Unmarshal([]byte(expectedVersionsJSON.Content), &expectedVersions); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	idSelector := func(version datasetAPIModels.Version) string { return version.ID }
+	predicate := func(actual, expected datasetAPIModels.Version) string {
+		if actual.State != expected.State {
+			return fmt.Sprintf("version %s does not have expected state %s. actual state is %s", actual.ID, expected.ID, actual.State)
+		}
+
+		return ""
+	}
+
+	versions := make([]datasetAPIModels.Version, len(c.DatasetAPIVersions))
+	for index := range versions {
+		versions[index] = *c.DatasetAPIVersions[index]
+	}
+
+	errs := compareSlices(expectedVersions, versions, predicate, idSelector)
+
+	if len(errs) > 0 {
+		return fmt.Errorf("content items do not match:\n%s", strings.Join(errs, "\n"))
+	}
+
+	return nil
+}
+
+type Predicate[T any] = func(actual, expected T) string
+type IDSelector[T any] = func(T) string
+
+func compareSlices[T any](expectedItems, actualItems []T, matches Predicate[T], idSelector IDSelector[T]) []string {
+	var errs []string
+
+	actualItemsMap := make(map[string]*T)
+	for i := range actualItems {
+		id := idSelector(actualItems[i])
+		actualItemsMap[id] = &actualItems[i]
+	}
+
+	for _, expected := range expectedItems {
+		id := idSelector(expected)
+		actual, exists := actualItemsMap[id]
+		if !exists {
+			errs = append(errs, fmt.Sprintf("failed to find item for id %s", id))
+			continue
+		}
+
+		err := matches(*actual, expected)
+
+		if err != "" {
+			errs = append(errs, err)
+		}
+	}
+
+	return errs
 }

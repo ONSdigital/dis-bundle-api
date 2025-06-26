@@ -3,7 +3,9 @@ package steps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/config"
@@ -24,6 +26,14 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+var mockDatasetVersions = []*datasetAPIModels.Version{
+	{ID: "1"},
+	{ID: "2"},
+	{ID: "inreview-version", State: "IN_REVIEW"},
+	{ID: "approved-version", State: "APPROVED"},
+	{ID: "published-version", State: "PUBLISHED"},
+}
+
 type BundleComponent struct {
 	ErrorFeature            componenttest.ErrorFeature
 	svc                     *service.Service
@@ -36,6 +46,7 @@ type BundleComponent struct {
 	datasetAPIClient        datasetAPISDK.Clienter
 	apiFeature              *componenttest.APIFeature
 	AuthorisationMiddleware authorisation.Middleware
+	DatasetAPIVersions      []*datasetAPIModels.Version
 }
 
 func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
@@ -85,7 +96,7 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c.ServiceRunning = true
 	c.MongoClient = mongodb
 	c.apiFeature = componenttest.NewAPIFeature(c.InitialiseService)
-
+	c.DatasetAPIVersions = mockDatasetVersions
 	return c, nil
 }
 
@@ -186,7 +197,32 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 			if versionID == "404" {
 				return datasetAPIModels.Version{}, errors.New("version not found")
 			}
-			return datasetAPIModels.Version{}, nil
+
+			versionVersion, err := strconv.Atoi(versionID)
+			if err != nil {
+				return datasetAPIModels.Version{}, err
+			}
+			for _, version := range c.DatasetAPIVersions {
+				if version.DatasetID == datasetID && version.Edition == editionID && version.Version == versionVersion {
+					return *version, nil
+				}
+			}
+
+			return datasetAPIModels.Version{}, errors.New("version not found")
+		},
+		PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+			versionVersion, err := strconv.Atoi(versionID)
+			if err != nil {
+				return err
+			}
+			for _, version := range c.DatasetAPIVersions {
+				if version.DatasetID == datasetID && version.Edition == editionID && version.Version == versionVersion {
+					version.State = state
+					return nil
+				}
+			}
+
+			return fmt.Errorf("version %s not found for dataset %s edition %s", versionID, datasetID, editionID)
 		},
 		GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 			if datasetID == "dataset-id-does-not-exist" {
