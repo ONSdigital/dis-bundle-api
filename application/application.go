@@ -264,7 +264,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 		return http.StatusConflict, e, err
 	}
 
-	bundleContents, _, err := s.Datastore.ListBundleContentsWithoutLimit(ctx, bundleID)
+	bundleContents, err := s.Datastore.ListBundleContentsWithoutLimit(ctx, bundleID)
 
 	if err != nil {
 		log.Error(ctx, "failed to retrieve bundle contents", err, logData)

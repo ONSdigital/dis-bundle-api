@@ -33,7 +33,7 @@ type dataMongoDB interface {
 	CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error)
 	DeleteContentItem(ctx context.Context, contentItemID string) error
 	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
-	ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, totalCount int, err error)
+	ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
@@ -110,6 +110,6 @@ func (ds *Datastore) ListBundleContents(ctx context.Context, bundleID string, of
 	return ds.Backend.ListBundleContents(ctx, bundleID, offset, limit)
 }
 
-func (ds *Datastore) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+func (ds *Datastore) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 	return ds.Backend.ListBundleContentsWithoutLimit(ctx, bundleID)
 }

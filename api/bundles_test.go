@@ -1271,7 +1271,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 				}
 				return nil, errs.ErrBundleNotFound
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{
 						ID: "content-1",
@@ -1279,7 +1279,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 					{
 						ID: "content-2",
 					},
-				}, 2, nil
+				}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
 				if contentItemID == "content-1" || contentItemID == "content-2" {

@@ -65,7 +65,7 @@ var _ store.Storer = &StorerMock{}
 //			ListBundleContentsFunc: func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error) {
 //				panic("mock out the ListBundleContents method")
 //			},
-//			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+//			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 //				panic("mock out the ListBundleContentsWithoutLimit method")
 //			},
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
@@ -127,7 +127,7 @@ type StorerMock struct {
 	ListBundleContentsFunc func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error)
 
 	// ListBundleContentsWithoutLimitFunc mocks the ListBundleContentsWithoutLimit method.
-	ListBundleContentsWithoutLimitFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error)
+	ListBundleContentsWithoutLimitFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
 
 	// ListBundleEventsFunc mocks the ListBundleEvents method.
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
@@ -830,7 +830,7 @@ func (mock *StorerMock) ListBundleContentsCalls() []struct {
 }
 
 // ListBundleContentsWithoutLimit calls ListBundleContentsWithoutLimitFunc.
-func (mock *StorerMock) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+func (mock *StorerMock) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 	if mock.ListBundleContentsWithoutLimitFunc == nil {
 		panic("StorerMock.ListBundleContentsWithoutLimitFunc: method is nil but Storer.ListBundleContentsWithoutLimit was just called")
 	}

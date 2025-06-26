@@ -402,11 +402,11 @@ func TestListBundleContentsWithoutLimit_Success(t *testing.T) {
 
 		Convey("When ListBundleContentsWithoutLimit is called with a valid bundle ID", func() {
 			bundleID := "bundle1"
-			contents, totalCount, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
+			contents, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
 
 			Convey("Then it returns the contents and total count without error", func() {
 				So(err, ShouldBeNil)
-				So(totalCount, ShouldEqual, 2)
+				So(len(contents), ShouldEqual, 2)
 				So(contents, ShouldHaveLength, 2)
 				So(contents[0].BundleID, ShouldEqual, bundleID)
 				So(contents[1].BundleID, ShouldEqual, bundleID)
@@ -427,11 +427,11 @@ func TestListBundleContentsWithoutLimit_Failure(t *testing.T) {
 
 		Convey("When ListBundleContentsWithoutLimit is called with a non-existent bundle ID", func() {
 			bundleID := "non-existent-bundle"
-			contents, totalCount, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
+			contents, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
 
 			Convey("Then it returns an empty list and zero count without error", func() {
 				So(err, ShouldBeNil)
-				So(totalCount, ShouldEqual, 0)
+				So(len(contents), ShouldEqual, 0)
 				So(contents, ShouldHaveLength, 0)
 			})
 		})
@@ -439,7 +439,7 @@ func TestListBundleContentsWithoutLimit_Failure(t *testing.T) {
 		Convey("When ListBundleContentsWithoutLimit is called and the connection is closed", func() {
 			mongodb.Connection.Close(ctx)
 			bundleID := "bundle1"
-			_, _, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
+			_, err := mongodb.ListBundleContentsWithoutLimit(ctx, bundleID)
 
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)

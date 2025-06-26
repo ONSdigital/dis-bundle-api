@@ -102,19 +102,19 @@ func (m *Mongo) ListBundleContents(ctx context.Context, bundleID string, offset,
 	return results, totalCount, nil
 }
 
-func (m *Mongo) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, totalCount int, err error) {
+func (m *Mongo) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error) {
 	var results []*models.ContentItem
 
 	filter, sort := buildListBundleContentsQuery(bundleID)
 
-	totalCount, err = m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+	_, err = m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
 		Find(ctx, filter, &results, mongodriver.Sort(sort))
 
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return results, totalCount, nil
+	return results, nil
 }
 
 func buildListBundleContentsQuery(bundleID string) (filter, sort bson.M) {
