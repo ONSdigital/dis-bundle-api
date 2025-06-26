@@ -25,6 +25,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
+	ctx.Step(`^the bundle in the database for id "([^"]*)" should not exist$`, c.theBundleInTheDatabaseForIDShouldNotExist)
 	ctx.Step(`^the content item in the database for id "([^"]*)" should not exist$`, c.theContentItemInTheDatabaseForIDShouldNotExist)
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
@@ -171,12 +172,28 @@ func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collecti
 	return nil
 }
 
+func (c *BundleComponent) theBundleInTheDatabaseForIDShouldNotExist(id string) error {
+	bundlesCollection := c.MongoClient.ActualCollectionName("BundlesCollection")
+
+	var bundle models.Bundle
+
+	err := c.MongoClient.Connection.Collection(bundlesCollection).FindOne(context.Background(), bson.M{"id": id}, &bundle)
+
+	if err == nil {
+		return fmt.Errorf("expected bundle with ID %q to not exist, but it was found in the database: %+v", id, bundle)
+	} else if errors.Is(err, mongodriver.ErrNoDocumentFound) {
+		return nil
+	} else {
+		return fmt.Errorf("error checking for bundle with ID %q: %w", id, err)
+	}
+}
+
 func (c *BundleComponent) theContentItemInTheDatabaseForIDShouldNotExist(id string) error {
 	bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
 
 	var contentItem models.ContentItem
 
-	err := c.MongoClient.Connection.Collection(bundleContentsCollection).FindOne(context.Background(), bson.M{"id": id}, contentItem)
+	err := c.MongoClient.Connection.Collection(bundleContentsCollection).FindOne(context.Background(), bson.M{"id": id}, &contentItem)
 
 	if err == nil {
 		return fmt.Errorf("expected content item with ID %q to not exist, but it was found in the database: %+v", id, contentItem)
