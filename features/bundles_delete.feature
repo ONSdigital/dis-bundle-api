@@ -112,15 +112,15 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
         Given I am an admin user
         When I DELETE "/bundles/bundle-with-content-items"
         Then the HTTP status code should be "204"
-        And the content item in the database for id "content-item-1" should not exist
-        And the content item in the database for id "content-item-2" should not exist
-        And the bundle in the database for id "bundle-with-content-items" should not exist
+        And the record with id "content-item-1" should not exist in the "bundle_contents" collection
+        And the record with id "content-item-2" should not exist in the "bundle_contents" collection
+        And the record with id "bundle-with-content-items" should not exist in the "bundles" collection
     
     Scenario: DELETE /bundles/{bundle-id} successfully with a bundle that has no contents
         Given I am an admin user
         When I DELETE "/bundles/bundle-without-content-items"
         Then the HTTP status code should be "204"
-        And the bundle in the database for id "bundle-without-content-items" should not exist
+        And the record with id "bundle-without-content-items" should not exist in the "bundles" collection
 
     Scenario: DELETE /bundles/{bundle-id} with non-existent bundle
         Given I am an admin user

@@ -91,7 +91,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         Given I am an admin user
         When I DELETE "/bundles/bundle-1/contents/content-item-1"
         Then the HTTP status code should be "204"
-        And the content item in the database for id "content-item-1" should not exist
+        And the record with id "content-item-1" should not exist in the "bundle_contents" collection
     
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with non-existent bundle
         Given I am an admin user

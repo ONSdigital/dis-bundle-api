@@ -25,8 +25,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
-	ctx.Step(`^the bundle in the database for id "([^"]*)" should not exist$`, c.theBundleInTheDatabaseForIDShouldNotExist)
-	ctx.Step(`^the content item in the database for id "([^"]*)" should not exist$`, c.theContentItemInTheDatabaseForIDShouldNotExist)
+	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
@@ -172,35 +171,27 @@ func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collecti
 	return nil
 }
 
-func (c *BundleComponent) theBundleInTheDatabaseForIDShouldNotExist(id string) error {
-	bundlesCollection := c.MongoClient.ActualCollectionName("BundlesCollection")
-
-	var bundle models.Bundle
-
-	err := c.MongoClient.Connection.Collection(bundlesCollection).FindOne(context.Background(), bson.M{"id": id}, &bundle)
-
-	if err == nil {
-		return fmt.Errorf("expected bundle with ID %q to not exist, but it was found in the database: %+v", id, bundle)
-	} else if errors.Is(err, mongodriver.ErrNoDocumentFound) {
-		return nil
-	} else {
-		return fmt.Errorf("error checking for bundle with ID %q: %w", id, err)
+func (c *BundleComponent) theRecordWithIDShouldNotExistInTheCollection(id, collection string) error {
+	collectionMap := map[string]string{
+		"bundles":         c.MongoClient.ActualCollectionName("BundlesCollection"),
+		"bundle_contents": c.MongoClient.ActualCollectionName("BundleContentsCollection"),
+		"bundle_events":   c.MongoClient.ActualCollectionName("BundleEventsCollection"),
 	}
-}
 
-func (c *BundleComponent) theContentItemInTheDatabaseForIDShouldNotExist(id string) error {
-	bundleContentsCollection := c.MongoClient.ActualCollectionName("BundleContentsCollection")
+	collectionName, exists := collectionMap[collection]
+	if !exists {
+		return fmt.Errorf("unknown collection: %s", collection)
+	}
 
-	var contentItem models.ContentItem
-
-	err := c.MongoClient.Connection.Collection(bundleContentsCollection).FindOne(context.Background(), bson.M{"id": id}, &contentItem)
+	var result bson.M
+	err := c.MongoClient.Connection.Collection(collectionName).FindOne(context.Background(), bson.M{"id": id}, &result)
 
 	if err == nil {
-		return fmt.Errorf("expected content item with ID %q to not exist, but it was found in the database: %+v", id, contentItem)
+		return fmt.Errorf("expected record with ID %q to not exist in collection %q, but it was found in the database: %+v", id, collectionName, result)
 	} else if errors.Is(err, mongodriver.ErrNoDocumentFound) {
 		return nil
 	} else {
-		return fmt.Errorf("error checking for content item with ID %q: %w", id, err)
+		return fmt.Errorf("error checking for record with ID %q in collection %q: %w", id, collectionName, err)
 	}
 }
 
