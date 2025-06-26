@@ -346,9 +346,9 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
-			Convey("Then the status code should be 500", func() {
-				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				expectedErrorCode := models.CodeInternalServerError
+			Convey("Then the status code should be 400", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+				expectedErrorCode := models.CodeBadRequest
 				expectedErrorSource := models.Source{
 					Parameter: "publish_date",
 				}

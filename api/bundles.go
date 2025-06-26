@@ -34,9 +34,9 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 	filters, filtersErr := filters.CreateBundlefilters(r)
 	if filtersErr != nil {
 		log.Error(ctx, filtersErr.Error.Error(), errs.ErrInvalidQueryParameter)
-		code := models.CodeInternalServerError
+		code := models.CodeBadRequest
 		invalidRequestError := &models.Error{Code: &code, Description: errs.ErrorDescriptionMalformedRequest, Source: filtersErr.Source}
-		return nil, models.CreateInternalServerErrorResult(invalidRequestError)
+		return nil, models.CreateBadRequestErrorResult(invalidRequestError)
 	}
 
 	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit, filters)
