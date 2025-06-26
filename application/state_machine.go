@@ -79,6 +79,13 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 		}
 	}
 
+	if bundleUpdate == nil {
+		if currentBundle.State.String() == models.BundleStatePublished.String() {
+			return errors.New("cannot update a published bundle")
+		}
+		return nil
+	}
+
 	for state, transitions := range sm.transitions {
 		if state == bundleUpdate.State.String() {
 			for i := range transitions {
