@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,9 +12,20 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
+
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
+)
+
+const (
+	// Route variable names
+	RouteVariableBundleID = "bundle-id"
+
+	// Route names
+	RouteNameGetBundle = "getBundle"
+	RouteNamePutBundle = "putBundle"
 )
 
 func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, offset int) (successResult *models.PaginationSuccessResult[models.Bundle], errorResult *models.ErrorResult[models.Error]) {
@@ -47,54 +59,15 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 
 func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
-	logData := log.Data{"bundle-id": bundleID}
 
+	bundleID, logData := getBundleIDAndLogData(r)
 	bundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
-		if err == errs.ErrBundleNotFound {
-			log.Error(ctx, "getBundle endpoint: bundle id not found", err, logData)
-			code := models.CodeNotFound
-			errInfo := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionNotFound,
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
-		} else {
-			log.Error(ctx, "An internal error occurred", err, logData)
-			code := models.CodeInternalServerError
-			errInfo := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionInternalError,
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		}
+		handleErr(ctx, w, r, err, logData, RouteNameGetBundle)
 		return
 	}
 
-	bundleBytes, err := json.Marshal(bundle)
-	if err != nil {
-		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
-		code := models.CodeInternalServerError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: errs.ErrMarshalJSONObject,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	// Set the required headers
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-
-	// Set Etag
-	ETag := bundle.ETag
-	if ETag == "" {
-		ETag = dpresponse.GenerateETag(bundleBytes, false)
-	}
-	dpresponse.SetETag(w, ETag)
+	bundleBytes := setETagAndCacheControlHeaders(ctx, w, r, bundle, logData)
 
 	_, err = w.Write(bundleBytes)
 	if err != nil {
@@ -102,7 +75,101 @@ func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info(ctx, "getBundle endpoint: request successful", logData)
+	logSuccessfulRequest(ctx, logData, RouteNameGetBundle)
+}
+
+func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) {
+	defer dphttp.DrainBody(r)
+
+	ctx := r.Context()
+
+	bundleID, logData := getBundleIDAndLogData(r)
+
+	etag, err := utils.GetETag(r)
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		return
+	}
+
+	stateRequest, err := getUpdateStateRequestBody(r)
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		return
+	}
+
+	authData, err := api.GetAuthEntityData(r)
+
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		return
+	}
+
+	bundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, bundleID, *etag, stateRequest.State, authData)
+
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		return
+	}
+
+	setETagAndCacheControlHeaders(ctx, w, r, bundle, logData)
+
+	w.WriteHeader(http.StatusOK)
+	logSuccessfulRequest(ctx, logData, RouteNamePutBundle)
+}
+
+func getUpdateStateRequestBody(r *http.Request) (*models.UpdateStateRequest, error) {
+	stateRequest, err := utils.GetRequestBody[models.UpdateStateRequest](r)
+	if err != nil {
+		return nil, err
+	}
+
+	if stateRequest.State == "" || !stateRequest.State.IsValid() {
+		return nil, errs.ErrInvalidBody
+	}
+
+	return stateRequest, nil
+}
+
+func handleErr(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logData log.Data, endpoint string) {
+	errorEvent := fmt.Sprintf("%s endpoint: %s", endpoint, err.Error())
+	log.Error(ctx, errorEvent, err, logData)
+	errInfo := models.GetMatchingModelError(err)
+	httpStatus := errs.GetStatusCodeForErr(err)
+	utils.HandleBundleAPIErr(w, r, httpStatus, errInfo)
+}
+
+func logSuccessfulRequest(ctx context.Context, logData log.Data, endpoint string) {
+	log.Info(ctx, fmt.Sprintf("%s endpoint: request successful", endpoint), logData)
+}
+
+func getBundleIDAndLogData(r *http.Request) (string, log.Data) {
+	vars := mux.Vars(r)
+	bundleID := vars[RouteVariableBundleID]
+	logData := log.Data{RouteVariableBundleID: bundleID}
+	return bundleID, logData
+}
+
+func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r *http.Request, bundle *models.Bundle, logData log.Data) []byte {
+	bundleBytes, err := json.Marshal(bundle)
+	if err != nil {
+		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
+		errInfo := models.CreateModelError(models.CodeInternalServerError, errs.ErrMarshalJSONObject)
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return nil
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+
+	// Set Etag
+	ETag := bundle.ETag
+
+	if ETag == "" {
+		ETag = bundle.GenerateETag(&bundleBytes)
+	}
+
+	dpresponse.SetETag(w, ETag)
+
+	return bundleBytes
 }
 
 func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {

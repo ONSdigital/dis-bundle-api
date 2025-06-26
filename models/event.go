@@ -120,6 +120,73 @@ func (a Action) IsValid() bool {
 	}
 }
 
+func CreateEventBundle(bundle *Bundle) (*EventBundle, error) {
+	if bundle == nil {
+		return nil, errors.New("bundle is nil")
+	}
+
+	return &EventBundle{
+		ID:            bundle.ID,
+		BundleType:    bundle.BundleType,
+		CreatedBy:     bundle.CreatedBy,
+		CreatedAt:     bundle.CreatedAt,
+		LastUpdatedBy: bundle.LastUpdatedBy,
+		PreviewTeams:  bundle.PreviewTeams,
+		ScheduledAt:   bundle.ScheduledAt,
+		State:         bundle.State,
+		Title:         bundle.Title,
+		UpdatedAt:     bundle.UpdatedAt,
+		ManagedBy:     bundle.ManagedBy,
+	}, nil
+}
+
+// CreateEventModel constructs an instance of an Event using the supplied values
+func CreateEventModel(userID, email string, action Action, resource string, contentItem *ContentItem, bundle *Bundle) (*Event, error) {
+	var eventBundle *EventBundle = nil
+
+	if bundle != nil {
+		mappedBundle, createEventBundleErr := CreateEventBundle(bundle)
+		if createEventBundleErr != nil {
+			return nil, errs.ErrInternalServer
+		}
+		eventBundle = mappedBundle
+	}
+
+	event := &Event{
+		RequestedBy: createReqestedBy(userID, email),
+		Action:      action,
+		Resource:    resource,
+		ContentItem: contentItem,
+		Bundle:      eventBundle,
+	}
+
+	validationErr := ValidateEvent(event)
+
+	if validationErr != nil {
+		return nil, errs.ErrInternalServer
+	}
+
+	return event, nil
+}
+
+// createRequestedBy extracts the EntityData from the middleware and creates a RequestedBy object with the extracted data
+func createReqestedBy(userID, email string) *RequestedBy {
+	return &RequestedBy{
+		ID:    userID,
+		Email: email,
+	}
+}
+
+// createBundleResourceLocation creates a resource location for the provided bundle
+func CreateBundleResourceLocation(bundle *Bundle) string {
+	return fmt.Sprintf("/bundle/%s", bundle.ID)
+}
+
+// createBundleContentResourceLocation creates a resource location for the provided bundle
+func CreateBundleContentResourceLocation(content *ContentItem) string {
+	return fmt.Sprintf("/bundle/%s/content/%s", content.BundleID, content.ID)
+}
+
 func ConvertBundleToBundleEvent(bundle *Bundle) (*EventBundle, error) {
 	if bundle == nil {
 		return nil, errors.New("input bundle cannot be nil")

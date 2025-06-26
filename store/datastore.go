@@ -19,6 +19,7 @@ type Datastore struct {
 }
 
 type dataMongoDB interface {
+	// Bundles
 	ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error)
 	ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error)
 	GetBundle(ctx context.Context, bundleID string) (*models.Bundle, error)
@@ -26,13 +27,22 @@ type dataMongoDB interface {
 	CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error)
 	UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error)
 	CheckBundleExists(ctx context.Context, bundleID string) (bool, error)
+	UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error)
+
+	// Content items
 	GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error)
 	CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
 	CheckContentItemExistsByDatasetEditionVersion(ctx context.Context, datasetID, editionID string, versionID int) (bool, error)
 	DeleteContentItem(ctx context.Context, contentItemID string) error
+	GetBundleContentsForBundle(ctx context.Context, bundleID string) (*[]models.ContentItem, error)
+	UpdateContentItemState(ctx context.Context, contentItemID, state string) error
+
+	// Events
 	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
+
+	// Other
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
 	Close(ctx context.Context) error
 }
@@ -68,6 +78,10 @@ func (ds *Datastore) UpdateBundleETag(ctx context.Context, bundleID, email strin
 	return ds.Backend.UpdateBundleETag(ctx, bundleID, email)
 }
 
+func (ds *Datastore) UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+	return ds.Backend.UpdateBundle(ctx, id, update)
+}
+
 func (ds *Datastore) CheckBundleExists(ctx context.Context, bundleID string) (bool, error) {
 	return ds.Backend.CheckBundleExists(ctx, bundleID)
 }
@@ -94,6 +108,14 @@ func (ds *Datastore) DeleteContentItem(ctx context.Context, contentItemID string
 
 func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
 	return ds.Backend.CreateBundleEvent(ctx, event)
+}
+
+func (ds *Datastore) GetBundleContentsForBundle(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+	return ds.Backend.GetBundleContentsForBundle(ctx, bundleID)
+}
+
+func (ds *Datastore) UpdateContentItemState(ctx context.Context, contentItemID, state string) error {
+	return ds.Backend.UpdateContentItemState(ctx, contentItemID, state)
 }
 
 func (ds *Datastore) CheckBundleExistsByTitle(ctx context.Context, title string) (bool, error) {

@@ -2,7 +2,10 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
@@ -124,6 +127,80 @@ func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundl
 
 func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
 	return s.Datastore.CreateBundleEvent(ctx, event)
+}
+
+func (s *StateMachineBundleAPI) GetBundleAndValidateETag(ctx context.Context, bundleID, suppliedETag string) (*models.Bundle, error) {
+	bundle, err := s.Datastore.GetBundle(ctx, bundleID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if bundle.ETag == "" {
+		log.Warn(ctx, "ETag for bundle is empty; generating new", log.Data{"bundle-id": bundleID, "etag": bundle.ETag, "supplied-etag": suppliedETag})
+		bundleBytes, err := json.Marshal(bundle)
+		if err != nil {
+			return nil, errs.ErrUnableToParseJSON
+		}
+
+		bundle.ETag = bundle.GenerateETag(&bundleBytes)
+	}
+
+	if bundle.ETag != suppliedETag {
+		log.Warn(ctx, "ETag validation failed", log.Data{"bundle-id": bundleID, "etag": bundle.ETag, "supplied-etag": suppliedETag})
+		return nil, errs.ErrInvalidIfMatchHeader
+	}
+
+	return bundle, nil
+}
+
+func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID, suppliedETag string, targetState models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
+	bundle, err := s.GetBundleAndValidateETag(ctx, bundleID, suppliedETag)
+
+	if err != nil {
+		return nil, err
+	}
+
+	bundle, err = s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
+	if err != nil {
+		return nil, err
+	}
+
+	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleResourceLocation(bundle), nil, bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.Datastore.CreateBundleEvent(ctx, event); err != nil {
+		return nil, err
+	}
+
+	return bundle, nil
+}
+
+func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Context, contentItem *models.ContentItem, targetState *models.BundleState, authToken string) error {
+	headers := datasetAPISDK.Headers{
+		UserAccessToken: authToken,
+	}
+
+	versionID := strconv.Itoa(contentItem.Metadata.VersionID)
+
+	version, err := s.DatasetAPIClient.GetVersion(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
+
+	if err != nil {
+		return err
+	}
+
+	if !strings.EqualFold(version.State, contentItem.State.String()) {
+		log.Warn(ctx, "Version state does not match ContentItem state", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "content-item-state": contentItem.State.String()})
+		return errs.ErrVersionStateMismatched
+	}
+
+	if err := s.DatasetAPIClient.PutVersionState(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID, strings.ToLower(targetState.String())); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (int, *models.Bundle, *models.Error, error) {

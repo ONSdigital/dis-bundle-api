@@ -71,6 +71,21 @@ func (m *Mongo) CheckContentItemExistsByDatasetEditionVersion(ctx context.Contex
 	return count > 0, nil
 }
 
+// GetBundleContentsForBundle retrieves all ContentItems for the specified bundle
+func (m *Mongo) GetBundleContentsForBundle(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+	filter := bson.M{
+		"bundle_id": bundleID,
+	}
+
+	var contents []models.ContentItem
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).Find(ctx, filter, &contents)
+	if err != nil {
+		return nil, err
+	}
+
+	return &contents, nil
+}
+
 // DeleteContentItem removes a content item by its ID
 func (m *Mongo) DeleteContentItem(ctx context.Context, contentItemID string) error {
 	result, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
@@ -82,6 +97,31 @@ func (m *Mongo) DeleteContentItem(ctx context.Context, contentItemID string) err
 
 	if result.DeletedCount == 0 {
 		return apierrors.ErrContentItemNotFound
+	}
+
+	return nil
+}
+
+// UpdateContentItemState updates the state for the content item matching the contentItemID
+func (m *Mongo) UpdateContentItemState(ctx context.Context, contentItemID, state string) error {
+	filter := bson.M{
+		"id": contentItemID,
+	}
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"state": state,
+		},
+	}
+
+	result, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).UpdateOne(ctx, filter, updateData)
+
+	if err != nil {
+		return err
+	}
+
+	if result.ModifiedCount == 0 {
+		return errors.New("no documents were modified")
 	}
 
 	return nil

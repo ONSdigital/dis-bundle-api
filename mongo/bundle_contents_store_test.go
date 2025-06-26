@@ -10,12 +10,16 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+const (
+	Bundle1ID = "bundle1"
+)
+
 var (
 	stateApproved    = models.StateApproved
 	contentsTestData = []*models.ContentItem{
 		{
 			ID:          "f3ee8348-9956-44e1-9c83-55fd2d7b2fb1",
-			BundleID:    "bundle1",
+			BundleID:    Bundle1ID,
 			ContentType: models.ContentTypeDataset,
 			Metadata: models.Metadata{
 				DatasetID: "dataset1",
@@ -31,7 +35,7 @@ var (
 		},
 		{
 			ID:          "af8b48b0-d085-4ea7-8f12-524fa8e6b0a0",
-			BundleID:    "bundle1",
+			BundleID:    Bundle1ID,
 			ContentType: models.ContentTypeDataset,
 			Metadata: models.Metadata{
 				DatasetID: "dataset2",
@@ -385,6 +389,92 @@ func TestDeleteContentItem_Failure(t *testing.T) {
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err, ShouldNotEqual, apierrors.ErrContentItemNotFound)
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemState_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetBundleContentsForBundle is called with a valid bundle ID", func() {
+			contentItemID := contentsTestData[0].ID
+			state := models.StatePublished
+
+			err := mongodb.UpdateContentItemState(ctx, contentItemID, state.String())
+			contentItem := contentsTestData[0]
+
+			Convey("Then it updates the content item without error", func() {
+				So(err, ShouldBeNil)
+
+				contentItem, err = mongodb.GetContentItemByBundleIDAndContentItemID(ctx, contentItem.BundleID, contentItem.ID)
+
+				So(err, ShouldBeNil)
+				So(contentItem.State.String(), ShouldEqual, state.String())
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemState_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateContentItemState is called with an invalid content item ID", func() {
+			state := models.StatePublished
+
+			err := mongodb.UpdateContentItemState(ctx, "some-other-content-item-id", state.String())
+
+			Convey("Then an error should be returned", func() {
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+func TestGetBundleContentsForBundle(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When GetBundleContentsForBundle is called with a valid bundle ID", func() {
+			contentItems, err := mongodb.GetBundleContentsForBundle(ctx, Bundle1ID)
+
+			Convey("Then the expected content items are returned", func() {
+				So(err, ShouldBeNil)
+
+				So(contentItems, ShouldHaveLength, 2)
+
+				So(*contentItems, ShouldContain, *contentsTestData[0])
+				So(*contentItems, ShouldContain, *contentsTestData[1])
+			})
+		})
+
+		Convey("When GetBundleContentsForBundle is called with a not found bundle ID", func() {
+			contentItems, err := mongodb.GetBundleContentsForBundle(ctx, "not a real bundle ID")
+
+			Convey("Then no content items are returned", func() {
+				So(err, ShouldBeNil)
+
+				So(contentItems, ShouldHaveLength, 0)
 			})
 		})
 	})

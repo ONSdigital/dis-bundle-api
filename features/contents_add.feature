@@ -48,7 +48,26 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             }
         ]
         """
-    
+    And I have these dataset versions:
+        """
+        [
+            {
+                "id": "version-1",
+                "version": 1,
+                "dataset_id": "dataset1",
+                "edition": "edition1",
+                "state": "approved" 
+            },
+            {
+                "id": "version-2",
+                "version": 2,
+                "dataset_id": "dataset2",
+                "edition": "edition2",
+                "state": "approved" 
+            }
+        ]
+        """
+        
     Scenario: POST /bundles/{id}/contents successfully
         Given I am an admin user
         When I POST "/bundles/bundle-1/contents"

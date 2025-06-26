@@ -11,7 +11,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
-	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	"github.com/ONSdigital/log.go/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -88,6 +87,16 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 	collectionName := m.ActualCollectionName(config.BundlesCollection)
 	filter := bson.M{"id": id}
 
+	now := time.Now()
+
+	update.UpdatedAt = &now
+	bytes, err := json.Marshal(update)
+	if err != nil {
+		return nil, err
+	}
+
+	update.ETag = update.GenerateETag(&bytes)
+
 	updateData := bson.M{
 		"$set": bson.M{
 			"bundle_type":     update.BundleType,
@@ -100,10 +109,11 @@ func (m *Mongo) UpdateBundle(ctx context.Context, id string, update *models.Bund
 			"title":           update.Title,
 			"updated_at":      update.UpdatedAt,
 			"managed_by":      update.ManagedBy,
+			"e_tag":           update.ETag,
 		},
 	}
 
-	_, err := m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
+	_, err = m.Connection.Collection(collectionName).UpdateOne(ctx, filter, updateData)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +139,7 @@ func (m *Mongo) UpdateBundleETag(ctx context.Context, bundleID, email string) (*
 		return nil, err
 	}
 
-	etag := dpresponse.GenerateETag(bundleUpdateJSON, false)
+	etag := bundleUpdate.GenerateETag(&bundleUpdateJSON)
 
 	filter := bson.M{"id": bundleID}
 
