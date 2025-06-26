@@ -1818,7 +1818,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		Convey("Then the response should be 204 No Content", func() {
@@ -1835,7 +1835,7 @@ func TestDeleteBundle_Failure_UnableToParseToken(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		mockedDatastore := &storetest.StorerMock{}
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
 
 		Convey("When the request is made", func() {
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -1882,7 +1882,7 @@ func TestDeleteBundle_Failure_BundleNonExistent(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore})
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		Convey("Then the response should be 400 Not Found", func() {

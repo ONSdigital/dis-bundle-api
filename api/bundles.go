@@ -60,8 +60,8 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 
 func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	bundleID, logData := getBundleIDAndLogData(r)
+
 	bundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
 		handleErr(ctx, w, r, err, logData, RouteNameGetBundle)
@@ -148,6 +148,17 @@ func getBundleIDAndLogData(r *http.Request) (string, log.Data) {
 	bundleID := vars[RouteVariableBundleID]
 	logData := log.Data{RouteVariableBundleID: bundleID}
 	return bundleID, logData
+}
+
+func getBundleIDAndContentIDAndLogData(r *http.Request) (bundleID, contentID string, logData log.Data) {
+	vars := mux.Vars(r)
+	bundleID = vars[RouteVariableBundleID]
+	contentID = vars[RouteVariableContentID]
+	logData = log.Data{
+		RouteVariableBundleID:  bundleID,
+		RouteVariableContentID: contentID,
+	}
+	return bundleID, contentID, logData
 }
 
 func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r *http.Request, bundle *models.Bundle, logData log.Data) []byte {
