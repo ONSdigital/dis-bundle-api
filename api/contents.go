@@ -279,7 +279,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionContentItemAlreadyPublished,
+			Description: apierrors.ErrorDescriptionAlreadyPublished,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return

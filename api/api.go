@@ -43,6 +43,10 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles/{bundle-id}",
 		authMiddleware.Require("bundles:read", api.getBundle),
 	)
+	api.delete(
+		"/bundles/{bundle-id}",
+		authMiddleware.Require("bundles:delete", api.deleteBundle),
+	)
 	api.get(
 		"/bundle-events",
 		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleEvents)),

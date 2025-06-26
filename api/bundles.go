@@ -232,3 +232,32 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		log.Error(ctx, "createBundle: error writing response body", err)
 	}
 }
+
+func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	vars := mux.Vars(r)
+	bundleID := vars["bundle-id"]
+	logData := log.Data{"bundle-id": bundleID}
+
+	var entityData *permSDK.EntityData
+	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to parse auth token", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		return
+	}
+
+	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, entityData.UserID)
+	if err != nil {
+		log.Error(ctx, "deleteBundle endpoint: failed to delete bundle", err, logData)
+		utils.HandleBundleAPIErr(w, r, statusCode, errObject)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
