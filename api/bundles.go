@@ -16,6 +16,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	BundleIDPathParam  = "bundle-id"
+	ContentIDPathParam = "content-id"
+)
+
 func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, offset int) (successResult *models.PaginationSuccessResult[models.Bundle], errorResult *models.ErrorResult[models.Error]) {
 	ctx := r.Context()
 
@@ -48,8 +53,8 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
-	logData := log.Data{"bundle-id": bundleID}
+	bundleID := vars[BundleIDPathParam]
+	logData := log.Data{BundleIDPathParam: bundleID}
 
 	bundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
@@ -236,13 +241,13 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
-	logData := log.Data{"bundle-id": bundleID}
+	bundleID := vars[BundleIDPathParam]
+	logData := log.Data{BundleIDPathParam: bundleID}
 
 	var entityData *permSDK.EntityData
 	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
-		log.Error(ctx, "createBundle: failed to parse auth token", err)
+		log.Error(ctx, "deleteBundle: failed to parse auth token", err)
 		code := models.CodeInternalServerError
 		e := &models.Error{
 			Code:        &code,

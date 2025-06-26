@@ -21,9 +21,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
+	bundleID := vars[BundleIDPathParam]
 
-	logdata := log.Data{"bundle_id": bundleID}
+	logdata := log.Data{BundleIDPathParam: bundleID}
 
 	contentItem, err := models.CreateContentItem(r.Body)
 	if err != nil {
@@ -247,10 +247,10 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
-	contentID := vars["content-id"]
+	bundleID := vars[BundleIDPathParam]
+	contentID := vars[ContentIDPathParam]
 
-	logdata := log.Data{"bundle_id": bundleID, "content_id": contentID}
+	logdata := log.Data{BundleIDPathParam: bundleID, ContentIDPathParam: contentID}
 
 	contentItem, err := api.stateMachineBundleAPI.Datastore.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentID)
 	if err != nil {
@@ -360,8 +360,8 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 	// Fetch bundle ID
 	ctx := r.Context()
 	vars := mux.Vars(r)
-	bundleID := vars["bundle-id"]
-	logdata := log.Data{"bundle_id": bundleID}
+	bundleID := vars[BundleIDPathParam]
+	logdata := log.Data{BundleIDPathParam: bundleID}
 
 	// Check if the bundle exists
 	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
