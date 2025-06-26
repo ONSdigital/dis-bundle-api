@@ -50,6 +50,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 //				panic("mock out the CreateContentItem method")
 //			},
+//			DeleteBundleFunc: func(ctx context.Context, id string) error {
+//				panic("mock out the DeleteBundle method")
+//			},
 //			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
 //				panic("mock out the DeleteContentItem method")
 //			},
@@ -61,6 +64,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			},
 //			ListBundleContentsFunc: func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error) {
 //				panic("mock out the ListBundleContents method")
+//			},
+//			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+//				panic("mock out the ListBundleContentsWithoutLimit method")
 //			},
 //			ListBundleEventsFunc: func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error) {
 //				panic("mock out the ListBundleEvents method")
@@ -105,6 +111,9 @@ type MongoDBMock struct {
 	// CreateContentItemFunc mocks the CreateContentItem method.
 	CreateContentItemFunc func(ctx context.Context, contentItem *models.ContentItem) error
 
+	// DeleteBundleFunc mocks the DeleteBundle method.
+	DeleteBundleFunc func(ctx context.Context, id string) error
+
 	// DeleteContentItemFunc mocks the DeleteContentItem method.
 	DeleteContentItemFunc func(ctx context.Context, contentItemID string) error
 
@@ -116,6 +125,9 @@ type MongoDBMock struct {
 
 	// ListBundleContentsFunc mocks the ListBundleContents method.
 	ListBundleContentsFunc func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error)
+
+	// ListBundleContentsWithoutLimitFunc mocks the ListBundleContentsWithoutLimit method.
+	ListBundleContentsWithoutLimitFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error)
 
 	// ListBundleEventsFunc mocks the ListBundleEvents method.
 	ListBundleEventsFunc func(ctx context.Context, offset int, limit int, bundleID string, after *time.Time, before *time.Time) ([]*models.Event, int, error)
@@ -193,6 +205,13 @@ type MongoDBMock struct {
 			// ContentItem is the contentItem argument value.
 			ContentItem *models.ContentItem
 		}
+		// DeleteBundle holds details about calls to the DeleteBundle method.
+		DeleteBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID string
+		}
 		// DeleteContentItem holds details about calls to the DeleteContentItem method.
 		DeleteContentItem []struct {
 			// Ctx is the ctx argument value.
@@ -226,6 +245,13 @@ type MongoDBMock struct {
 			Offset int
 			// Limit is the limit argument value.
 			Limit int
+		}
+		// ListBundleContentsWithoutLimit holds details about calls to the ListBundleContentsWithoutLimit method.
+		ListBundleContentsWithoutLimit []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
 		}
 		// ListBundleEvents holds details about calls to the ListBundleEvents method.
 		ListBundleEvents []struct {
@@ -272,10 +298,12 @@ type MongoDBMock struct {
 	lockCreateBundle                                  sync.RWMutex
 	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
+	lockDeleteBundle                                  sync.RWMutex
 	lockDeleteContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
 	lockGetContentItemByBundleIDAndContentItemID      sync.RWMutex
 	lockListBundleContents                            sync.RWMutex
+	lockListBundleContentsWithoutLimit                sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
@@ -609,6 +637,42 @@ func (mock *MongoDBMock) CreateContentItemCalls() []struct {
 	return calls
 }
 
+// DeleteBundle calls DeleteBundleFunc.
+func (mock *MongoDBMock) DeleteBundle(ctx context.Context, id string) error {
+	if mock.DeleteBundleFunc == nil {
+		panic("MongoDBMock.DeleteBundleFunc: method is nil but MongoDB.DeleteBundle was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  string
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteBundle.Lock()
+	mock.calls.DeleteBundle = append(mock.calls.DeleteBundle, callInfo)
+	mock.lockDeleteBundle.Unlock()
+	return mock.DeleteBundleFunc(ctx, id)
+}
+
+// DeleteBundleCalls gets all the calls that were made to DeleteBundle.
+// Check the length with:
+//
+//	len(mockedMongoDB.DeleteBundleCalls())
+func (mock *MongoDBMock) DeleteBundleCalls() []struct {
+	Ctx context.Context
+	ID  string
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  string
+	}
+	mock.lockDeleteBundle.RLock()
+	calls = mock.calls.DeleteBundle
+	mock.lockDeleteBundle.RUnlock()
+	return calls
+}
+
 // DeleteContentItem calls DeleteContentItemFunc.
 func (mock *MongoDBMock) DeleteContentItem(ctx context.Context, contentItemID string) error {
 	if mock.DeleteContentItemFunc == nil {
@@ -762,6 +826,42 @@ func (mock *MongoDBMock) ListBundleContentsCalls() []struct {
 	mock.lockListBundleContents.RLock()
 	calls = mock.calls.ListBundleContents
 	mock.lockListBundleContents.RUnlock()
+	return calls
+}
+
+// ListBundleContentsWithoutLimit calls ListBundleContentsWithoutLimitFunc.
+func (mock *MongoDBMock) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, int, error) {
+	if mock.ListBundleContentsWithoutLimitFunc == nil {
+		panic("MongoDBMock.ListBundleContentsWithoutLimitFunc: method is nil but MongoDB.ListBundleContentsWithoutLimit was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockListBundleContentsWithoutLimit.Lock()
+	mock.calls.ListBundleContentsWithoutLimit = append(mock.calls.ListBundleContentsWithoutLimit, callInfo)
+	mock.lockListBundleContentsWithoutLimit.Unlock()
+	return mock.ListBundleContentsWithoutLimitFunc(ctx, bundleID)
+}
+
+// ListBundleContentsWithoutLimitCalls gets all the calls that were made to ListBundleContentsWithoutLimit.
+// Check the length with:
+//
+//	len(mockedMongoDB.ListBundleContentsWithoutLimitCalls())
+func (mock *MongoDBMock) ListBundleContentsWithoutLimitCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockListBundleContentsWithoutLimit.RLock()
+	calls = mock.calls.ListBundleContentsWithoutLimit
+	mock.lockListBundleContentsWithoutLimit.RUnlock()
 	return calls
 }
 
