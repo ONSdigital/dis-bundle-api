@@ -193,7 +193,6 @@ func (m *Mongo) CheckBundleExistsByTitleUpdate(ctx context.Context, title, exclu
 	}
 
 	return count > 0, nil
-
 }
 
 // CheckBundleExistsByTitle checks if a bundle exists by its title
