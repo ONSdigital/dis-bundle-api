@@ -311,6 +311,8 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(returnedBundle.Title, ShouldEqual, "New Bundle")
 				So(returnedBundle.ManagedBy, ShouldEqual, models.ManagedByWagtail)
 				So(returnedBundle.ETag, ShouldEqual, "some-etag")
+				So(returnedBundle.CreatedAt, ShouldNotBeNil)
+				So(returnedBundle.UpdatedAt, ShouldNotBeNil)
 			})
 		})
 	})
