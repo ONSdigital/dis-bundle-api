@@ -58,7 +58,6 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:create", api.postBundleContents),
 	)
-
 	api.delete(
 		"/bundles/{bundle-id}/contents/{content-id}",
 		authMiddleware.Require("bundles:delete", api.deleteContentItem),
@@ -67,6 +66,10 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 	// put
 	api.put("/bundles/{bundle-id}/state",
 		authMiddleware.Require("bundles:update", api.putBundleState))
+
+	// put
+	api.put("/bundles/{bundle-id}",
+		authMiddleware.Require("bundles:update", api.putBundle))
 
 	return api
 }
@@ -81,12 +84,12 @@ func (api *BundleAPI) post(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodPost)
 }
 
-// delete registers a DELETE http.HandlerFunc.
-func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
-	api.Router.HandleFunc(path, handler).Methods(http.MethodDelete)
-}
-
 // put registers a PUT http.HandlerFunc.
 func (api *BundleAPI) put(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodPut)
+}
+
+// delete registers a DELETE http.HandlerFunc.
+func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
+	api.Router.HandleFunc(path, handler).Methods(http.MethodDelete)
 }

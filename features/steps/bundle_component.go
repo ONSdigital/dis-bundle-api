@@ -26,6 +26,10 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+const (
+	datasetNotFound = "dataset-not-found"
+)
+
 var mockDatasetVersions = []*datasetAPIModels.Version{
 	{ID: "1"},
 	{ID: "2"},
@@ -188,7 +192,7 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-			if datasetID == "dataset-not-found" {
+			if datasetID == datasetNotFound {
 				return datasetAPIModels.Version{}, errors.New("dataset not found")
 			}
 			if editionID == "edition-not-found" {

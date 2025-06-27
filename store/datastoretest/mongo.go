@@ -32,6 +32,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
 //				panic("mock out the CheckBundleExistsByTitle method")
 //			},
+//			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title string, excludeID string) (bool, error) {
+//				panic("mock out the CheckBundleExistsByTitleUpdate method")
+//			},
 //			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error) {
 //				panic("mock out the CheckContentItemExistsByDatasetEditionVersion method")
 //			},
@@ -62,6 +65,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error) {
 //				panic("mock out the GetContentItemByBundleIDAndContentItemID method")
 //			},
+//			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+//				panic("mock out the GetContentItemsByBundleID method")
+//			},
 //			ListBundleContentsFunc: func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error) {
 //				panic("mock out the ListBundleContents method")
 //			},
@@ -76,6 +82,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			},
 //			UpdateBundleETagFunc: func(ctx context.Context, bundleID string, email string) (*models.Bundle, error) {
 //				panic("mock out the UpdateBundleETag method")
+//			},
+//			UpdateContentItemDatasetInfoFunc: func(ctx context.Context, contentItemID string, title string, state string) error {
+//				panic("mock out the UpdateContentItemDatasetInfo method")
 //			},
 //			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID string, state string) error {
 //				panic("mock out the UpdateContentItemState method")
@@ -95,6 +104,9 @@ type MongoDBMock struct {
 
 	// CheckBundleExistsByTitleFunc mocks the CheckBundleExistsByTitle method.
 	CheckBundleExistsByTitleFunc func(ctx context.Context, title string) (bool, error)
+
+	// CheckBundleExistsByTitleUpdateFunc mocks the CheckBundleExistsByTitleUpdate method.
+	CheckBundleExistsByTitleUpdateFunc func(ctx context.Context, title string, excludeID string) (bool, error)
 
 	// CheckContentItemExistsByDatasetEditionVersionFunc mocks the CheckContentItemExistsByDatasetEditionVersion method.
 	CheckContentItemExistsByDatasetEditionVersionFunc func(ctx context.Context, datasetID string, editionID string, versionID int) (bool, error)
@@ -126,6 +138,9 @@ type MongoDBMock struct {
 	// GetContentItemByBundleIDAndContentItemIDFunc mocks the GetContentItemByBundleIDAndContentItemID method.
 	GetContentItemByBundleIDAndContentItemIDFunc func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error)
 
+	// GetContentItemsByBundleIDFunc mocks the GetContentItemsByBundleID method.
+	GetContentItemsByBundleIDFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
+
 	// ListBundleContentsFunc mocks the ListBundleContents method.
 	ListBundleContentsFunc func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error)
 
@@ -140,6 +155,9 @@ type MongoDBMock struct {
 
 	// UpdateBundleETagFunc mocks the UpdateBundleETag method.
 	UpdateBundleETagFunc func(ctx context.Context, bundleID string, email string) (*models.Bundle, error)
+
+	// UpdateContentItemDatasetInfoFunc mocks the UpdateContentItemDatasetInfo method.
+	UpdateContentItemDatasetInfoFunc func(ctx context.Context, contentItemID string, title string, state string) error
 
 	// UpdateContentItemStateFunc mocks the UpdateContentItemState method.
 	UpdateContentItemStateFunc func(ctx context.Context, contentItemID string, state string) error
@@ -166,6 +184,15 @@ type MongoDBMock struct {
 			Ctx context.Context
 			// Title is the title argument value.
 			Title string
+		}
+		// CheckBundleExistsByTitleUpdate holds details about calls to the CheckBundleExistsByTitleUpdate method.
+		CheckBundleExistsByTitleUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Title is the title argument value.
+			Title string
+			// ExcludeID is the excludeID argument value.
+			ExcludeID string
 		}
 		// CheckContentItemExistsByDatasetEditionVersion holds details about calls to the CheckContentItemExistsByDatasetEditionVersion method.
 		CheckContentItemExistsByDatasetEditionVersion []struct {
@@ -241,6 +268,13 @@ type MongoDBMock struct {
 			// ContentItemID is the contentItemID argument value.
 			ContentItemID string
 		}
+		// GetContentItemsByBundleID holds details about calls to the GetContentItemsByBundleID method.
+		GetContentItemsByBundleID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
 		// ListBundleContents holds details about calls to the ListBundleContents method.
 		ListBundleContents []struct {
 			// Ctx is the ctx argument value.
@@ -296,6 +330,17 @@ type MongoDBMock struct {
 			// Email is the email argument value.
 			Email string
 		}
+		// UpdateContentItemDatasetInfo holds details about calls to the UpdateContentItemDatasetInfo method.
+		UpdateContentItemDatasetInfo []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ContentItemID is the contentItemID argument value.
+			ContentItemID string
+			// Title is the title argument value.
+			Title string
+			// State is the state argument value.
+			State string
+		}
 		// UpdateContentItemState holds details about calls to the UpdateContentItemState method.
 		UpdateContentItemState []struct {
 			// Ctx is the ctx argument value.
@@ -309,6 +354,7 @@ type MongoDBMock struct {
 	lockCheckAllBundleContentsAreApproved             sync.RWMutex
 	lockCheckBundleExists                             sync.RWMutex
 	lockCheckBundleExistsByTitle                      sync.RWMutex
+	lockCheckBundleExistsByTitleUpdate                sync.RWMutex
 	lockCheckContentItemExistsByDatasetEditionVersion sync.RWMutex
 	lockChecker                                       sync.RWMutex
 	lockClose                                         sync.RWMutex
@@ -319,11 +365,13 @@ type MongoDBMock struct {
 	lockGetBundle                                     sync.RWMutex
 	lockGetBundleContentsForBundle                    sync.RWMutex
 	lockGetContentItemByBundleIDAndContentItemID      sync.RWMutex
+	lockGetContentItemsByBundleID                     sync.RWMutex
 	lockListBundleContents                            sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
 	lockUpdateBundle                                  sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
+	lockUpdateContentItemDatasetInfo                  sync.RWMutex
 	lockUpdateContentItemState                        sync.RWMutex
 }
 
@@ -432,6 +480,46 @@ func (mock *MongoDBMock) CheckBundleExistsByTitleCalls() []struct {
 	mock.lockCheckBundleExistsByTitle.RLock()
 	calls = mock.calls.CheckBundleExistsByTitle
 	mock.lockCheckBundleExistsByTitle.RUnlock()
+	return calls
+}
+
+// CheckBundleExistsByTitleUpdate calls CheckBundleExistsByTitleUpdateFunc.
+func (mock *MongoDBMock) CheckBundleExistsByTitleUpdate(ctx context.Context, title string, excludeID string) (bool, error) {
+	if mock.CheckBundleExistsByTitleUpdateFunc == nil {
+		panic("MongoDBMock.CheckBundleExistsByTitleUpdateFunc: method is nil but MongoDB.CheckBundleExistsByTitleUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Title     string
+		ExcludeID string
+	}{
+		Ctx:       ctx,
+		Title:     title,
+		ExcludeID: excludeID,
+	}
+	mock.lockCheckBundleExistsByTitleUpdate.Lock()
+	mock.calls.CheckBundleExistsByTitleUpdate = append(mock.calls.CheckBundleExistsByTitleUpdate, callInfo)
+	mock.lockCheckBundleExistsByTitleUpdate.Unlock()
+	return mock.CheckBundleExistsByTitleUpdateFunc(ctx, title, excludeID)
+}
+
+// CheckBundleExistsByTitleUpdateCalls gets all the calls that were made to CheckBundleExistsByTitleUpdate.
+// Check the length with:
+//
+//	len(mockedMongoDB.CheckBundleExistsByTitleUpdateCalls())
+func (mock *MongoDBMock) CheckBundleExistsByTitleUpdateCalls() []struct {
+	Ctx       context.Context
+	Title     string
+	ExcludeID string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Title     string
+		ExcludeID string
+	}
+	mock.lockCheckBundleExistsByTitleUpdate.RLock()
+	calls = mock.calls.CheckBundleExistsByTitleUpdate
+	mock.lockCheckBundleExistsByTitleUpdate.RUnlock()
 	return calls
 }
 
@@ -803,6 +891,42 @@ func (mock *MongoDBMock) GetContentItemByBundleIDAndContentItemIDCalls() []struc
 	return calls
 }
 
+// GetContentItemsByBundleID calls GetContentItemsByBundleIDFunc.
+func (mock *MongoDBMock) GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	if mock.GetContentItemsByBundleIDFunc == nil {
+		panic("MongoDBMock.GetContentItemsByBundleIDFunc: method is nil but MongoDB.GetContentItemsByBundleID was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockGetContentItemsByBundleID.Lock()
+	mock.calls.GetContentItemsByBundleID = append(mock.calls.GetContentItemsByBundleID, callInfo)
+	mock.lockGetContentItemsByBundleID.Unlock()
+	return mock.GetContentItemsByBundleIDFunc(ctx, bundleID)
+}
+
+// GetContentItemsByBundleIDCalls gets all the calls that were made to GetContentItemsByBundleID.
+// Check the length with:
+//
+//	len(mockedMongoDB.GetContentItemsByBundleIDCalls())
+func (mock *MongoDBMock) GetContentItemsByBundleIDCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockGetContentItemsByBundleID.RLock()
+	calls = mock.calls.GetContentItemsByBundleID
+	mock.lockGetContentItemsByBundleID.RUnlock()
+	return calls
+}
+
 // ListBundleContents calls ListBundleContentsFunc.
 func (mock *MongoDBMock) ListBundleContents(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error) {
 	if mock.ListBundleContentsFunc == nil {
@@ -1020,6 +1144,50 @@ func (mock *MongoDBMock) UpdateBundleETagCalls() []struct {
 	mock.lockUpdateBundleETag.RLock()
 	calls = mock.calls.UpdateBundleETag
 	mock.lockUpdateBundleETag.RUnlock()
+	return calls
+}
+
+// UpdateContentItemDatasetInfo calls UpdateContentItemDatasetInfoFunc.
+func (mock *MongoDBMock) UpdateContentItemDatasetInfo(ctx context.Context, contentItemID string, title string, state string) error {
+	if mock.UpdateContentItemDatasetInfoFunc == nil {
+		panic("MongoDBMock.UpdateContentItemDatasetInfoFunc: method is nil but MongoDB.UpdateContentItemDatasetInfo was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ContentItemID string
+		Title         string
+		State         string
+	}{
+		Ctx:           ctx,
+		ContentItemID: contentItemID,
+		Title:         title,
+		State:         state,
+	}
+	mock.lockUpdateContentItemDatasetInfo.Lock()
+	mock.calls.UpdateContentItemDatasetInfo = append(mock.calls.UpdateContentItemDatasetInfo, callInfo)
+	mock.lockUpdateContentItemDatasetInfo.Unlock()
+	return mock.UpdateContentItemDatasetInfoFunc(ctx, contentItemID, title, state)
+}
+
+// UpdateContentItemDatasetInfoCalls gets all the calls that were made to UpdateContentItemDatasetInfo.
+// Check the length with:
+//
+//	len(mockedMongoDB.UpdateContentItemDatasetInfoCalls())
+func (mock *MongoDBMock) UpdateContentItemDatasetInfoCalls() []struct {
+	Ctx           context.Context
+	ContentItemID string
+	Title         string
+	State         string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ContentItemID string
+		Title         string
+		State         string
+	}
+	mock.lockUpdateContentItemDatasetInfo.RLock()
+	calls = mock.calls.UpdateContentItemDatasetInfo
+	mock.lockUpdateContentItemDatasetInfo.RUnlock()
 	return calls
 }
 

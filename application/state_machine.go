@@ -183,9 +183,9 @@ func (*StateMachine) transitionContentItem(ctx context.Context, bundle *models.B
 		return apierrors.ErrInvalidBundleState
 	}
 
-	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.ServiceToken); err != nil {
-		return err
-	}
+	// if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.ServiceToken); err != nil {
+	// 	return err
+	// }
 
 	if err := stateMachineBundleAPI.Datastore.UpdateContentItemState(ctx, contentItem.ID, targetState.String()); err != nil {
 		return err

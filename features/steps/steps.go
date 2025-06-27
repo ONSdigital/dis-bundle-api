@@ -36,6 +36,8 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+	ctx.Step(`^I set the header "([^"]*)" to "([^"]*)"$`, c.iSetTheHeaderTo)
+	ctx.Step(`^the response should contain with dynamic timestamp:$`, c.theResponseShouldContainWithDynamicTimestamp)
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
@@ -268,6 +270,50 @@ func (c *BundleComponent) theResponseShouldContain(expectedJSON *godog.DocString
 	return c.apiFeature.IShouldReceiveTheFollowingJSONResponse(expectedJSON)
 }
 
+func (c *BundleComponent) iSetTheHeaderTo(headerName, headerValue string) error {
+	return c.apiFeature.ISetTheHeaderTo(headerName, headerValue)
+}
+
+func (c *BundleComponent) theResponseShouldContainWithDynamicTimestamp(expectedJSON *godog.DocString) error {
+	b, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
+	if err != nil {
+		return fmt.Errorf("reading body: %w", err)
+	}
+	c.apiFeature.HTTPResponse.Body = io.NopCloser(bytes.NewReader(b))
+
+	var actual, expected map[string]interface{}
+	if err := json.Unmarshal(b, &actual); err != nil {
+		return fmt.Errorf("invalid actual JSON: %w", err)
+	}
+	if err := json.Unmarshal([]byte(expectedJSON.Content), &expected); err != nil {
+		return fmt.Errorf("invalid expected JSON: %w", err)
+	}
+
+	if expectedTimestamp, ok := expected["updated_at"].(string); ok && expectedTimestamp == "{{DYNAMIC_TIMESTAMP}}" {
+		actualTimestampStr, ok := actual["updated_at"].(string)
+		if !ok {
+			return fmt.Errorf("missing or non-string updated_at in actual")
+		}
+		parsedTimestamp, err := time.Parse(time.RFC3339, actualTimestampStr)
+		if err != nil {
+			return fmt.Errorf("updated_at is not a valid RFC3339 timestamp: %w", err)
+		}
+		timestampAge := time.Since(parsedTimestamp)
+		if timestampAge < 0 || timestampAge > 10*time.Second {
+			return fmt.Errorf("updated_at %v is not within 10s of now", parsedTimestamp)
+		}
+
+		delete(actual, "updated_at")
+		delete(expected, "updated_at")
+	}
+
+	got, _ := json.Marshal(actual)
+	want, _ := json.Marshal(expected)
+	if !bytes.Equal(got, want) {
+		return fmt.Errorf("response mismatch:\nExpected: %s\nActual:   %s", want, got)
+	}
+	return nil
+}
 func (c *BundleComponent) iHaveTheseDatasetVersions(contentItemsJSON *godog.DocString) error {
 	versions := []*datasetAPIModels.Version{}
 

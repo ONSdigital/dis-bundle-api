@@ -71,6 +71,22 @@ func (m *Mongo) CheckContentItemExistsByDatasetEditionVersion(ctx context.Contex
 	return count > 0, nil
 }
 
+// GetContentItemsByBundleID retrieves all content items for a specific bundle
+func (m *Mongo) GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	var results []*models.ContentItem
+
+	filter := bson.M{"bundle_id": bundleID}
+
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		Find(ctx, filter, &results)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
 // GetBundleContentsForBundle retrieves all ContentItems for the specified bundle
 func (m *Mongo) GetBundleContentsForBundle(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
 	filter := bson.M{
@@ -84,6 +100,23 @@ func (m *Mongo) GetBundleContentsForBundle(ctx context.Context, bundleID string)
 	}
 
 	return &contents, nil
+}
+
+// UpdateContentItemDatasetInfo updates a content item with dataset title and state
+func (m *Mongo) UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error {
+	filter := bson.M{"id": contentItemID}
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"metadata.title": title,
+			"state":          state,
+		},
+	}
+
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		UpdateOne(ctx, filter, updateData)
+
+	return err
 }
 
 // DeleteContentItem removes a content item by its ID

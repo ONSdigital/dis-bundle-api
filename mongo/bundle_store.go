@@ -72,7 +72,6 @@ func buildGetBundleQuery(bundleID string) bson.M {
 func (m *Mongo) CreateBundle(ctx context.Context, bundle *models.Bundle) error {
 	now := time.Now()
 	bundle.CreatedAt = &now
-	bundle.UpdatedAt = &now
 	collectionName := m.ActualCollectionName(config.BundlesCollection)
 
 	_, err := m.Connection.Collection(collectionName).InsertOne(ctx, bundle)
@@ -180,6 +179,21 @@ func (m *Mongo) CheckBundleExists(ctx context.Context, bundleID string) (bool, e
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (m *Mongo) CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error) {
+	filter := bson.M{
+		"title": title,
+		"id":    bson.M{"$ne": excludeID},
+	}
+
+	count, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Count(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+
 }
 
 // CheckBundleExistsByTitle checks if a bundle exists by its title

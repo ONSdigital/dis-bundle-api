@@ -129,6 +129,22 @@ func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *mo
 	return s.Datastore.CreateBundleEvent(ctx, event)
 }
 
+func (s *StateMachineBundleAPI) UpdateBundle(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+	return s.Datastore.UpdateBundle(ctx, bundleID, bundle)
+}
+
+func (s *StateMachineBundleAPI) CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error) {
+	return s.Datastore.CheckBundleExistsByTitleUpdate(ctx, title, excludeID)
+}
+
+func (s *StateMachineBundleAPI) GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	return s.Datastore.GetContentItemsByBundleID(ctx, bundleID)
+}
+
+func (s *StateMachineBundleAPI) UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error {
+	return s.Datastore.UpdateContentItemDatasetInfo(ctx, contentItemID, title, state)
+}
+
 func (s *StateMachineBundleAPI) GetBundleAndValidateETag(ctx context.Context, bundleID, suppliedETag string) (*models.Bundle, error) {
 	bundle, err := s.Datastore.GetBundle(ctx, bundleID)
 

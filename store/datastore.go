@@ -41,6 +41,9 @@ type dataMongoDB interface {
 	// Events
 	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
+	CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error)
+	GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
+	UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error
 
 	// Other
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
@@ -110,6 +113,17 @@ func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event)
 	return ds.Backend.CreateBundleEvent(ctx, event)
 }
 
+func (ds *Datastore) CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error) {
+	return ds.Backend.CheckBundleExistsByTitleUpdate(ctx, title, excludeID)
+}
+
+func (ds *Datastore) GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	return ds.Backend.GetContentItemsByBundleID(ctx, bundleID)
+}
+
+func (ds *Datastore) UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error {
+	return ds.Backend.UpdateContentItemDatasetInfo(ctx, contentItemID, title, state)
+}
 func (ds *Datastore) GetBundleContentsForBundle(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
 	return ds.Backend.GetBundleContentsForBundle(ctx, bundleID)
 }
