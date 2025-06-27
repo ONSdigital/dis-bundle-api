@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, error) {
-	if err := mongo.Connection.DropDatabase(ctx); err != nil {
+func setupBundleTestData(ctx context.Context, mongodb *Mongo) ([]*models.Bundle, error) {
+	if err := mongodb.Connection.DropDatabase(ctx); err != nil {
 		return nil, err
 	}
 
@@ -62,8 +63,8 @@ func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, e
 		},
 	}
 
-	for _, b := range bundles {
-		if err := mongo.CreateBundle(ctx, b); err != nil {
+	for _, bundle := range bundles {
+		if _, err := mongodb.Connection.Collection(mongodb.ActualCollectionName(config.BundlesCollection)).InsertOne(ctx, bundle); err != nil {
 			return nil, err
 		}
 	}
@@ -310,6 +311,8 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(returnedBundle.Title, ShouldEqual, "New Bundle")
 				So(returnedBundle.ManagedBy, ShouldEqual, models.ManagedByWagtail)
 				So(returnedBundle.ETag, ShouldEqual, "some-etag")
+				So(returnedBundle.CreatedAt, ShouldNotBeNil)
+				So(returnedBundle.UpdatedAt, ShouldNotBeNil)
 			})
 		})
 	})
