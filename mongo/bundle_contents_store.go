@@ -142,13 +142,19 @@ func (m *Mongo) ListBundleContents(ctx context.Context, bundleID string, offset,
 	return results, totalCount, nil
 }
 
-func (m *Mongo) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error) {
+func (m *Mongo) ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error) {
 	var results []*models.ContentItem
 
-	filter, sort := buildListBundleContentsQuery(bundleID)
+	filter := bson.M{
+		"bundle_id": bundleID,
+	}
+
+	projection := bson.M{
+		"id": 1,
+	}
 
 	_, err = m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
-		Find(ctx, filter, &results, mongodriver.Sort(sort))
+		Find(ctx, filter, &results, mongodriver.Projection(projection))
 
 	if err != nil {
 		return nil, err

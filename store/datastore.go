@@ -31,6 +31,8 @@ type dataMongoDB interface {
 	UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error)
 
 	// Content items
+	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
+	ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error)
 	GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error)
 	CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error
 	CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error)
@@ -40,8 +42,6 @@ type dataMongoDB interface {
 	UpdateContentItemState(ctx context.Context, contentItemID, state string) error
 
 	// Events
-	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
-	ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error)
 	CreateBundleEvent(ctx context.Context, event *models.Event) error
 
 	// Other
@@ -132,6 +132,6 @@ func (ds *Datastore) ListBundleContents(ctx context.Context, bundleID string, of
 	return ds.Backend.ListBundleContents(ctx, bundleID, offset, limit)
 }
 
-func (ds *Datastore) ListBundleContentsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
-	return ds.Backend.ListBundleContentsWithoutLimit(ctx, bundleID)
+func (ds *Datastore) ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	return ds.Backend.ListBundleContentIDsWithoutLimit(ctx, bundleID)
 }

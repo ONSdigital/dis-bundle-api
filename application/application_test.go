@@ -1129,7 +1129,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 				}
 				return nil, apierrors.ErrBundleNotFound
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{
 						ID: "content-1",
@@ -1267,7 +1267,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 	})
 }
 
-func TestDeleteBundle_Failure_ListBundleContents(t *testing.T) {
+func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 
@@ -1278,7 +1278,7 @@ func TestDeleteBundle_Failure_ListBundleContents(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return nil, errors.New("failed to list bundle contents")
 			},
 		}
@@ -1320,7 +1320,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{ID: "content-1"},
 					{ID: "content-2"},
@@ -1368,7 +1368,7 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{ID: "content-1"},
 				}, nil
@@ -1418,7 +1418,7 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
@@ -1466,7 +1466,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
