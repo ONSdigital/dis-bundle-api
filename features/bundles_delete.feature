@@ -1,11 +1,11 @@
-Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/contents/{content-id}
+Feature: Delete a bundle and all its associated content items - DELETE /bundles/{bundle-id}
 
     Background:
         Given I have these bundles:
         """
         [
             {
-                "id": "bundle-1",
+                "id": "bundle-with-content-items",
                 "bundle_type": "SCHEDULED",
                 "created_by": {
                     "email": "publisher@ons.gov.uk"
@@ -21,13 +21,35 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 ],
                 "scheduled_at": "2025-01-03T07:00:00Z",
                 "state": "DRAFT",
-                "title": "bundle-1",
+                "title": "bundle-with-content-items",
                 "updated_at": "2025-01-02T07:00:00Z",
                 "managed_by": "WAGTAIL",
                 "e_tag": "original-etag"
             },
             {
-                "id": "bundle-2",
+                "id": "bundle-without-content-items",
+                "bundle_type": "SCHEDULED",
+                "created_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "created_at": "2025-01-04T07:00:00Z",
+                "last_updated_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "preview_teams": [
+                    {
+                        "id": "890m231k-98df-11ec-b909-0242ac120002"
+                    }
+                ],
+                "scheduled_at": "2025-01-06T07:00:00Z",
+                "state": "DRAFT",
+                "title": "bundle-without-content-items",
+                "updated_at": "2025-01-06T07:00:00Z",
+                "managed_by": "WAGTAIL",
+                "e_tag": "original-etag"
+            },
+            {
+                "id": "bundle-published",
                 "bundle_type": "SCHEDULED",
                 "created_by": {
                     "email": "publisher@ons.gov.uk"
@@ -43,7 +65,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 ],
                 "scheduled_at": "2025-01-06T07:00:00Z",
                 "state": "PUBLISHED",
-                "title": "bundle-1",
+                "title": "bundle-published",
                 "updated_at": "2025-01-06T07:00:00Z",
                 "managed_by": "WAGTAIL",
                 "e_tag": "original-etag"
@@ -55,7 +77,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         [
             {
                 "id": "content-item-1",
-                "bundle_id": "bundle-1",
+                "bundle_id": "bundle-with-content-items",
                 "content_type": "DATASET",
                 "metadata": {
                     "dataset_id": "dataset1",
@@ -70,7 +92,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
             },
             {
                 "id": "content-item-2",
-                "bundle_id": "bundle-2",
+                "bundle_id": "bundle-with-content-items",
                 "content_type": "DATASET",
                 "metadata": {
                     "dataset_id": "dataset2",
@@ -81,21 +103,28 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 "links": {
                     "edit": "edit/link",
                     "preview": "preview/link"
-                },
-                "state": "PUBLISHED"
+                }
             }
         ]
         """
 
-    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} successfully
+    Scenario: DELETE /bundles/{bundle-id} successfully with a bundle that has contents
         Given I am an admin user
-        When I DELETE "/bundles/bundle-1/contents/content-item-1"
+        When I DELETE "/bundles/bundle-with-content-items"
         Then the HTTP status code should be "204"
         And the record with id "content-item-1" should not exist in the "bundle_contents" collection
+        And the record with id "content-item-2" should not exist in the "bundle_contents" collection
+        And the record with id "bundle-with-content-items" should not exist in the "bundles" collection
     
-    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with non-existent bundle
+    Scenario: DELETE /bundles/{bundle-id} successfully with a bundle that has no contents
         Given I am an admin user
-        When I DELETE "/bundles/bundle-3/contents/content-item-1"
+        When I DELETE "/bundles/bundle-without-content-items"
+        Then the HTTP status code should be "204"
+        And the record with id "bundle-without-content-items" should not exist in the "bundles" collection
+
+    Scenario: DELETE /bundles/{bundle-id} with non-existent bundle
+        Given I am an admin user
+        When I DELETE "/bundles/missing-bundle"
         Then I should receive the following JSON response with status "404":
             """
             {
@@ -107,25 +136,10 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 ]
             }
             """
-
-    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with non-existent content item
+    
+    Scenario: DELETE /bundles/{bundle-id} with a published bundle
         Given I am an admin user
-        When I DELETE "/bundles/bundle-1/contents/content-item-3"
-        Then I should receive the following JSON response with status "404":
-            """
-            {
-                "errors": [
-                    {
-                        "code": "not_found",
-                        "description": "The requested resource does not exist"
-                    }
-                ]
-            }
-            """
-
-    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with a content item that is published
-        Given I am an admin user
-        When I DELETE "/bundles/bundle-2/contents/content-item-2"
+        When I DELETE "/bundles/bundle-published"
         Then I should receive the following JSON response with status "409":
             """
             {
@@ -137,11 +151,9 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 ]
             }
             """
-
-    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with no authentication
+    
+    Scenario: DELETE /bundles/{bundle-id} with no authentication
         Given I am not authenticated
-        When I DELETE "/bundles/bundle-1/contents/content-item-1"
+        When I DELETE "/bundles/bundle-with-content-items"
         Then the HTTP status code should be "401"
         And the response body should be empty
-
-    
