@@ -1507,7 +1507,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 	})
 }
 
-func TestUpdateBundleWIP_Success(t *testing.T) {
+func TestPutBundle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
 		ctx := context.Background()
 		bundleID := "bundle-123"
