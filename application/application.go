@@ -462,7 +462,7 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	return contentResults, totalCount, nil
 }
 
-func (s *StateMachineBundleAPI) UpdateBundleWIP(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *models.AuthEntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
+func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *models.AuthEntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
 	logdata := log.Data{"bundle_id": bundleID}
 	userID := entityData.EntityData.UserID
 

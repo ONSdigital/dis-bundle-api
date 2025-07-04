@@ -1555,7 +1555,7 @@ func TestUpdateBundleWIP_Success(t *testing.T) {
 		}
 
 		Convey("When UpdateBundleWIP is called with no state change", func() {
-			result, err := stateMachine.UpdateBundleWIP(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
+			result, err := stateMachine.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
 
 			Convey("Then it should update the bundle successfully", func() {
 				So(err, ShouldBeNil)

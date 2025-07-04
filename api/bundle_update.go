@@ -90,7 +90,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		authHeaders.ServiceToken = r.Header.Get("Authorization")
 	}
 
-	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleWIP(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
+	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
 	if err != nil {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)
 		switch err {
