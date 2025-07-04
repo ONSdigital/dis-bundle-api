@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -543,7 +542,7 @@ func (s *StateMachineBundleAPI) handleStateTransition(ctx context.Context, bundl
 			if strings.Contains(err.Error(), "state not allowed to transition") ||
 				strings.Contains(err.Error(), "not all bundle contents are approved") ||
 				strings.Contains(err.Error(), "incorrect state value") {
-				return false, apierrors.ErrInvalidTransition
+				return false, errs.ErrInvalidTransition
 			}
 			return false, err
 		}
@@ -634,7 +633,7 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 					"content_item_id": contentItem.ID,
 					"dataset_id":      contentItem.Metadata.DatasetID,
 				})
-				return apierrors.ErrNotFound
+				return errs.ErrNotFound
 			}
 
 			return err
