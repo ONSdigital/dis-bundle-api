@@ -15,6 +15,7 @@ import (
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	"github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPIMocks "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -1111,6 +1112,336 @@ func TestGetBundleContents(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(items, ShouldBeEmpty)
 			So(total, ShouldEqual, 0)
+		})
+	})
+}
+
+func TestUpdateBundleWIP_Success(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
+		ctx := context.Background()
+		bundleID := "bundle-123"
+		userEmail := "user@example.com"
+
+		currentBundle := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateDraft,
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateDraft,
+		}
+
+		updatedBundle := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateDraft,
+			ETag:  "new-etag",
+		}
+
+		authEntityData := &models.AuthEntityData{
+			EntityData: &permissionsSDK.EntityData{
+				UserID: userEmail,
+			},
+			ServiceToken: "test-token",
+		}
+
+		authHeaders := sdk.Headers{ServiceToken: "test-token"}
+
+		mockedDatastore := &storetest.StorerMock{
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return updatedBundle, nil
+			},
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When UpdateBundleWIP is called with no state change", func() {
+			result, err := stateMachine.UpdateBundleWIP(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
+
+			Convey("Then it should update the bundle successfully", func() {
+				So(err, ShouldBeNil)
+				So(result, ShouldEqual, updatedBundle)
+				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 1)
+				So(len(mockedDatastore.UpdateBundleETagCalls()), ShouldEqual, 1)
+				So(len(mockedDatastore.CreateBundleEventCalls()), ShouldEqual, 1)
+			})
+		})
+	})
+}
+
+func TestValidateBundleRules_Success(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		currentBundle := &models.Bundle{
+			ID:    "bundle-123",
+			Title: "Original Title",
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:         "bundle-123",
+			Title:      "New Title",
+			BundleType: models.BundleTypeManual,
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When ValidateBundleRules is called with valid data", func() {
+			validationErrors := stateMachine.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+
+			Convey("Then it should return no validation errors", func() {
+				So(validationErrors, ShouldBeEmpty)
+			})
+		})
+	})
+}
+
+func TestValidateBundleRules_DuplicateTitle(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		currentBundle := &models.Bundle{
+			ID:    "bundle-123",
+			Title: "Original Title",
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:         "bundle-123",
+			Title:      "Existing Title",
+			BundleType: models.BundleTypeManual,
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				if title == "Existing Title" {
+					return true, nil
+				}
+				return false, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When ValidateBundleRules is called with duplicate title", func() {
+			validationErrors := stateMachine.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+
+			Convey("Then it should return a validation error for the title", func() {
+				So(validationErrors, ShouldHaveLength, 1)
+				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(validationErrors[0].Source.Field, ShouldEqual, "/title")
+			})
+		})
+	})
+}
+
+func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI", t, func() {
+		ctx := context.Background()
+
+		currentBundle := &models.Bundle{
+			ID:    "bundle-123",
+			Title: "Test Bundle",
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: &storetest.StorerMock{}},
+		}
+
+		Convey("When validating SCHEDULED bundle without scheduled_at", func() {
+			bundleUpdate := &models.Bundle{
+				ID:         "bundle-123",
+				Title:      "Test Bundle",
+				BundleType: models.BundleTypeScheduled,
+			}
+
+			validationErrors := stateMachine.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+
+			Convey("Then it should return a validation error", func() {
+				So(validationErrors, ShouldHaveLength, 1)
+				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
+			})
+		})
+
+		Convey("When validating MANUAL bundle with scheduled_at", func() {
+			futureTime := time.Now().Add(24 * time.Hour)
+			bundleUpdate := &models.Bundle{
+				ID:          "bundle-123",
+				Title:       "Test Bundle",
+				BundleType:  models.BundleTypeManual,
+				ScheduledAt: &futureTime,
+			}
+
+			validationErrors := stateMachine.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+
+			Convey("Then it should return a validation error", func() {
+				So(validationErrors, ShouldHaveLength, 1)
+				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
+			})
+		})
+
+		Convey("When validating SCHEDULED bundle with past scheduled_at", func() {
+			pastTime := time.Now().Add(-24 * time.Hour)
+			bundleUpdate := &models.Bundle{
+				ID:          "bundle-123",
+				Title:       "Test Bundle",
+				BundleType:  models.BundleTypeScheduled,
+				ScheduledAt: &pastTime,
+			}
+
+			validationErrors := stateMachine.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+
+			Convey("Then it should return a validation error", func() {
+				So(validationErrors, ShouldHaveLength, 1)
+				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
+		ctx := context.Background()
+		bundleID := "bundle-123"
+
+		contentItems := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundleID,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					Title:     "Old Title",
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return contentItems, nil
+			},
+			UpdateContentItemDatasetInfoFunc: func(ctx context.Context, contentItemID, title, state string) error {
+				return nil
+			},
+		}
+
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
+			GetDatasetFunc: func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+				return datasetAPIModels.Dataset{
+					ID:    datasetID,
+					Title: "New Dataset Title",
+					State: "published",
+				}, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+		}
+
+		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
+			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
+
+			Convey("Then it should update content items successfully", func() {
+				So(err, ShouldBeNil)
+				So(len(mockedDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
+				So(len(mockedDatastore.UpdateContentItemDatasetInfoCalls()), ShouldEqual, 1)
+				So(mockedDatastore.UpdateContentItemDatasetInfoCalls()[0].Title, ShouldEqual, "New Dataset Title")
+				So(mockedDatastore.UpdateContentItemDatasetInfoCalls()[0].State, ShouldEqual, "published")
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemsWithDatasetInfo_NoContentItems(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with no content items", t, func() {
+		ctx := context.Background()
+		bundleID := "bundle-123"
+
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore: store.Datastore{Backend: mockedDatastore},
+		}
+
+		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
+			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
+
+			Convey("Then it should complete without error", func() {
+				So(err, ShouldBeNil)
+				So(len(mockedDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with failing dataset API", t, func() {
+		ctx := context.Background()
+		bundleID := "bundle-123"
+
+		contentItems := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundleID,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return contentItems, nil
+			},
+		}
+
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
+			GetDatasetFunc: func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+				return datasetAPIModels.Dataset{}, errors.New("dataset API failure")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+		}
+
+		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
+			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
+
+			Convey("Then it should complete with error and log the failure", func() {
+				So(err, ShouldNotBeNil)
+				So(len(mockedDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
+				So(len(mockedDatastore.UpdateContentItemDatasetInfoCalls()), ShouldEqual, 0)
+			})
 		})
 	})
 }

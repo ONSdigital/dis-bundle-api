@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -349,4 +350,194 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	}
 
 	return contentResults, totalCount, nil
+}
+
+func (s *StateMachineBundleAPI) UpdateBundleWIP(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *models.AuthEntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
+	logdata := log.Data{"bundle_id": bundleID}
+	userID := entityData.EntityData.UserID
+
+	stateChangingToPublished, err := s.handleStateTransition(ctx, bundleUpdate, currentBundle)
+	if err != nil {
+		log.Error(ctx, "putBundle endpoint: invalid state transition", err, logdata)
+		return nil, err
+	}
+
+	if stateChangingToPublished {
+		err = s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
+		if err != nil {
+			log.Error(ctx, "failed to validate/update content items with dataset info", err, logdata)
+			return nil, err
+		}
+	}
+
+	now := time.Now()
+	bundleUpdate.UpdatedAt = &now
+	bundleUpdate.LastUpdatedBy = &models.User{Email: userID}
+
+	_, err = s.UpdateBundle(ctx, bundleID, bundleUpdate)
+	if err != nil {
+		log.Error(ctx, "failed to update bundle in database", err, logdata)
+		return nil, err
+	}
+
+	updatedBundle, err := s.UpdateBundleETag(ctx, bundleID, userID)
+	if err != nil {
+		log.Error(ctx, "failed to update bundle ETag", err, logdata)
+		return nil, err
+	}
+
+	event := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    userID,
+			Email: userID,
+		},
+		Action:   models.ActionUpdate,
+		Resource: "/bundles/" + bundleID,
+		Bundle: &models.EventBundle{
+			ID:            updatedBundle.ID,
+			BundleType:    updatedBundle.BundleType,
+			CreatedBy:     updatedBundle.CreatedBy,
+			CreatedAt:     updatedBundle.CreatedAt,
+			LastUpdatedBy: updatedBundle.LastUpdatedBy,
+			PreviewTeams:  updatedBundle.PreviewTeams,
+			ScheduledAt:   updatedBundle.ScheduledAt,
+			State:         updatedBundle.State,
+			Title:         updatedBundle.Title,
+			UpdatedAt:     updatedBundle.UpdatedAt,
+			ManagedBy:     updatedBundle.ManagedBy,
+		},
+	}
+
+	err = models.ValidateEvent(event)
+	if err != nil {
+		log.Error(ctx, "event validation failed", err, logdata)
+		return nil, err
+	}
+
+	err = s.CreateBundleEvent(ctx, event)
+	if err != nil {
+		log.Error(ctx, "failed to create event in database", err, logdata)
+		return nil, err
+	}
+
+	return updatedBundle, nil
+}
+
+func (s *StateMachineBundleAPI) handleStateTransition(ctx context.Context, bundleUpdate, currentBundle *models.Bundle) (bool, error) {
+	stateChangingToPublished := bundleUpdate.State != "" && currentBundle.State != "" &&
+		bundleUpdate.State == models.BundleStatePublished && currentBundle.State != models.BundleStatePublished
+
+	if bundleUpdate.State != "" && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
+		err := s.StateMachine.Transition(ctx, s, currentBundle, bundleUpdate)
+		if err != nil {
+			if strings.Contains(err.Error(), "state not allowed to transition") ||
+				strings.Contains(err.Error(), "not all bundle contents are approved") ||
+				strings.Contains(err.Error(), "incorrect state value") {
+				return false, apierrors.ErrInvalidTransition
+			}
+			return false, err
+		}
+	}
+
+	return stateChangingToPublished, nil
+}
+
+// ValidateBundleRules validates the rules for bundle updates
+func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleUpdate, currentBundle *models.Bundle) []*models.Error {
+	var validationErrors []*models.Error
+
+	if bundleUpdate.Title != currentBundle.Title {
+		exists, err := s.CheckBundleExistsByTitleUpdate(ctx, bundleUpdate.Title, bundleUpdate.ID)
+		if err != nil {
+			log.Error(ctx, "failed to check bundle title uniqueness", err)
+			code := models.InternalError
+			validationErrors = append(validationErrors, &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionInternalError,
+			})
+			return validationErrors
+		}
+		if exists {
+			code := models.ErrInvalidParameters
+			validationErrors = append(validationErrors, &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionMalformedRequest,
+				Source:      &models.Source{Field: "/title"},
+			})
+		}
+	}
+
+	if bundleUpdate.BundleType == models.BundleTypeScheduled {
+		if bundleUpdate.ScheduledAt == nil {
+			code := models.ErrInvalidParameters
+			validationErrors = append(validationErrors, &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionMalformedRequest,
+				Source:      &models.Source{Field: "/scheduled_at"},
+			})
+		} else if bundleUpdate.ScheduledAt.Before(time.Now()) {
+			code := models.ErrInvalidParameters
+			validationErrors = append(validationErrors, &models.Error{
+				Code:        &code,
+				Description: errs.ErrorDescriptionMalformedRequest,
+				Source:      &models.Source{Field: "/scheduled_at"},
+			})
+		}
+	}
+
+	if bundleUpdate.BundleType == models.BundleTypeManual && bundleUpdate.ScheduledAt != nil {
+		code := models.ErrInvalidParameters
+		validationErrors = append(validationErrors, &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionMalformedRequest,
+			Source:      &models.Source{Field: "/scheduled_at"},
+		})
+	}
+
+	return validationErrors
+}
+
+func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Context, bundleID string, authHeaders datasetAPISDK.Headers) error {
+	contentItems, err := s.GetContentItemsByBundleID(ctx, bundleID)
+	if err != nil {
+		log.Error(ctx, "failed to get content items", err, log.Data{"bundle_id": bundleID})
+		return err
+	}
+
+	if len(contentItems) == 0 {
+		log.Info(ctx, "no content items found for bundle", log.Data{"bundle_id": bundleID})
+		return nil
+	}
+
+	for _, contentItem := range contentItems {
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", contentItem.Metadata.DatasetID)
+		if err != nil {
+			log.Error(ctx, "dataset api client call failed", err, log.Data{
+				"content_item_id": contentItem.ID,
+				"dataset_id":      contentItem.Metadata.DatasetID,
+			})
+
+			errorMsg := strings.ToLower(err.Error())
+			if strings.Contains(errorMsg, "client failed to read datasetapi body") ||
+				strings.Contains(errorMsg, "not found") {
+				log.Error(ctx, "dataset not found", err, log.Data{
+					"content_item_id": contentItem.ID,
+					"dataset_id":      contentItem.Metadata.DatasetID,
+				})
+				return apierrors.ErrNotFound
+			}
+
+			return err
+		}
+
+		err = s.UpdateContentItemDatasetInfo(ctx, contentItem.ID, dataset.Title, dataset.State)
+		if err != nil {
+			log.Error(ctx, "update content item failed", err, log.Data{
+				"content_item_id": contentItem.ID,
+				"dataset_id":      contentItem.Metadata.DatasetID,
+			})
+			continue
+		}
+	}
+	return nil
 }

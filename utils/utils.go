@@ -66,3 +66,26 @@ func GetRequestBody[T any](r *http.Request) (*T, error) {
 
 	return &requestBody, nil
 }
+
+func MapErrorCodeToStatus(code *models.Code) int {
+	if code == nil {
+		return http.StatusInternalServerError
+	}
+
+	switch *code {
+	case models.CodeNotFound, models.NotFound:
+		return http.StatusNotFound
+	case models.CodeBadRequest, models.ErrInvalidParameters, models.CodeInvalidParameters, models.CodeMissingParameters:
+		return http.StatusBadRequest
+	case models.CodeUnauthorized, models.Unauthorised:
+		return http.StatusUnauthorized
+	case models.CodeForbidden:
+		return http.StatusForbidden
+	case models.CodeConflict:
+		return http.StatusConflict
+	case models.CodeInternalServerError, models.InternalError, models.JSONMarshalError, models.JSONUnmarshalError, models.WriteResponseError:
+		return http.StatusInternalServerError
+	default:
+		return http.StatusInternalServerError
+	}
+}
