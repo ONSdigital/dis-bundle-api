@@ -92,6 +92,12 @@ issues:
     - path: api/contents_test.go
       linters:
         - goconst
+    - path: api/bundles_test.go
+      linters:
+        - goconst
+    - path: application/application_test.go
+      linters:
+        - goconst
     - path: mongo/bundle_contents_store_test.go
       linters:
         - goconst

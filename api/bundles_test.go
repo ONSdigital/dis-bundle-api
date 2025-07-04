@@ -346,9 +346,9 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
-			Convey("Then the status code should be 500", func() {
-				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				expectedErrorCode := models.CodeInternalServerError
+			Convey("Then the status code should be 400", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+				expectedErrorCode := models.CodeBadRequest
 				expectedErrorSource := models.Source{
 					Parameter: "publish_date",
 				}
@@ -1772,6 +1772,136 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 				}
 				So(errResp, ShouldResemble, expectedErrResp)
 			})
+		})
+	})
+}
+
+func TestDeleteBundle_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE /bundles/{bundle-id} request", t, func() {
+		r := httptest.NewRequest(http.MethodDelete, "/bundles/bundle-1", http.NoBody)
+		r.Header.Set("Authorization", "test-auth-token")
+		w := httptest.NewRecorder()
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				if id == "bundle-1" {
+					return &models.Bundle{
+						ID:    "bundle-1",
+						State: models.BundleStateDraft,
+					}, nil
+				}
+				return nil, errs.ErrBundleNotFound
+			},
+			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
+					{
+						ID: "content-1",
+					},
+					{
+						ID: "content-2",
+					},
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				if contentItemID == "content-1" || contentItemID == "content-2" {
+					return nil
+				}
+				return errors.New("failed to delete content item")
+			},
+			DeleteBundleFunc: func(ctx context.Context, id string) error {
+				return nil
+			},
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+		bundleAPI.Router.ServeHTTP(w, r)
+
+		Convey("Then the response should be 204 No Content", func() {
+			So(w.Code, ShouldEqual, http.StatusNoContent)
+		})
+	})
+}
+
+func TestDeleteBundle_Failure_UnableToParseToken(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE /bundles/{bundle-id} request with an invalid auth token", t, func() {
+		r := httptest.NewRequest(http.MethodDelete, "/bundles/bundle-1", http.NoBody)
+		w := httptest.NewRecorder()
+
+		mockedDatastore := &storetest.StorerMock{}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+
+		Convey("When the request is made", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then the response should be 500 Internal Server Error", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalServerError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: errs.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestDeleteBundle_Failure_BundleNonExistent(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE /bundles/{bundle-id} request", t, func() {
+		r := httptest.NewRequest(http.MethodDelete, "/bundles/bundle-2", http.NoBody)
+		r.Header.Set("Authorization", "test-auth-token")
+		w := httptest.NewRecorder()
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				if id == "bundle-1" {
+					return &models.Bundle{
+						ID:    "bundle-1",
+						State: models.BundleStateDraft,
+					}, nil
+				}
+				return nil, errs.ErrBundleNotFound
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+		bundleAPI.Router.ServeHTTP(w, r)
+
+		Convey("Then the response should be 400 Not Found", func() {
+			So(w.Code, ShouldEqual, http.StatusNotFound)
+
+			var errResp models.ErrorList
+			err := json.NewDecoder(w.Body).Decode(&errResp)
+			So(err, ShouldBeNil)
+
+			code := models.CodeNotFound
+			expectedErrResp := models.ErrorList{
+				Errors: []*models.Error{
+					{
+						Code:        &code,
+						Description: errs.ErrorDescriptionNotFound,
+					},
+				},
+			}
+			So(errResp, ShouldResemble, expectedErrResp)
 		})
 	})
 }

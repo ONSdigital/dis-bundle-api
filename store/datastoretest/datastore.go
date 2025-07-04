@@ -53,6 +53,9 @@ var _ store.Storer = &StorerMock{}
 //			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 //				panic("mock out the CreateContentItem method")
 //			},
+//			DeleteBundleFunc: func(ctx context.Context, id string) error {
+//				panic("mock out the DeleteBundle method")
+//			},
 //			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
 //				panic("mock out the DeleteContentItem method")
 //			},
@@ -67,6 +70,9 @@ var _ store.Storer = &StorerMock{}
 //			},
 //			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 //				panic("mock out the GetContentItemsByBundleID method")
+//			},
+//			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+//				panic("mock out the ListBundleContentIDsWithoutLimit method")
 //			},
 //			ListBundleContentsFunc: func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error) {
 //				panic("mock out the ListBundleContents method")
@@ -126,6 +132,9 @@ type StorerMock struct {
 	// CreateContentItemFunc mocks the CreateContentItem method.
 	CreateContentItemFunc func(ctx context.Context, contentItem *models.ContentItem) error
 
+	// DeleteBundleFunc mocks the DeleteBundle method.
+	DeleteBundleFunc func(ctx context.Context, id string) error
+
 	// DeleteContentItemFunc mocks the DeleteContentItem method.
 	DeleteContentItemFunc func(ctx context.Context, contentItemID string) error
 
@@ -140,6 +149,9 @@ type StorerMock struct {
 
 	// GetContentItemsByBundleIDFunc mocks the GetContentItemsByBundleID method.
 	GetContentItemsByBundleIDFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
+
+	// ListBundleContentIDsWithoutLimitFunc mocks the ListBundleContentIDsWithoutLimit method.
+	ListBundleContentIDsWithoutLimitFunc func(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
 
 	// ListBundleContentsFunc mocks the ListBundleContents method.
 	ListBundleContentsFunc func(ctx context.Context, bundleID string, offset int, limit int) ([]*models.ContentItem, int, error)
@@ -238,6 +250,13 @@ type StorerMock struct {
 			// ContentItem is the contentItem argument value.
 			ContentItem *models.ContentItem
 		}
+		// DeleteBundle holds details about calls to the DeleteBundle method.
+		DeleteBundle []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID string
+		}
 		// DeleteContentItem holds details about calls to the DeleteContentItem method.
 		DeleteContentItem []struct {
 			// Ctx is the ctx argument value.
@@ -270,6 +289,13 @@ type StorerMock struct {
 		}
 		// GetContentItemsByBundleID holds details about calls to the GetContentItemsByBundleID method.
 		GetContentItemsByBundleID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
+		}
+		// ListBundleContentIDsWithoutLimit holds details about calls to the ListBundleContentIDsWithoutLimit method.
+		ListBundleContentIDsWithoutLimit []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// BundleID is the bundleID argument value.
@@ -361,11 +387,13 @@ type StorerMock struct {
 	lockCreateBundle                                  sync.RWMutex
 	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
+	lockDeleteBundle                                  sync.RWMutex
 	lockDeleteContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
 	lockGetBundleContentsForBundle                    sync.RWMutex
 	lockGetContentItemByBundleIDAndContentItemID      sync.RWMutex
 	lockGetContentItemsByBundleID                     sync.RWMutex
+	lockListBundleContentIDsWithoutLimit              sync.RWMutex
 	lockListBundleContents                            sync.RWMutex
 	lockListBundleEvents                              sync.RWMutex
 	lockListBundles                                   sync.RWMutex
@@ -743,6 +771,42 @@ func (mock *StorerMock) CreateContentItemCalls() []struct {
 	return calls
 }
 
+// DeleteBundle calls DeleteBundleFunc.
+func (mock *StorerMock) DeleteBundle(ctx context.Context, id string) error {
+	if mock.DeleteBundleFunc == nil {
+		panic("StorerMock.DeleteBundleFunc: method is nil but Storer.DeleteBundle was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  string
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteBundle.Lock()
+	mock.calls.DeleteBundle = append(mock.calls.DeleteBundle, callInfo)
+	mock.lockDeleteBundle.Unlock()
+	return mock.DeleteBundleFunc(ctx, id)
+}
+
+// DeleteBundleCalls gets all the calls that were made to DeleteBundle.
+// Check the length with:
+//
+//	len(mockedStorer.DeleteBundleCalls())
+func (mock *StorerMock) DeleteBundleCalls() []struct {
+	Ctx context.Context
+	ID  string
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  string
+	}
+	mock.lockDeleteBundle.RLock()
+	calls = mock.calls.DeleteBundle
+	mock.lockDeleteBundle.RUnlock()
+	return calls
+}
+
 // DeleteContentItem calls DeleteContentItemFunc.
 func (mock *StorerMock) DeleteContentItem(ctx context.Context, contentItemID string) error {
 	if mock.DeleteContentItemFunc == nil {
@@ -924,6 +988,42 @@ func (mock *StorerMock) GetContentItemsByBundleIDCalls() []struct {
 	mock.lockGetContentItemsByBundleID.RLock()
 	calls = mock.calls.GetContentItemsByBundleID
 	mock.lockGetContentItemsByBundleID.RUnlock()
+	return calls
+}
+
+// ListBundleContentIDsWithoutLimit calls ListBundleContentIDsWithoutLimitFunc.
+func (mock *StorerMock) ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+	if mock.ListBundleContentIDsWithoutLimitFunc == nil {
+		panic("StorerMock.ListBundleContentIDsWithoutLimitFunc: method is nil but Storer.ListBundleContentIDsWithoutLimit was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockListBundleContentIDsWithoutLimit.Lock()
+	mock.calls.ListBundleContentIDsWithoutLimit = append(mock.calls.ListBundleContentIDsWithoutLimit, callInfo)
+	mock.lockListBundleContentIDsWithoutLimit.Unlock()
+	return mock.ListBundleContentIDsWithoutLimitFunc(ctx, bundleID)
+}
+
+// ListBundleContentIDsWithoutLimitCalls gets all the calls that were made to ListBundleContentIDsWithoutLimit.
+// Check the length with:
+//
+//	len(mockedStorer.ListBundleContentIDsWithoutLimitCalls())
+func (mock *StorerMock) ListBundleContentIDsWithoutLimitCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockListBundleContentIDsWithoutLimit.RLock()
+	calls = mock.calls.ListBundleContentIDsWithoutLimit
+	mock.lockListBundleContentIDsWithoutLimit.RUnlock()
 	return calls
 }
 

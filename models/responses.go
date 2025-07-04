@@ -15,6 +15,11 @@ func CreateErrorResult[TError Error](err *TError, httpStatusCode int) *ErrorResu
 	}
 }
 
+// Create an error response with a 400 status code
+func CreateBadRequestErrorResult[TError Error](err *TError) *ErrorResult[TError] {
+	return CreateErrorResult(err, http.StatusBadRequest)
+}
+
 // Create an error response with a 500 status code
 func CreateInternalServerErrorResult[TError Error](err *TError) *ErrorResult[TError] {
 	return CreateErrorResult(err, http.StatusInternalServerError)

@@ -21,7 +21,8 @@ import (
 
 const (
 	// Route variable names
-	RouteVariableBundleID = "bundle-id"
+	RouteVariableBundleID  = "bundle-id"
+	RouteVariableContentID = "content-id"
 
 	// Route names
 	RouteNameGetBundle = "getBundle"
@@ -34,9 +35,9 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 	filters, filtersErr := filters.CreateBundlefilters(r)
 	if filtersErr != nil {
 		log.Error(ctx, filtersErr.Error.Error(), errs.ErrInvalidQueryParameter)
-		code := models.CodeInternalServerError
+		code := models.CodeBadRequest
 		invalidRequestError := &models.Error{Code: &code, Description: errs.ErrorDescriptionMalformedRequest, Source: filtersErr.Source}
-		return nil, models.CreateInternalServerErrorResult(invalidRequestError)
+		return nil, models.CreateBadRequestErrorResult(invalidRequestError)
 	}
 
 	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit, filters)
@@ -59,8 +60,8 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 
 func (api *BundleAPI) getBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	bundleID, logData := getBundleIDAndLogData(r)
+
 	bundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 	if err != nil {
 		handleErr(ctx, w, r, err, logData, RouteNameGetBundle)
@@ -147,6 +148,17 @@ func getBundleIDAndLogData(r *http.Request) (string, log.Data) {
 	bundleID := vars[RouteVariableBundleID]
 	logData := log.Data{RouteVariableBundleID: bundleID}
 	return bundleID, logData
+}
+
+func getBundleIDAndContentIDAndLogData(r *http.Request) (bundleID, contentID string, logData log.Data) {
+	vars := mux.Vars(r)
+	bundleID = vars[RouteVariableBundleID]
+	contentID = vars[RouteVariableContentID]
+	logData = log.Data{
+		RouteVariableBundleID:  bundleID,
+		RouteVariableContentID: contentID,
+	}
+	return bundleID, contentID, logData
 }
 
 func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r *http.Request, bundle *models.Bundle, logData log.Data) []byte {
@@ -298,4 +310,31 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(b); err != nil {
 		log.Error(ctx, "createBundle: error writing response body", err)
 	}
+}
+
+func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	bundleID, logData := getBundleIDAndLogData(r)
+
+	var entityData *permSDK.EntityData
+	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	if err != nil {
+		log.Error(ctx, "deleteBundle: failed to parse auth token", err)
+		code := models.CodeInternalServerError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		return
+	}
+
+	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, entityData.UserID)
+	if err != nil {
+		log.Error(ctx, "deleteBundle endpoint: failed to delete bundle", err, logData)
+		utils.HandleBundleAPIErr(w, r, statusCode, errObject)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

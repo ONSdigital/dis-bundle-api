@@ -1051,7 +1051,7 @@ func TestDeleteContentItem_ContentItemIsPublished_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: apierrors.ErrorDescriptionContentItemAlreadyPublished,
+							Description: apierrors.ErrorDescriptionAlreadyPublished,
 						},
 					},
 				}

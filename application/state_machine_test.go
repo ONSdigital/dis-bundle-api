@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	currentBundleWithStateDraft    = &models.Bundle{State: models.BundleStateDraft}
-	currentBundleWithStateInReview = &models.Bundle{State: models.BundleStateInReview}
-	currentBundleWithStateApproved = &models.Bundle{State: models.BundleStateApproved}
-	currentBundleWithStateUnknown  = &models.Bundle{State: models.BundleState("UNKNOWN")}
+	currentBundleWithStateDraft     = &models.Bundle{State: models.BundleStateDraft}
+	currentBundleWithStateInReview  = &models.Bundle{State: models.BundleStateInReview}
+	currentBundleWithStateApproved  = &models.Bundle{State: models.BundleStateApproved}
+	currentBundleWithStatePublished = &models.Bundle{State: models.BundleStatePublished}
+	currentBundleWithStateUnknown   = &models.Bundle{State: models.BundleState("UNKNOWN")}
 
 	bundleUpdateWithStateDraft     = &models.Bundle{State: models.BundleStateDraft}
 	bundleUpdateWithStateInReview  = &models.Bundle{State: models.BundleStateInReview}
@@ -194,6 +195,14 @@ func TestTransition_success(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 	})
+
+	Convey("When transitioning from any state that is not 'PUBLISHED' to nil", t, func() {
+		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateDraft, nil)
+
+		Convey("Then the transition should not fail", func() {
+			So(err, ShouldBeNil)
+		})
+	})
 }
 
 func TestTransition_failure(t *testing.T) {
@@ -272,6 +281,15 @@ func TestTransition_failure(t *testing.T) {
 		Convey("Then the transition should fail", func() {
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldEqual, "bundle state must be DRAFT when creating a new bundle")
+		})
+	})
+
+	Convey("When transitioning from 'PUBLISHED' to nil", t, func() {
+		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStatePublished, nil)
+
+		Convey("Then the transition should fail", func() {
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "cannot update a published bundle")
 		})
 	})
 }
