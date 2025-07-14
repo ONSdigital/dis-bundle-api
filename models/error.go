@@ -83,27 +83,23 @@ type Code string
 
 // Define possible values for the Code enum
 const (
-	CodeInternalServerError Code = "internal_server_error"
-	CodeNotFound            Code = "not_found"
-	CodeBadRequest          Code = "bad_request"
-	CodeUnauthorized        Code = "unauthorized"
-	CodeForbidden           Code = "forbidden"
-	CodeConflict            Code = "conflict"
-	CodeMissingParameters   Code = "missing_parameters"
-	CodeInvalidParameters   Code = "invalid_parameters"
-	JSONMarshalError        Code = "JSONMarshalError"
-	JSONUnmarshalError      Code = "JSONUnmarshalError"
-	WriteResponseError      Code = "WriteResponseError"
-	ErrInvalidParameters    Code = "ErrInvalidParameters"
-	NotFound                Code = "NotFound"
-	Unauthorised            Code = "Unauthorised"
-	InternalError           Code = "InternalError"
+	CodeInternalError      Code = "InternalError"
+	CodeNotFound           Code = "NotFound"
+	CodeBadRequest         Code = "BadRequest"
+	CodeUnauthorised       Code = "Unauthorised"
+	CodeForbidden          Code = "Forbidden"
+	CodeConflict           Code = "Conflict"
+	CodeMissingParameters  Code = "MissingParameters"
+	CodeInvalidParameters  Code = "InvalidParameters"
+	CodeJSONMarshalError   Code = "JSONMarshalError"
+	CodeJSONUnmarshalError Code = "JSONUnmarshalError"
+	CodeWriteResponseError Code = "WriteResponseError"
 )
 
 // IsValid validates that the Code is a valid enum value
 func (c Code) IsValid() bool {
 	switch c {
-	case CodeInternalServerError, CodeNotFound, CodeBadRequest, CodeUnauthorized, CodeForbidden, CodeConflict, CodeMissingParameters, CodeInvalidParameters, JSONMarshalError, JSONUnmarshalError, WriteResponseError, ErrInvalidParameters, NotFound, Unauthorised, InternalError:
+	case CodeInternalError, CodeNotFound, CodeBadRequest, CodeUnauthorised, CodeForbidden, CodeConflict, CodeMissingParameters, CodeInvalidParameters, CodeJSONMarshalError, CodeJSONUnmarshalError, CodeWriteResponseError:
 		return true
 	default:
 		return false
@@ -117,7 +113,7 @@ func (c Code) String() string {
 
 var (
 	notFoundError          = CreateModelError(CodeNotFound, errs.ErrorDescriptionNotFound)
-	internalError          = CreateModelError(CodeInternalServerError, errs.ErrorDescriptionInternalError)
+	internalError          = CreateModelError(CodeInternalError, errs.ErrorDescriptionInternalError)
 	invalidTransitionError = CreateModelError(CodeBadRequest, errs.ErrorDescriptionInvalidStateTransition)
 	malformedRequestError  = CreateModelError(CodeBadRequest, errs.ErrorDescriptionMalformedRequest)
 )
@@ -145,7 +141,7 @@ var ErrorToModelErrorMap = map[error]*Error{
 	errs.ErrInternalServer: internalError,
 
 	// Auth
-	errs.ErrUnauthorised: CreateModelError(Unauthorised, errs.ErrorDescriptionAccessDenied),
+	errs.ErrUnauthorised: CreateModelError(CodeUnauthorised, errs.ErrorDescriptionAccessDenied),
 }
 
 func GetMatchingModelError(err error) *Error {

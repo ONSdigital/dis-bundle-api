@@ -16,22 +16,27 @@ func (e *ErrorReader) Read(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("mock read error")
 }
 
-var internalServerErrorCode = CodeInternalServerError
+var internalErrorCode = CodeInternalError
 var invalidErrorCode = Code("invalid_code")
 
 var exampleError = Error{
-	Code:        &internalServerErrorCode,
+	Code:        &internalErrorCode,
 	Description: "An example error occurred",
 	Source:      &Source{Field: "example_field"},
 }
 
 var allCodes = []Code{
-	CodeInternalServerError,
+	CodeInternalError,
 	CodeNotFound,
 	CodeBadRequest,
-	CodeUnauthorized,
+	CodeUnauthorised,
 	CodeForbidden,
 	CodeConflict,
+	CodeMissingParameters,
+	CodeInvalidParameters,
+	CodeJSONMarshalError,
+	CodeJSONUnmarshalError,
+	CodeWriteResponseError,
 }
 
 func TestCreateError_Success(t *testing.T) {
@@ -47,7 +52,7 @@ func TestCreateError_Success(t *testing.T) {
 			Convey("Then it should return the Error without any error", func() {
 				So(err, ShouldBeNil)
 				So(result, ShouldNotBeNil)
-				So(result.Code, ShouldEqual, &internalServerErrorCode)
+				So(result.Code, ShouldEqual, &internalErrorCode)
 				So(result.Description, ShouldEqual, "An example error occurred")
 				So(result.Source.Field, ShouldEqual, "example_field")
 				So(result.Source.Parameter, ShouldEqual, "")
@@ -129,7 +134,7 @@ func TestValidateError_Failure(t *testing.T) {
 
 	Convey("Given an Error with multiple Source fields set", t, func() {
 		errorWithMultipleSources := Error{
-			Code:        &internalServerErrorCode,
+			Code:        &internalErrorCode,
 			Description: "An error with multiple source fields",
 			Source:      &Source{Field: "field_name", Parameter: "param_name", Header: "header_name"},
 		}
