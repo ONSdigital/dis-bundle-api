@@ -69,7 +69,7 @@ Feature: Get individual bundle - GET /Bundles/{bundle-id}
             {
                 "errors": [
                     {
-                        "code": "not_found",
+                        "code": "NotFound",
                         "description": "The requested resource does not exist"
                     }
                 ]

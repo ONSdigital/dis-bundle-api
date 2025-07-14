@@ -406,7 +406,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 {
                     "errors":[
                         {
-                            "code": "bad_request",
+                            "code": "BadRequest",
                             "description": "Unable to process request due to missing If-Match header"
                         }
                     ]
@@ -430,7 +430,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 {
                     "errors":[
                         {
-                            "code": "bad_request",
+                            "code": "BadRequest",
                             "description": "Unable to process request due to a malformed or invalid request body or query parameter"
                         }
                     ]
@@ -454,7 +454,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 {
                     "errors":[
                         {
-                            "code": "bad_request",
+                            "code": "BadRequest",
                             "description": "Unable to process request due to invalid state transition"
                         }
                     ]
@@ -476,7 +476,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 {
                     "errors":[
                         {
-                            "code": "not_found",
+                            "code": "NotFound",
                             "description": "The requested resource does not exist"
                         }
                     ]
@@ -498,7 +498,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 {
                     "errors":[
                         {
-                            "code": "not_found",
+                            "code": "NotFound",
                             "description": "The requested resource does not exist"
                         }
                     ]

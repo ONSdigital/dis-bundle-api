@@ -80,7 +80,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "bad_request",
+                            "code": "BadRequest",
                             "description": "Unable to process request due to a malformed or invalid request body or query parameter"
                         }
                     ]
@@ -112,7 +112,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "ErrInvalidParameters",
+                            "code": "InvalidParameters",
                             "description": "Invalid time format in request body",
                             "source": {
                                 "field": "scheduled_at"
@@ -147,7 +147,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "scheduled_at should not be set for manual bundles",
                             "source": {
                                 "field": "/scheduled_at"
@@ -181,7 +181,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "scheduled_at is required for scheduled bundles",
                             "source": {
                                 "field": "/scheduled_at"
@@ -216,7 +216,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "scheduled_at cannot be in the past",
                             "source": {
                                 "field": "/scheduled_at"
@@ -237,35 +237,35 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "missing_parameters",
+                            "code": "MissingParameters",
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                             "source": {
                                 "field": "/bundle_type"
                             }
                         },
                         {
-                            "code": "missing_parameters",
+                            "code": "MissingParameters",
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                             "source": {
                                 "field": "/preview_teams"
                             }
                         },
                         {
-                            "code": "missing_parameters",
+                            "code": "MissingParameters",
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                             "source": {
                                 "field": "/state"
                             }
                         },
                         {
-                            "code": "missing_parameters",
+                            "code": "MissingParameters",
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                             "source": {
                                 "field": "/title"
                             }
                         },
                         {
-                            "code": "missing_parameters",
+                            "code": "MissingParameters",
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters",
                             "source": {
                                 "field": "/managed_by"
@@ -300,21 +300,21 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                             "source": {
                                 "field": "/bundle_type"
                             }
                         },
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                             "source": {
                                 "field": "/state"
                             }
                         },
                         {
-                            "code": "invalid_parameters",
+                            "code": "InvalidParameters",
                             "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                             "source": {
                                 "field": "/managed_by"
@@ -349,7 +349,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "conflict",
+                            "code": "Conflict",
                             "description": "A bundle with the same title already exists",
                             "source": {
                                 "field": "/title"
@@ -384,7 +384,7 @@ Feature: Create bundle - POST /Bundles
                 {
                     "errors": [
                         {
-                            "code": "bad_request",
+                            "code": "BadRequest",
                             "description": "state not allowed to transition"
                         }
                     ]

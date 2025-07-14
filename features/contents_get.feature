@@ -236,7 +236,7 @@ Feature: Get all content items in a bundle - GET /bundles/{id}/contents
             {
                 "errors": [
                     {
-                        "code": "not_found",
+                        "code": "NotFound",
                         "description": "Bundle not found"
                     }
                 ]
@@ -251,7 +251,7 @@ Feature: Get all content items in a bundle - GET /bundles/{id}/contents
             {
                 "errors": [
                     {
-                        "code": "bad_request",
+                        "code": "BadRequest",
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter",
                         "source": {
                             "parameter": " offset"
@@ -270,7 +270,7 @@ Feature: Get all content items in a bundle - GET /bundles/{id}/contents
             {
                 "errors": [
                     {
-                        "code": "not_found",
+                        "code": "NotFound",
                         "description": "The requested resource does not exist",
                         "source": {
                             "field": "/metadata/dataset_id"

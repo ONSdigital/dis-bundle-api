@@ -130,7 +130,7 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
             {
                 "errors": [
                     {
-                        "code": "not_found",
+                        "code": "NotFound",
                         "description": "The requested resource does not exist"
                     }
                 ]
@@ -145,7 +145,7 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
             {
                 "errors": [
                     {
-                        "code": "conflict",
+                        "code": "Conflict",
                         "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
                     }
                 ]
