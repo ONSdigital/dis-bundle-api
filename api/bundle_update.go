@@ -95,7 +95,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)
 		switch err {
 		case apierrors.ErrInvalidTransition:
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
 				Description: apierrors.ErrorDescriptionMalformedRequest,
@@ -103,7 +103,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 		case apierrors.ErrNotFound:
-			code := models.NotFound
+			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
 				Description: "The requested resource does not exist.",
@@ -134,7 +134,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 
 func (api *BundleAPI) handleBadRequestError(ctx context.Context, w http.ResponseWriter, r *http.Request, message string, err error, logdata log.Data) {
 	log.Error(ctx, "putBundle endpoint: "+message, err, logdata)
-	code := models.ErrInvalidParameters
+	code := models.CodeInvalidParameters
 	errInfo := &models.Error{
 		Code:        &code,
 		Description: apierrors.ErrorDescriptionMalformedRequest,
@@ -144,7 +144,7 @@ func (api *BundleAPI) handleBadRequestError(ctx context.Context, w http.Response
 
 func (api *BundleAPI) handleInternalError(ctx context.Context, w http.ResponseWriter, r *http.Request, message string, err error, logdata log.Data) {
 	log.Error(ctx, "putBundle endpoint: "+message, err, logdata)
-	code := models.InternalError
+	code := models.CodeInternalError
 	errInfo := &models.Error{
 		Code:        &code,
 		Description: apierrors.ErrorDescriptionInternalError,
@@ -155,7 +155,7 @@ func (api *BundleAPI) handleInternalError(ctx context.Context, w http.ResponseWr
 func (api *BundleAPI) handleGetBundleError(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logdata log.Data) {
 	if err == apierrors.ErrBundleNotFound {
 		log.Error(ctx, "putBundle endpoint: bundle not found", err, logdata)
-		code := models.NotFound
+		code := models.CodeNotFound
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: apierrors.ErrorDescriptionNotFound,

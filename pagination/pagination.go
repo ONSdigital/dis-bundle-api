@@ -10,6 +10,7 @@ import (
 
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -139,17 +140,17 @@ func mapErrorCodeToStatus(code *models.Code) int {
 	}
 
 	switch *code {
-	case models.CodeNotFound, models.NotFound:
+	case models.CodeNotFound:
 		return http.StatusNotFound
-	case models.CodeBadRequest, models.ErrInvalidParameters, models.CodeInvalidParameters, models.CodeMissingParameters:
+	case models.CodeBadRequest, models.CodeInvalidParameters, models.CodeMissingParameters:
 		return http.StatusBadRequest
-	case models.CodeUnauthorized, models.Unauthorised:
+	case models.CodeUnauthorised:
 		return http.StatusUnauthorized
 	case models.CodeForbidden:
 		return http.StatusForbidden
 	case models.CodeConflict:
 		return http.StatusConflict
-	case models.CodeInternalServerError, models.InternalError, models.JSONMarshalError, models.JSONUnmarshalError, models.WriteResponseError:
+	case models.CodeInternalError, models.CodeJSONMarshalError, models.CodeJSONUnmarshalError, models.CodeWriteResponseError:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
@@ -165,7 +166,7 @@ func (p *Paginator) handlePaginationError(w http.ResponseWriter, r *http.Request
 
 	errInfo := &models.Error{
 		Code:        &code,
-		Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+		Description: apierrors.ErrorDescriptionMalformedRequest,
 		Source:      &models.Source{Parameter: param},
 	}
 
@@ -179,7 +180,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 
 	if err != nil {
 		log.Error(r.Context(), "api endpoint failed to marshal resource into bytes", err, logData)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: "Failed to process the request due to an internal error",
@@ -196,7 +197,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 
 	if _, err = w.Write(b); err != nil {
 		log.Error(r.Context(), "api endpoint error writing response body", err, logData)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
 			Description: "Failed to process the request due to an internal error",

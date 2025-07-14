@@ -270,7 +270,7 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -479,11 +479,11 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: "Failed to get version from dataset API",
 						},
 					},
@@ -585,11 +585,11 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: "Failed to check if content item exists",
 						},
 					},
@@ -658,11 +658,11 @@ func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: "Failed to create content item in the datastore",
 						},
 					},
@@ -726,11 +726,11 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 			err := json.NewDecoder(w.Body).Decode(&errResp)
 			So(err, ShouldBeNil)
 
-			codeInternalServerError := models.CodeInternalServerError
+			codeInternalError := models.CodeInternalError
 			expectedErrResp := models.ErrorList{
 				Errors: []*models.Error{
 					{
-						Code:        &codeInternalServerError,
+						Code:        &codeInternalError,
 						Description: "Failed to get user identity from JWT",
 					},
 				},
@@ -800,11 +800,11 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 			err := json.NewDecoder(w.Body).Decode(&errResp)
 			So(err, ShouldBeNil)
 
-			codeInternalServerError := models.CodeInternalServerError
+			codeInternalError := models.CodeInternalError
 			expectedErrResp := models.ErrorList{
 				Errors: []*models.Error{
 					{
-						Code:        &codeInternalServerError,
+						Code:        &codeInternalError,
 						Description: "Failed to create event",
 					},
 				},
@@ -877,11 +877,11 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 			err := json.NewDecoder(w.Body).Decode(&errResp)
 			So(err, ShouldBeNil)
 
-			codeInternalServerError := models.CodeInternalServerError
+			codeInternalError := models.CodeInternalError
 			expectedErrResp := models.ErrorList{
 				Errors: []*models.Error{
 					{
-						Code:        &codeInternalServerError,
+						Code:        &codeInternalError,
 						Description: "Failed to update bundle ETag",
 					},
 				},
@@ -995,11 +995,11 @@ func TestDeleteContentItem_ContentItemNotFound_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
@@ -1135,11 +1135,11 @@ func TestDeleteContentItem_DeleteContentItem_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
@@ -1185,11 +1185,11 @@ func TestDeleteContentItem_ParseJWT_Failure(t *testing.T) {
 			err := json.NewDecoder(w.Body).Decode(&errResp)
 			So(err, ShouldBeNil)
 
-			codeInternalServerError := models.CodeInternalServerError
+			codeInternalError := models.CodeInternalError
 			expectedErrResp := models.ErrorList{
 				Errors: []*models.Error{
 					{
-						Code:        &codeInternalServerError,
+						Code:        &codeInternalError,
 						Description: apierrors.ErrorDescriptionInternalError,
 					},
 				},
@@ -1242,11 +1242,11 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
@@ -1521,7 +1521,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeBadRequest,
-							Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+							Description: apierrors.ErrorDescriptionMalformedRequest,
 							Source: &models.Source{
 								Parameter: " offset",
 							},
@@ -1594,11 +1594,11 @@ func TestGetBundleContents_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalServerError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeInternalServerError,
+							Code:        &codeInternalError,
 							Description: "Failed to get dataset from dataset API",
 						},
 					},

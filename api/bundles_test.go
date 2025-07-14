@@ -329,7 +329,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"internal_server_error","description":"Failed to process the request due to an internal error"}]}`+"\n")
+				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"InternalError","description":"Failed to process the request due to an internal error"}]}`+"\n")
 			})
 		})
 
@@ -348,7 +348,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 400", func() {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
-				expectedErrorCode := models.CodeBadRequest
+				expectedErrorCode := models.CodeInvalidParameters
 				expectedErrorSource := models.Source{
 					Parameter: "publish_date",
 				}
@@ -553,7 +553,7 @@ func TestGetBundle_Failure(t *testing.T) {
 				err := json.NewDecoder(rec.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -937,7 +937,7 @@ func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
 	}
 }
 
-func TestPutBundleState_InternalServerErrors(t *testing.T) {
+func TestPutBundleState_InternalErrors(t *testing.T) {
 	t.Parallel()
 
 	fromState := models.BundleStateApproved
@@ -1194,7 +1194,7 @@ func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.ErrInvalidParameters
+				code := models.CodeInvalidParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1237,7 +1237,7 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 			err := json.NewDecoder(w.Body).Decode(&errResp)
 			So(err, ShouldBeNil)
 
-			code := models.CodeInternalServerError
+			code := models.CodeInternalError
 			expectedErrResp := models.ErrorList{
 				Errors: []*models.Error{
 					{
@@ -1387,7 +1387,7 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1415,7 +1415,7 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1468,7 +1468,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1547,7 +1547,7 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1604,7 +1604,7 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -1847,7 +1847,7 @@ func TestDeleteBundle_Failure_UnableToParseToken(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{

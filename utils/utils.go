@@ -21,9 +21,9 @@ func HandleBundleAPIErr(w http.ResponseWriter, r *http.Request, httpStatusCode i
 	for _, customError := range errors {
 		if validationErr := models.ValidateError(customError); validationErr != nil {
 			log.Error(r.Context(), "HandleBundleAPIErr: invalid error info provided", validationErr, log.Data{"invalid_error": customError})
-			codeInternalServerError := models.CodeInternalServerError
+			codeInternalError := models.CodeInternalError
 			genericError := &models.Error{
-				Code:        &codeInternalServerError,
+				Code:        &codeInternalError,
 				Description: "Failed to process the request due to an internal error",
 			}
 			httpStatusCode = http.StatusInternalServerError
@@ -73,17 +73,17 @@ func MapErrorCodeToStatus(code *models.Code) int {
 	}
 
 	switch *code {
-	case models.CodeNotFound, models.NotFound:
+	case models.CodeNotFound:
 		return http.StatusNotFound
-	case models.CodeBadRequest, models.ErrInvalidParameters, models.CodeInvalidParameters, models.CodeMissingParameters:
+	case models.CodeBadRequest, models.CodeInvalidParameters, models.CodeMissingParameters:
 		return http.StatusBadRequest
-	case models.CodeUnauthorized, models.Unauthorised:
+	case models.CodeUnauthorised:
 		return http.StatusUnauthorized
 	case models.CodeForbidden:
 		return http.StatusForbidden
 	case models.CodeConflict:
 		return http.StatusConflict
-	case models.CodeInternalServerError, models.InternalError, models.JSONMarshalError, models.JSONUnmarshalError, models.WriteResponseError:
+	case models.CodeInternalError, models.CodeJSONMarshalError, models.CodeJSONUnmarshalError, models.CodeWriteResponseError:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError

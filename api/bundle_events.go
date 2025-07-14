@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -24,10 +25,10 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 
 	for param := range r.URL.Query() {
 		if !allowedParams[param] {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+				Description: errs.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: param},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -43,10 +44,10 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 	if afterParam != "" {
 		afterTime, err := time.Parse(time.RFC3339, afterParam)
 		if err != nil {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+				Description: errs.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: "after"},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -58,10 +59,10 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 	if beforeParam != "" {
 		beforeTime, err := time.Parse(time.RFC3339, beforeParam)
 		if err != nil {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Unable to process request due to a malformed or invalid request body or query parameter",
+				Description: errs.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: "before"},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -77,7 +78,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 
 	events, totalCount, err := api.stateMachineBundleAPI.ListBundleEvents(ctx, offset, limit, bundleID, after, before)
 	if err != nil {
-		code := models.InternalError
+		code := models.CodeInternalError
 		log.Error(ctx, "failed to get bundle events", err)
 		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
@@ -85,7 +86,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 	}
 
 	if totalCount == 0 {
-		code := models.NotFound
+		code := models.CodeNotFound
 		errInfo := &models.Error{Code: &code, Description: "The requested resource does not exist."}
 		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		return nil, 0, errInfo

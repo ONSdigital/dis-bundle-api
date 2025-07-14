@@ -21,7 +21,7 @@ func CreateBadRequestErrorResult[TError Error](err *TError) *ErrorResult[TError]
 }
 
 // Create an error response with a 500 status code
-func CreateInternalServerErrorResult[TError Error](err *TError) *ErrorResult[TError] {
+func CreateInternalErrorResult[TError Error](err *TError) *ErrorResult[TError] {
 	return CreateErrorResult(err, http.StatusInternalServerError)
 }
 

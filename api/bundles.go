@@ -35,17 +35,17 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 	filters, filtersErr := filters.CreateBundlefilters(r)
 	if filtersErr != nil {
 		log.Error(ctx, filtersErr.Error.Error(), errs.ErrInvalidQueryParameter)
-		code := models.CodeBadRequest
+		code := models.CodeInvalidParameters
 		invalidRequestError := &models.Error{Code: &code, Description: errs.ErrorDescriptionMalformedRequest, Source: filtersErr.Source}
 		return nil, models.CreateBadRequestErrorResult(invalidRequestError)
 	}
 
 	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit, filters)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		log.Error(ctx, "failed to get bundles", err)
-		internalServerError := &models.Error{Code: &code, Description: errs.ErrorDescriptionInternalError}
-		return nil, models.CreateInternalServerErrorResult(internalServerError)
+		internalError := &models.Error{Code: &code, Description: errs.ErrorDescriptionInternalError}
+		return nil, models.CreateInternalErrorResult(internalError)
 	}
 
 	if totalCount == 0 && filters.PublishDate != nil {
@@ -165,7 +165,7 @@ func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r
 	bundleBytes, err := json.Marshal(bundle)
 	if err != nil {
 		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
-		errInfo := models.CreateModelError(models.CodeInternalServerError, errs.ErrMarshalJSONObject)
+		errInfo := models.CreateModelError(models.CodeInternalError, errs.ErrMarshalJSONObject)
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return nil
 	}
@@ -191,7 +191,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to parse auth token", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -213,7 +213,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if err == errs.ErrUnableToParseTime {
 			log.Error(ctx, "createBundle: invalid time format in request body", err)
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			e := &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionInvalidTimeFormat,
@@ -225,7 +225,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			return
 		} else {
 			log.Error(ctx, "createBundle: failed to read request body", err)
-			code := models.CodeInternalServerError
+			code := models.CodeInternalError
 			e := &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionInternalError,
@@ -291,7 +291,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(createdBundle)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to marshal created bundle", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -320,7 +320,7 @@ func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
 	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if err != nil {
 		log.Error(ctx, "deleteBundle: failed to parse auth token", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,

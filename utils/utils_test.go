@@ -65,7 +65,7 @@ func TestHandleBundleAPIErr_Failure(t *testing.T) {
 				var response models.ErrorList
 				err := json.NewDecoder(w.Body).Decode(&response)
 				So(err, ShouldBeNil)
-				So(response.Errors[0].Code.String(), ShouldEqual, models.CodeInternalServerError.String())
+				So(response.Errors[0].Code.String(), ShouldEqual, models.CodeInternalError.String())
 				So(response.Errors[0].Description, ShouldEqual, "Failed to process the request due to an internal error")
 			})
 		})

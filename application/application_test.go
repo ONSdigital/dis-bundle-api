@@ -396,7 +396,7 @@ func TestCreateEventFromBundle_ConvertBundleToBundleEvent_Failure(t *testing.T) 
 			})
 
 			Convey("And errorObject should be an internal server error", func() {
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -430,7 +430,7 @@ func TestCreateEventFromBundle_CreateBundleEvent_Failure(t *testing.T) {
 			})
 
 			Convey("And errorObject should be an internal server error", func() {
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -646,7 +646,7 @@ func TestCreateBundle_Failure_Backend_CheckBundleExistsByTitle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "backend error")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -694,7 +694,7 @@ func TestCreateBundle_Failure_CreateBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to create bundle")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -749,7 +749,7 @@ func TestCreateBundle_Failure_CreateEventFromBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to create event from bundle")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -800,7 +800,7 @@ func TestCreateBundle_Failure_GetBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to retrieve created bundle")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1218,7 +1218,7 @@ func TestDeleteBundle_Failure_GetBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "unexpected error")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1299,7 +1299,7 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to list bundle contents")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1347,7 +1347,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to delete content item")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1397,7 +1397,7 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to create event from content item")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1445,7 +1445,7 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to delete bundle")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1496,7 +1496,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to create event from bundle")
 
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				expectedErr := &models.Error{
 					Code:        &code,
 					Description: apierrors.ErrorDescriptionInternalError,
@@ -1636,7 +1636,7 @@ func TestValidateBundleRules_DuplicateTitle(t *testing.T) {
 
 			Convey("Then it should return a validation error for the title", func() {
 				So(validationErrors, ShouldHaveLength, 1)
-				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(*validationErrors[0].Code, ShouldEqual, models.CodeInvalidParameters)
 				So(validationErrors[0].Source.Field, ShouldEqual, "/title")
 			})
 		})
@@ -1667,7 +1667,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 
 			Convey("Then it should return a validation error", func() {
 				So(validationErrors, ShouldHaveLength, 1)
-				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(*validationErrors[0].Code, ShouldEqual, models.CodeInvalidParameters)
 				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
 			})
 		})
@@ -1685,7 +1685,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 
 			Convey("Then it should return a validation error", func() {
 				So(validationErrors, ShouldHaveLength, 1)
-				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(*validationErrors[0].Code, ShouldEqual, models.CodeInvalidParameters)
 				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
 			})
 		})
@@ -1703,7 +1703,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 
 			Convey("Then it should return a validation error", func() {
 				So(validationErrors, ShouldHaveLength, 1)
-				So(*validationErrors[0].Code, ShouldEqual, models.ErrInvalidParameters)
+				So(*validationErrors[0].Code, ShouldEqual, models.CodeInvalidParameters)
 				So(validationErrors[0].Source.Field, ShouldEqual, "/scheduled_at")
 			})
 		})

@@ -268,11 +268,11 @@ func TestPutBundle_MalformedJSON_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeBadRequest := models.ErrInvalidParameters
+				codeInvalidParameters := models.CodeInvalidParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeBadRequest,
+							Code:        &codeInvalidParameters,
 							Description: apierrors.ErrorDescriptionMalformedRequest,
 						},
 					},
@@ -322,7 +322,7 @@ func TestPutBundle_BundleNotFound_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeNotFound := models.NotFound
+				codeNotFound := models.CodeNotFound
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
@@ -370,7 +370,7 @@ func TestPutBundle_AuthenticationFailure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeInternalError := models.CodeInternalServerError
+				codeInternalError := models.CodeInternalError
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{

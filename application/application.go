@@ -81,7 +81,7 @@ func (s *StateMachineBundleAPI) DeleteContentItem(ctx context.Context, contentIt
 func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundle *models.Bundle, email string, action models.Action) (*models.Error, error) {
 	bundleEvent, err := models.ConvertBundleToBundleEvent(bundle)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -101,7 +101,7 @@ func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundl
 
 	err = models.ValidateEvent(event)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -111,7 +111,7 @@ func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundl
 
 	err = s.CreateBundleEvent(ctx, event)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -135,7 +135,7 @@ func (s *StateMachineBundleAPI) CreateEventFromContentItem(ctx context.Context, 
 
 	err := models.ValidateEvent(event)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -145,7 +145,7 @@ func (s *StateMachineBundleAPI) CreateEventFromContentItem(ctx context.Context, 
 
 	err = s.CreateBundleEvent(ctx, event)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -265,7 +265,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	bundleExists, err := s.CheckBundleExistsByTitle(ctx, bundle.Title)
 	if err != nil {
 		log.Error(ctx, "failed to check existing bundle by title", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -289,7 +289,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	err = s.Datastore.CreateBundle(ctx, bundle)
 	if err != nil {
 		log.Error(ctx, "failed to create bundle", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -300,7 +300,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	createdBundle, err := s.GetBundle(ctx, bundle.ID)
 	if err != nil {
 		log.Error(ctx, "failed to retrieve created bundle", err)
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -328,7 +328,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 			}
 			return http.StatusNotFound, e, err
 		} else {
-			code := models.CodeInternalServerError
+			code := models.CodeInternalError
 			e := &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionInternalError,
@@ -350,7 +350,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 	bundleContents, err := s.Datastore.ListBundleContentIDsWithoutLimit(ctx, bundleID)
 
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -363,7 +363,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 			err = s.DeleteContentItem(ctx, contentItem.ID)
 			if err != nil {
 				log.Error(ctx, "failed to delete content item", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID})
-				code := models.CodeInternalServerError
+				code := models.CodeInternalError
 				e := &models.Error{
 					Code:        &code,
 					Description: errs.ErrorDescriptionInternalError,
@@ -380,7 +380,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 
 	err = s.Datastore.DeleteBundle(ctx, bundleID)
 	if err != nil {
-		code := models.CodeInternalServerError
+		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionInternalError,
@@ -559,7 +559,7 @@ func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleU
 		exists, err := s.CheckBundleExistsByTitleUpdate(ctx, bundleUpdate.Title, bundleUpdate.ID)
 		if err != nil {
 			log.Error(ctx, "failed to check bundle title uniqueness", err)
-			code := models.InternalError
+			code := models.CodeInternalError
 			validationErrors = append(validationErrors, &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionInternalError,
@@ -567,7 +567,7 @@ func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleU
 			return validationErrors
 		}
 		if exists {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			validationErrors = append(validationErrors, &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionMalformedRequest,
@@ -578,14 +578,14 @@ func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleU
 
 	if bundleUpdate.BundleType == models.BundleTypeScheduled {
 		if bundleUpdate.ScheduledAt == nil {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			validationErrors = append(validationErrors, &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Field: "/scheduled_at"},
 			})
 		} else if bundleUpdate.ScheduledAt.Before(time.Now()) {
-			code := models.ErrInvalidParameters
+			code := models.CodeInvalidParameters
 			validationErrors = append(validationErrors, &models.Error{
 				Code:        &code,
 				Description: errs.ErrorDescriptionMalformedRequest,
@@ -595,7 +595,7 @@ func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleU
 	}
 
 	if bundleUpdate.BundleType == models.BundleTypeManual && bundleUpdate.ScheduledAt != nil {
-		code := models.ErrInvalidParameters
+		code := models.CodeInvalidParameters
 		validationErrors = append(validationErrors, &models.Error{
 			Code:        &code,
 			Description: errs.ErrorDescriptionMalformedRequest,
