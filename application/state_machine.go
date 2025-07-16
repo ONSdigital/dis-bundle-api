@@ -155,11 +155,14 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 		return nil, apierrors.ErrBundleHasNoContentItems
 	}
 
-	for index := range *contents {
-		contentItem := &(*contents)[index]
-		err = sm.transitionContentItem(ctx, bundle, contentItem, stateMachineBundleAPI, targetState, authEntityData)
-		if err != nil {
-			log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
+	if targetState.String() == models.BundleStateApproved.String() || targetState.String() == models.BundleStatePublished.String() {
+		for index := range *contents {
+			contentItem := &(*contents)[index]
+			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
+			if err != nil {
+				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
+				return nil, err
+			}
 		}
 	}
 
@@ -183,13 +186,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	return updatedBundle, err
 }
 
-func (*StateMachine) transitionContentItem(ctx context.Context, bundle *models.Bundle, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
-	logData := log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID}
-	if contentItem.State.String() != bundle.State.String() {
-		log.Warn(ctx, "ContentItem state does not match Bundle State", logData)
-		return apierrors.ErrInvalidBundleState
-	}
-
+func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
 	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.ServiceToken); err != nil {
 		return err
 	}
