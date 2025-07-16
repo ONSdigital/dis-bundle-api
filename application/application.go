@@ -13,6 +13,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
@@ -461,9 +462,9 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	return contentResults, totalCount, nil
 }
 
-func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *models.AuthEntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
+func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *permSDK.EntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
 	logdata := log.Data{"bundle_id": bundleID}
-	userID := entityData.EntityData.UserID
+	userID := entityData.UserID
 
 	stateChangingToPublished, err := s.handleStateTransition(ctx, bundleUpdate, currentBundle)
 	if err != nil {

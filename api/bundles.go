@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
@@ -188,7 +187,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var entityData *permSDK.EntityData
-	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	entityData, err := api.getAuthData(r)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to parse auth token", err)
 		code := models.CodeInternalError
@@ -317,7 +316,7 @@ func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
 	bundleID, logData := getBundleIDAndLogData(r)
 
 	var entityData *permSDK.EntityData
-	entityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	entityData, err := api.getAuthData(r)
 	if err != nil {
 		log.Error(ctx, "deleteBundle: failed to parse auth token", err)
 		code := models.CodeInternalError

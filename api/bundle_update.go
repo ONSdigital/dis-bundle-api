@@ -12,12 +12,15 @@ import (
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
+	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 )
 
 func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	defer dphttp.DrainBody(r)
+
+	var entityData *permSDK.EntityData
 
 	ctx := r.Context()
 	vars := mux.Vars(r)
@@ -37,7 +40,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authEntityData, err := api.GetAuthEntityData(r)
+	entityData, err := api.getAuthData(r)
 	if err != nil {
 		handleErr(ctx, w, r, err, logdata, RouteNamePutBundle)
 		return
@@ -63,7 +66,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bundleUpdate, validationErrors, err := api.CreateAndValidateBundleUpdate(r, bundleID, currentBundle, authEntityData.EntityData.UserID)
+	bundleUpdate, validationErrors, err := api.CreateAndValidateBundleUpdate(r, bundleID, currentBundle, entityData.UserID)
 	if err != nil {
 		api.handleBadRequestError(ctx, w, r, "bundle creation or validation failed", err, logdata)
 		return
@@ -90,7 +93,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		authHeaders.ServiceToken = r.Header.Get("Authorization")
 	}
 
-	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
+	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, entityData, authHeaders)
 	if err != nil {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)
 		switch err {

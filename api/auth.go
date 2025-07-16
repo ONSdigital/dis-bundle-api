@@ -37,3 +37,8 @@ func getBearerTokenValue(r *http.Request) *string {
 	trimmed := strings.TrimPrefix(authHeaderValue, request.BearerPrefix)
 	return &trimmed
 }
+
+func (api *BundleAPI) getAuthData(r *http.Request) (*sdk.EntityData, error) {
+	authToken := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	return api.authMiddleware.Parse(authToken)
+}
