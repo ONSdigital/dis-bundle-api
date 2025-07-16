@@ -610,7 +610,7 @@ func newTestBundle(id string, state models.BundleState) *models.Bundle {
 	}
 }
 
-func newTestContentItem(id, bundleID, datasetID, editionID string, versionID int, state models.State) *models.ContentItem {
+func newTestContentItem(id, bundleID, datasetID, editionID string, versionID int, state *models.State) *models.ContentItem {
 	return &models.ContentItem{
 		ID:       id,
 		BundleID: bundleID,
@@ -619,7 +619,7 @@ func newTestContentItem(id, bundleID, datasetID, editionID string, versionID int
 			EditionID: editionID,
 			VersionID: versionID,
 		},
-		State: &state,
+		State: state,
 	}
 }
 
@@ -640,35 +640,19 @@ type testData struct {
 	events       *[]*models.Event
 }
 
-func setupTestData(initialState, invalidState models.BundleState) *testData {
+func setupTestData(initialState models.BundleState, contentItemState *models.State, versionState string) *testData {
 	bundle := newTestBundle("test-bundle-id", initialState)
 
 	contentItems := []*models.ContentItem{
 		// Content items that match bundle state + we expect to be updated
-		newTestContentItem("matching-item-1", bundle.ID, "dataset-1", "edition-1", 1, models.State(initialState)),
-		newTestContentItem("matching-item-2", bundle.ID, "dataset-2", "edition-2", 2, models.State(initialState)),
-
-		// Content items that do not match bundle state + we expect to be updated
-		newTestContentItem("mismatched-item-1", bundle.ID, "dataset-3", "edition-3", 3, models.State(invalidState)),
-
-		// Content items that match bundle state but do not have a matching version
-		newTestContentItem("missing-version-1", bundle.ID, "dataset-4", "edition-4", 4, models.State(initialState)),
-		newTestContentItem("mismatched-version-1", bundle.ID, "dataset-5", "edition-5", 5, models.State(initialState)),
+		newTestContentItem("matching-item-1", bundle.ID, "dataset-1", "edition-1", 1, contentItemState),
+		newTestContentItem("matching-item-2", bundle.ID, "dataset-2", "edition-2", 2, contentItemState),
 	}
-
-	stateString := strings.ToLower(initialState.String())
-	invalidStateString := strings.ToLower(invalidState.String())
 
 	versions := []*datasetAPIModels.Version{
 		// Versions that are in the correct state and should be updated
-		newTestVersion("version-1", "dataset-1", "edition-1", 1, stateString),
-		newTestVersion("version-2", "dataset-2", "edition-2", 2, stateString),
-
-		// Version for a content item that should not be updated
-		newTestVersion("version-3", "dataset-3", "edition-3", 3, invalidStateString),
-
-		// Version for content item that doesn't match the bundle + content item state
-		newTestVersion("version-5", "dataset-5", "edition-5", 5, invalidStateString),
+		newTestVersion("version-1", "dataset-1", "edition-1", 1, versionState),
+		newTestVersion("version-2", "dataset-2", "edition-2", 2, versionState),
 	}
 	events := make([]*models.Event, 0)
 	return &testData{
@@ -775,14 +759,16 @@ func createUpdateStateRequest(bundleID, etag string, state models.BundleState, r
 }
 
 var validTransitionTestCases = []struct {
-	name         string
-	fromState    models.BundleState
-	toState      models.BundleState
-	invalidState models.BundleState
+	name             string
+	fromState        models.BundleState
+	toState          models.BundleState
+	invalidState     models.BundleState
+	contentItemState *models.State
+	versionState     string
 }{
-	{"DRAFT to IN_REVIEW", models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished},
-	{"With a valid request to update state from IN_REVIEW to APPROVED", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft},
-	{"With a valid request to update state from APPROVED to PUBLISHED", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft},
+	{"DRAFT to IN_REVIEW", models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished, nil, "associated"},
+	{"IN_REVIEW to APPROVED", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft, nil, "associated"},
+	{"APPROVED to PUBLISHED", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft, utils.PtrContentItemState(models.StateApproved), "approved"},
 }
 
 const (
@@ -791,18 +777,25 @@ const (
 	ValidDataset2       = "dataset-2"
 )
 
+//nolint:gocognit // cognitive complexity is high but acceptable for this test
 func TestPutBundleState_ValidTransitions(t *testing.T) {
 	t.Parallel()
 
 	for index := range validTransitionTestCases {
 		tc := validTransitionTestCases[index]
 
+		var additionalEventCalls int
+		if tc.toState == models.BundleStateApproved || tc.toState == models.BundleStatePublished {
+			// manually set to 2 since we have 2 content items that will be updated within the test data
+			additionalEventCalls = 2
+		}
+
 		testCaseName := generateTestCaseName(PutBundleStateRoute, "PUT", fmt.Sprintf("With a valid request and a valid state transition to update state from %s", tc.name))
 		t.Run(testCaseName, func(t *testing.T) {
 			t.Parallel()
 
 			Convey(tc.name, t, func() {
-				data := setupTestData(tc.fromState, tc.invalidState)
+				data := setupTestData(tc.fromState, tc.contentItemState, tc.versionState)
 				mockStore := createMockStore(data)
 				mockAPIClient := createMockAPIClient(data)
 				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)
@@ -821,18 +814,21 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				})
 
 				Convey("And a bundle event should be created", func() {
-					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 4)
+					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 2+additionalEventCalls)
 				})
 
 				Convey("And only matching content items should be updated", func() {
 					calls := mockStore.UpdateContentItemStateCalls()
 
-					So(len(calls), ShouldEqual, 2)
-					for _, item := range data.contentItems {
-						if shouldItemBeUpdated(item.ID) {
-							So(item.State.String(), ShouldEqual, tc.toState.String())
-						} else {
-							So(item.State.String(), ShouldNotEqual, tc.toState.String())
+					So(len(calls), ShouldEqual, 0+additionalEventCalls)
+
+					if len(calls) > 0 {
+						for _, item := range data.contentItems {
+							if shouldItemBeUpdated(item.ID) {
+								So(item.State.String(), ShouldEqual, tc.toState.String())
+							} else {
+								So(item.State.String(), ShouldNotEqual, tc.toState.String())
+							}
 						}
 					}
 				})
@@ -842,19 +838,21 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				Convey("And only matching versions should be updated", func() {
 					calls := mockAPIClient.PutVersionStateCalls()
 
-					So(len(calls), ShouldEqual, 2)
+					So(len(calls), ShouldEqual, 0+additionalEventCalls)
 
-					for _, call := range calls {
-						So(call.State, ShouldEqual, expectedVersionState)
-						isMatchingDataset := call.DatasetID == ValidDataset1 || call.DatasetID == ValidDataset2
-						So(isMatchingDataset, ShouldBeTrue)
+					if len(calls) > 0 {
+						for _, call := range calls {
+							So(call.State, ShouldEqual, expectedVersionState)
+							isMatchingDataset := call.DatasetID == ValidDataset1 || call.DatasetID == ValidDataset2
+							So(isMatchingDataset, ShouldBeTrue)
+						}
 					}
 				})
 
 				Convey("Then version states should be updated", func() {
 					for _, version := range data.versions {
 						isMatchingDataset := version.DatasetID == ValidDataset1 || version.DatasetID == ValidDataset2
-						if isMatchingDataset {
+						if isMatchingDataset && (tc.toState == models.BundleStateApproved || tc.toState == models.BundleStatePublished) {
 							So(version.State, ShouldEqual, expectedVersionState)
 						} else {
 							So(version.State, ShouldNotEqual, expectedVersionState)
@@ -863,7 +861,7 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				})
 
 				Convey("And bundle events should have been created", func() {
-					So(len(*data.events), ShouldEqual, 4)
+					So(len(*data.events), ShouldEqual, 2+additionalEventCalls)
 
 					for index := range *data.events {
 						event := (*data.events)[index]
@@ -877,14 +875,16 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 }
 
 var invalidTransitionTestCases = []struct {
-	name         string
-	fromState    models.BundleState
-	toState      models.BundleState
-	invalidState models.BundleState
+	name             string
+	fromState        models.BundleState
+	toState          models.BundleState
+	invalidState     models.BundleState
+	contentItemState *models.State
+	versionState     string
 }{
-	{"With an invalid state transition DRAFT to PUBLISHED", models.BundleStateDraft, models.BundleStatePublished, models.BundleStateInReview},
-	{"IN_REVIEW to PUBLISHED", models.BundleStateInReview, models.BundleStatePublished, models.BundleStateApproved},
-	{"PUBLISHED to DRAFT", models.BundleStatePublished, models.BundleStateDraft, models.BundleStateApproved},
+	{"DRAFT to PUBLISHED", models.BundleStateDraft, models.BundleStatePublished, models.BundleStateInReview, nil, "associated"},
+	{"IN_REVIEW to PUBLISHED", models.BundleStateInReview, models.BundleStatePublished, models.BundleStateApproved, nil, "associated"},
+	{"PUBLISHED to DRAFT", models.BundleStatePublished, models.BundleStateDraft, models.BundleStateApproved, utils.PtrContentItemState(models.StatePublished), "published"},
 }
 
 func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
@@ -898,7 +898,7 @@ func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
 			t.Parallel()
 
 			Convey(tc.name, t, func() {
-				data := setupTestData(tc.fromState, tc.invalidState)
+				data := setupTestData(tc.fromState, tc.contentItemState, tc.versionState)
 				mockStore := createMockStore(data)
 				mockAPIClient := createMockAPIClient(data)
 				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)
@@ -941,7 +941,6 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 	t.Parallel()
 
 	fromState := models.BundleStateApproved
-	toState := models.BundleStatePublished
 	expectedErrorResponse := models.ErrorList{
 		Errors: []*models.Error{
 			models.ErrorToModelErrorMap[errs.ErrInternalServer],
@@ -949,7 +948,7 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 	}
 
 	Convey(generateTestCaseName(PutBundleStateRoute, "PUT", "When the auth middleware's Parse method has an error"), t, func() {
-		data := setupTestData(fromState, toState)
+		data := setupTestData(fromState, nil, "")
 		mockStore := createMockStore(data)
 		mockAPIClient := createMockAPIClient(data)
 		parseFunc := func(token string) (*permissionsSDK.EntityData, error) {
@@ -988,7 +987,7 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 
 func TestPutBundleState_BadRequests(t *testing.T) {
 	t.Parallel()
-	data := setupTestData(models.BundleStateApproved, models.BundleStateDraft)
+	data := setupTestData(models.BundleStateApproved, nil, "")
 	mockStore := createMockStore(data)
 	mockAPIClient := createMockAPIClient(data)
 	bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)

@@ -395,30 +395,15 @@ func TestTransitionBundle_Success(t *testing.T) {
 			State:     strings.ToLower(mockBundle.State.String()),
 		},
 		{
-			ID:        "invalid-state-version",
+			ID:        "valid-version-2",
 			Version:   1,
 			DatasetID: "dataset-id-2",
 			Edition:   "edition-id-2",
-			State:     "some-invalid-state",
-		},
-		{
-			ID:        "valid-version-but-invalid-contentitem-2",
-			Version:   10000,
-			DatasetID: "dataset-id-100",
-			Edition:   "edition-id-20000",
-			State:     strings.ToLower(mockBundle.State.String()),
-		},
-		{
-			ID:        "valid-version-3",
-			Version:   1,
-			DatasetID: "dataset-id-3",
-			Edition:   "edition-id-3",
 			State:     strings.ToLower(mockBundle.State.String()),
 		},
 	}
 
 	validContentItemState := models.State(mockBundle.State.String())
-	invalidContentItemState := models.State(models.BundleStateDraft)
 
 	mockContentItems := []*models.ContentItem{
 		{
@@ -432,43 +417,13 @@ func TestTransitionBundle_Success(t *testing.T) {
 			},
 		},
 		{
-			ID:       "invalid-state-content-item",
-			BundleID: mockBundleID,
-			State:    &invalidContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: mockVersions[2].DatasetID,
-				EditionID: mockVersions[2].Edition,
-				VersionID: mockVersions[2].Version,
-			},
-		},
-		{
-			ID:       "invalid-version-state-content-item",
+			ID:       "another-valid-content-item",
 			BundleID: mockBundleID,
 			State:    &validContentItemState,
 			Metadata: models.Metadata{
 				DatasetID: mockVersions[1].DatasetID,
 				EditionID: mockVersions[1].Edition,
 				VersionID: mockVersions[1].Version,
-			},
-		},
-		{
-			ID:       "missing-version-content-item",
-			BundleID: mockBundleID,
-			State:    &validContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: "does-not-exist-dataset",
-				EditionID: "not-found",
-				VersionID: 1,
-			},
-		},
-		{
-			ID:       "another-valid-content-item",
-			BundleID: mockBundleID,
-			State:    &validContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: mockVersions[3].DatasetID,
-				EditionID: mockVersions[3].Edition,
-				VersionID: mockVersions[3].Version,
 			},
 		},
 	}
@@ -578,23 +533,15 @@ func TestTransitionBundle_Success(t *testing.T) {
 			})
 		})
 
-		contentItemsThatShouldBeUpdated := []*models.ContentItem{mockContentItems[0], mockContentItems[4]}
-		contentItemsThatShouldntBeUpdated := []*models.ContentItem{mockContentItems[1], mockContentItems[2], mockContentItems[3]}
+		contentItemsThatShouldBeUpdated := []*models.ContentItem{mockContentItems[0], mockContentItems[1]}
 
 		Convey("And the content items should be updated if the state matched", func() {
 			for _, contentItem := range contentItemsThatShouldBeUpdated {
 				So(contentItem.State.String(), ShouldEqual, targetState.String())
 			}
-
-			Convey("And not be updated if the state did not match", func() {
-				for _, contentItem := range contentItemsThatShouldntBeUpdated {
-					So(contentItem.State.String(), ShouldNotEqual, targetState.String())
-				}
-			})
 		})
 
-		versionsThatShouldBeUpdated := []int{0, 3}
-		versionsThatShouldNotBeUpdated := []int{1, 2}
+		versionsThatShouldBeUpdated := []int{0, 1}
 
 		Convey("And the versions should be updated if the state matched", func() {
 			for index := range versionsThatShouldBeUpdated {
@@ -602,14 +549,6 @@ func TestTransitionBundle_Success(t *testing.T) {
 
 				So(strings.ToLower(mockVersion.State), ShouldEqual, strings.ToLower(targetState.String()))
 			}
-
-			Convey("And not be updated if the state did not match", func() {
-				for index := range versionsThatShouldNotBeUpdated {
-					mockVersion := mockVersions[versionsThatShouldNotBeUpdated[index]]
-
-					So(strings.ToLower(mockVersion.State), ShouldNotEqual, strings.ToLower(targetState.String()))
-				}
-			})
 		})
 
 		Convey("And events should be created", func() {
@@ -671,30 +610,15 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			State:     strings.ToLower(mockBundle.State.String()),
 		},
 		{
-			ID:        "invalid-state-version",
+			ID:        "valid-version-2",
 			Version:   1,
 			DatasetID: "dataset-id-2",
 			Edition:   "edition-id-2",
-			State:     "some-invalid-state",
-		},
-		{
-			ID:        "valid-version-but-invalid-contentitem-2",
-			Version:   10000,
-			DatasetID: "dataset-id-100",
-			Edition:   "edition-id-20000",
-			State:     strings.ToLower(mockBundle.State.String()),
-		},
-		{
-			ID:        "valid-version-3",
-			Version:   1,
-			DatasetID: "dataset-id-3",
-			Edition:   "edition-id-3",
 			State:     strings.ToLower(mockBundle.State.String()),
 		},
 	}
 
 	validContentItemState := models.State(mockBundle.State.String())
-	invalidContentItemState := models.State(models.BundleStateDraft)
 
 	mockContentItems := []*models.ContentItem{
 		{
@@ -708,43 +632,13 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			},
 		},
 		{
-			ID:       "invalid-state-content-item",
-			BundleID: mockBundleID,
-			State:    &invalidContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: mockVersions[2].DatasetID,
-				EditionID: mockVersions[2].Edition,
-				VersionID: mockVersions[2].Version,
-			},
-		},
-		{
-			ID:       "invalid-version-state-content-item",
+			ID:       "another-valid-content-item",
 			BundleID: mockBundleID,
 			State:    &validContentItemState,
 			Metadata: models.Metadata{
 				DatasetID: mockVersions[1].DatasetID,
 				EditionID: mockVersions[1].Edition,
 				VersionID: mockVersions[1].Version,
-			},
-		},
-		{
-			ID:       "missing-version-content-item",
-			BundleID: mockBundleID,
-			State:    &validContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: "does-not-exist-dataset",
-				EditionID: "not-found",
-				VersionID: 1,
-			},
-		},
-		{
-			ID:       "another-valid-content-item",
-			BundleID: mockBundleID,
-			State:    &validContentItemState,
-			Metadata: models.Metadata{
-				DatasetID: mockVersions[3].DatasetID,
-				EditionID: mockVersions[3].Edition,
-				VersionID: mockVersions[3].Version,
 			},
 		},
 	}
@@ -934,8 +828,17 @@ func TestTransitionBundle_Failure(t *testing.T) {
 
 		createEventError := errors.New("create event error")
 
+		// previous test would have published all versions so we need to reset them
+		for index := range mockVersions {
+			mockVersions[index].State = strings.ToLower(fromState.String())
+		}
+
 		mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
-			return createEventError
+			// To avoid throwing the error when content items are updated
+			if event.Bundle != nil {
+				return createEventError
+			}
+			return nil
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})

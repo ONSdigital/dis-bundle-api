@@ -404,7 +404,7 @@ func TestUpdateContentItemState_Success(t *testing.T) {
 		err = setupBundleContentsTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When GetBundleContentsForBundle is called with a valid bundle ID", func() {
+		Convey("When UpdateContentItemState is called with a valid ContentItemID", func() {
 			contentItemID := contentsTestData[0].ID
 			state := models.StatePublished
 

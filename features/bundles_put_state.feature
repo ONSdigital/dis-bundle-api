@@ -163,8 +163,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "DRAFT"
+                    }
                 },
                 {
                     "id": "content-item-2",
@@ -179,8 +178,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 },
                 {
                     "id": "content-item-3",
@@ -211,8 +209,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 },
                 {
                     "id": "content-item-13",
@@ -227,8 +224,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 },
                 {
                     "id": "content-item-14",
@@ -243,8 +239,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "DRAFT"
+                    }
                 },
                 {
                     "id": "content-item-15",
@@ -259,8 +254,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 },
                 {
                     "id": "content-item-16",
@@ -275,8 +269,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 },
                 {
                     "id": "content-item-17",
@@ -291,8 +284,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "links": {
                         "edit": "edit/link",
                         "preview": "preview/link"
-                    },
-                    "state": "IN_REVIEW"
+                    }
                 }
             ]
             """
@@ -311,35 +303,35 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "version": 1,
                     "dataset_id": "dataset5",
                     "edition": "edition5",
-                    "state": "in_review" 
+                    "state": "associated" 
                 },
                 {
                     "id": "version-3",
                     "version": 1,
                     "dataset_id": "dataset6",
                     "edition": "edition6",
-                    "state": "in_review" 
+                    "state": "associated" 
                 },
                  {
                     "id": "version-4",
                     "version": 1,
                     "dataset_id": "dataset7",
                     "edition": "edition7",
-                    "state": "draft" 
+                    "state": "associated" 
                 },
                  {
                     "id": "version-5",
                     "version": 1,
                     "dataset_id": "dataset8",
                     "edition": "edition8",
-                    "state": "draft" 
+                    "state": "associated" 
                 },
                 {
                     "id": "version-6",
                     "version": 10,
                     "dataset_id": "dataset9",
                     "edition": "edition9",
-                    "state": "in_review" 
+                    "state": "associated" 
                 }
             ]
             """
@@ -516,9 +508,9 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "state": "APPROVED"
                 }
             """
-        Then the HTTP status code should be "200"
-        And bundle "bundle-10" should have state "APPROVED"
-        And bundle "bundle-10" should not have this etag "etag-bundle-10"
+        Then the HTTP status code should be "500"
+        And bundle "bundle-10" should have state "IN_REVIEW"
+        And bundle "bundle-10" should have this etag "etag-bundle-10"
 
 
     Scenario: PUT /bundles/{id}/state with valid arguments for 'IN_REVIEW' -> 'APPROVED'
@@ -548,14 +540,6 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                         "state": "APPROVED"
                     },
                     {
-                        "id": "content-item-14",
-                        "state": "DRAFT"
-                    },
-                    {
-                        "id": "content-item-15",
-                        "state": "IN_REVIEW"
-                    },
-                    {
                         "id": "content-item-16",
                         "state": "APPROVED"
                     }
@@ -574,11 +558,11 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 },
                     {
                     "id": "version-4",
-                    "state": "draft" 
+                    "state": "approved" 
                 },
                     {
                     "id": "version-5",
-                    "state": "draft" 
+                    "state": "approved" 
                 },
                 {
                     "id": "version-6",

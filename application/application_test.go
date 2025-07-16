@@ -12,6 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	"github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPIMocks "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
@@ -236,7 +237,7 @@ func TestCreateContentItem(t *testing.T) {
 				VersionID: 1,
 				Title:     "Test Dataset 1",
 			},
-			State: ptrContentItemState(models.StateApproved),
+			State: utils.PtrContentItemState(models.StateApproved),
 			Links: models.Links{
 				Edit:    "/edit/datasets/dataset1/editions/2025/versions/1",
 				Preview: "/preview/datasets/dataset1/editions/2025/versions/1",
@@ -960,10 +961,6 @@ func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 			})
 		})
 	})
-}
-
-func ptrContentItemState(s models.State) *models.State {
-	return &s
 }
 
 func TestGetBundleContents(t *testing.T) {
