@@ -88,7 +88,7 @@ var (
 	ErrExpectedStateOfCreated  = errors.New("expected bundle state to be 'CREATED'")
 	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
 	ErrInvalidTransition       = errors.New("state not allowed to transition")
-	ErrVersionStateMismatched  = errors.New("version state does not match content item state")
+	ErrVersionStateNotApproved = errors.New("version state expected to be APPROVED when transitioning bundle to PUBLISHED")
 )
 
 // 404 Not Found

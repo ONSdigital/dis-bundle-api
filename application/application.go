@@ -233,14 +233,13 @@ func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Con
 	versionID := strconv.Itoa(contentItem.Metadata.VersionID)
 
 	version, err := s.DatasetAPIClient.GetVersion(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
-
 	if err != nil {
 		return err
 	}
 
-	if !strings.EqualFold(version.State, contentItem.State.String()) {
-		log.Warn(ctx, "Version state does not match ContentItem state", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "content-item-state": contentItem.State.String()})
-		return errs.ErrVersionStateMismatched
+	if targetState.String() == models.StatePublished.String() && !strings.EqualFold(version.State, models.StateApproved.String()) {
+		log.Warn(ctx, "Version state is not approved", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "target-state": targetState.String()})
+		return errs.ErrVersionStateNotApproved
 	}
 
 	if err := s.DatasetAPIClient.PutVersionState(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID, strings.ToLower(targetState.String())); err != nil {
