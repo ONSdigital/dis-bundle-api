@@ -1526,11 +1526,8 @@ func TestPutBundle_Success(t *testing.T) {
 			ETag:  "new-etag",
 		}
 
-		authEntityData := &models.AuthEntityData{
-			EntityData: &permissionsSDK.EntityData{
-				UserID: userEmail,
-			},
-			ServiceToken: "test-token",
+		authEntityData := &permissionsSDK.EntityData{
+			UserID: userEmail,
 		}
 
 		authHeaders := sdk.Headers{ServiceToken: "test-token"}
