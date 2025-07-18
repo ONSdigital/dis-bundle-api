@@ -479,19 +479,19 @@ responses:
     schema:
       $ref: "#/definitions/ErrorList"
   ForbiddenError:
-    description: Access denied.
+    description: "Access denied."
     schema:
       $ref: "#/definitions/ErrorList"
   InternalError:
-    description: "Failed to process the request due to an internal error"
+    description: "Failed to process the request due to an internal error."
     schema:
       $ref: "#/definitions/ErrorList"
   InvalidRequest:
-    description: Unable to process request due to a malformed or invalid request body or query parameter.
+    description: "Unable to process request due to a malformed or invalid request body or query parameter."
     schema:
       $ref: "#/definitions/ErrorList"
   MethodNotSupported:
-    description: "Attempted to call an endpoint that is not supported for this API"
+    description: "Attempted to call an endpoint that is not supported for this API."
     schema:
       $ref: "#/definitions/ErrorList"
   NotFound:
@@ -504,7 +504,7 @@ responses:
     schema:
       $ref: "#/definitions/ErrorList"
   UnauthorisedError:
-    description: Authentication information is missing or invalid
+    description: "Authentication information is missing or invalid."
     schema:
       $ref: "#/definitions/ErrorList"
 definitions:
@@ -556,7 +556,7 @@ definitions:
         example: "2025-04-04T07:00:00.000Z"
       id:
         type: string
-        description: "The bundle id"
+        description: "The bundle ID"
         readOnly: true
         minLength: 1
         maxLength: 100
@@ -655,12 +655,12 @@ definitions:
         properties:
           dataset_id:
             type: string
-            description: "The dataset id of the item in the bundle"
+            description: "The dataset ID of the item in the bundle"
             minLength: 1
             example: "cpih"
           edition_id:
             type: string
-            description: "The edition id of the dataset item in the bundle"
+            description: "The edition ID of the dataset item in the bundle"
             minLength: 1
             example: "march"
           title:
@@ -670,13 +670,13 @@ definitions:
             example: "Consumer Prices Index"
           version_id:
             type: integer
-            description: "The version id of the dataset item in the bundle"
+            description: "The version ID of the dataset item in the bundle"
             minimum: 1
             example: 1
       id:
         type: string
         readOnly: true
-        description: "An auto generated id field to identify the item"
+        description: "An auto generated ID field to identify the item"
         example: "de3bc0b6-d6c4-4e20-917e-95d7ea8c91dc"
       state:
         description: "The approval status of the item. Pre-release, this field will be hydrated from the dataset API when requested. Post-release, the bundle API will store a snapshot of the dataset metadata to be returned on subsequent requests."
@@ -721,8 +721,17 @@ definitions:
         type: string
         description: "Code representing the type of error that occurred for use by consuming systems to identify error types."
         enum:
-          - SomeError # TODO: Replace with list of actual error codes once defined
-          - AnotherError
+          - InternalError
+          - NotFound
+          - BadRequest
+          - Unauthorised
+          - Forbidden
+          - Conflict
+          - MissingParameters
+          - InvalidParameters
+          - JSONMarshalError
+          - JSONUnmarshalError
+          - WriteResponseError
       description:
         type: string
         description: "Human readable description of the error"
