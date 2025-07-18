@@ -102,7 +102,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }
@@ -117,7 +117,7 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }

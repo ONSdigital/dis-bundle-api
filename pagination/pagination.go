@@ -183,7 +183,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to process the request due to an internal error",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusBadGateway, errInfo)
 		return
@@ -200,7 +200,7 @@ func returnPaginatedResults(w http.ResponseWriter, r *http.Request, list Paginat
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to process the request due to an internal error",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusBadGateway, errInfo)
 		return

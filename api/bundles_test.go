@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
@@ -309,7 +309,7 @@ func TestGetBundles_Failure(t *testing.T) {
 				So(successResp, ShouldBeNil)
 				So(errResp, ShouldNotBeNil)
 				So(errResp.HTTPStatusCode, ShouldEqual, 500)
-				So(errResp.Error.Description, ShouldEqual, "Failed to process the request due to an internal error")
+				So(errResp.Error.Description, ShouldEqual, apierrors.ErrorDescriptionInternalError)
 			})
 		})
 
@@ -329,7 +329,7 @@ func TestGetBundles_Failure(t *testing.T) {
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 500", func() {
 				So(w.Code, ShouldEqual, http.StatusInternalServerError)
-				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"InternalError","description":"Failed to process the request due to an internal error"}]}`+"\n")
+				So(w.Body.String(), ShouldEqual, `{"errors":[{"code":"InternalError","description":"Failed to process the request due to an internal error."}]}`+"\n")
 			})
 		})
 
@@ -355,7 +355,7 @@ func TestGetBundles_Failure(t *testing.T) {
 
 				expectedError := &models.Error{
 					Code:        &expectedErrorCode,
-					Description: errs.ErrorDescriptionMalformedRequest,
+					Description: apierrors.ErrorDescriptionMalformedRequest,
 					Source:      &expectedErrorSource,
 				}
 
@@ -505,7 +505,7 @@ func TestGetBundle_Failure(t *testing.T) {
 
 			mockStore := &storetest.StorerMock{
 				GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-					return nil, errs.ErrBundleNotFound
+					return nil, apierrors.ErrBundleNotFound
 				},
 			}
 
@@ -525,7 +525,7 @@ func TestGetBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionNotFound,
+							Description: apierrors.ErrorDescriptionNotFound,
 						},
 					},
 				}
@@ -558,7 +558,7 @@ func TestGetBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -669,7 +669,7 @@ func createMockStore(data *testData) *storetest.StorerMock {
 			if data.bundle.ID == id {
 				return data.bundle, nil
 			}
-			return nil, errs.ErrBundleNotFound
+			return nil, apierrors.ErrBundleNotFound
 		},
 		GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
 			var items []models.ContentItem
@@ -688,14 +688,14 @@ func createMockStore(data *testData) *storetest.StorerMock {
 					return nil
 				}
 			}
-			return errs.ErrContentItemNotFound
+			return apierrors.ErrContentItemNotFound
 		},
 		UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
 			if data.bundle.ID == id {
 				data.bundle.State = update.State
 				return data.bundle, nil
 			}
-			return nil, errs.ErrBundleNotFound
+			return nil, apierrors.ErrBundleNotFound
 		},
 		CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
 			*data.events = append(*data.events, event)
@@ -923,7 +923,7 @@ func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
 
 					expectedErrResp := models.ErrorList{
 						Errors: []*models.Error{
-							models.ErrorToModelErrorMap[errs.ErrInvalidBundleState],
+							models.ErrorToModelErrorMap[apierrors.ErrInvalidBundleState],
 						},
 					}
 					So(errResp, ShouldResemble, expectedErrResp)
@@ -943,7 +943,7 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 	fromState := models.BundleStateApproved
 	expectedErrorResponse := models.ErrorList{
 		Errors: []*models.Error{
-			models.ErrorToModelErrorMap[errs.ErrInternalServer],
+			models.ErrorToModelErrorMap[apierrors.ErrInternalServer],
 		},
 	}
 
@@ -1012,13 +1012,13 @@ func TestPutBundleState_BadRequests(t *testing.T) {
 		authorised         bool        // Whether to make the request authorised or not
 		requestBody        interface{} // Request body to send.
 	}{
-		{"With a non-existent bundle ID", "missing-bundle-id", "etag", 404, models.ErrorToModelErrorMap[errs.ErrBundleNotFound], true, UpdateStateRequestBodyValid},
-		{"Where the supplied ETag doesn't match the bundle", data.bundle.ID, "etag", 409, models.ErrorToModelErrorMap[errs.ErrInvalidIfMatchHeader], true, UpdateStateRequestBodyValid},
-		{"Where no ETag value supplied", data.bundle.ID, "", 400, models.ErrorToModelErrorMap[errs.ErrMissingIfMatchHeader], true, UpdateStateRequestBodyValid},
-		{"With an unauthenticated request", data.bundle.ID, data.bundle.ETag, 401, models.ErrorToModelErrorMap[errs.ErrUnauthorised], false, UpdateStateRequestBodyValid},
-		{"With a request body missing the state field", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[errs.ErrInvalidBody], true, UpdateStateRequestBodyMissingStateField},
-		{"With a request body that has an invalid state field", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[errs.ErrInvalidBody], true, UpdateStateRequestBodyInvalidStateField},
-		{"With a request body that is not the correct type", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[errs.ErrInvalidBody], true, UpdateStateRequestBodyInvalidType},
+		{"With a non-existent bundle ID", "missing-bundle-id", "etag", 404, models.ErrorToModelErrorMap[apierrors.ErrBundleNotFound], true, UpdateStateRequestBodyValid},
+		{"Where the supplied ETag doesn't match the bundle", data.bundle.ID, "etag", 409, models.ErrorToModelErrorMap[apierrors.ErrInvalidIfMatchHeader], true, UpdateStateRequestBodyValid},
+		{"Where no ETag value supplied", data.bundle.ID, "", 400, models.ErrorToModelErrorMap[apierrors.ErrMissingIfMatchHeader], true, UpdateStateRequestBodyValid},
+		{"With an unauthenticated request", data.bundle.ID, data.bundle.ETag, 401, models.ErrorToModelErrorMap[apierrors.ErrUnauthorised], false, UpdateStateRequestBodyValid},
+		{"With a request body missing the state field", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[apierrors.ErrInvalidBody], true, UpdateStateRequestBodyMissingStateField},
+		{"With a request body that has an invalid state field", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[apierrors.ErrInvalidBody], true, UpdateStateRequestBodyInvalidStateField},
+		{"With a request body that is not the correct type", data.bundle.ID, data.bundle.ETag, 400, models.ErrorToModelErrorMap[apierrors.ErrInvalidBody], true, UpdateStateRequestBodyInvalidType},
 	}
 
 	for index := range errorTestCases {
@@ -1157,7 +1157,7 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionMalformedRequest,
+							Description: apierrors.ErrorDescriptionMalformedRequest,
 						},
 					},
 				}
@@ -1198,7 +1198,7 @@ func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInvalidTimeFormat,
+							Description: apierrors.ErrorDescriptionInvalidTimeFormat,
 							Source: &models.Source{
 								Field: "scheduled_at",
 							},
@@ -1241,7 +1241,7 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 				Errors: []*models.Error{
 					{
 						Code:        &code,
-						Description: errs.ErrorDescriptionInternalError,
+						Description: apierrors.ErrorDescriptionInternalError,
 					},
 				},
 			}
@@ -1278,35 +1278,35 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeMissingParameters,
-							Description: errs.ErrorDescriptionMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/bundle_type",
 							},
 						},
 						{
 							Code:        &codeMissingParameters,
-							Description: errs.ErrorDescriptionMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/preview_teams",
 							},
 						},
 						{
 							Code:        &codeMissingParameters,
-							Description: errs.ErrorDescriptionMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/state",
 							},
 						},
 						{
 							Code:        &codeMissingParameters,
-							Description: errs.ErrorDescriptionMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/title",
 							},
 						},
 						{
 							Code:        &codeMissingParameters,
-							Description: errs.ErrorDescriptionMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/managed_by",
 							},
@@ -1351,7 +1351,7 @@ func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionStateNotAllowedToTransition,
+							Description: apierrors.ErrorDescriptionStateNotAllowedToTransition,
 						},
 					},
 				}
@@ -1391,7 +1391,7 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1419,7 +1419,7 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1472,7 +1472,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1500,7 +1500,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
+							Description: apierrors.ErrorDescriptionBundleTitleAlreadyExist,
 							Source: &models.Source{
 								Field: "/title",
 							},
@@ -1551,7 +1551,7 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1608,7 +1608,7 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1635,7 +1635,7 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
-					return errs.ErrScheduledAtRequired
+					return apierrors.ErrScheduledAtRequired
 				},
 			}
 
@@ -1657,7 +1657,7 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionScheduledAtIsRequired,
+							Description: apierrors.ErrorDescriptionScheduledAtIsRequired,
 							Source: &models.Source{
 								Field: "/scheduled_at",
 							},
@@ -1687,7 +1687,7 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
-					return errs.ErrScheduledAtSet
+					return apierrors.ErrScheduledAtSet
 				},
 			}
 
@@ -1709,7 +1709,7 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
+							Description: apierrors.ErrorDescriptionScheduledAtShouldNotBeSet,
 							Source: &models.Source{
 								Field: "/scheduled_at",
 							},
@@ -1740,7 +1740,7 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 					return false, nil
 				},
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
-					return errs.ErrScheduledAtInPast
+					return apierrors.ErrScheduledAtInPast
 				},
 			}
 
@@ -1762,7 +1762,7 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionScheduledAtIsInPast,
+							Description: apierrors.ErrorDescriptionScheduledAtIsInPast,
 							Source: &models.Source{
 								Field: "/scheduled_at",
 							},
@@ -1791,7 +1791,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 						State: models.BundleStateDraft,
 					}, nil
 				}
-				return nil, errs.ErrBundleNotFound
+				return nil, apierrors.ErrBundleNotFound
 			},
 			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
@@ -1851,7 +1851,7 @@ func TestDeleteBundle_Failure_UnableToParseToken(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &code,
-							Description: errs.ErrorDescriptionInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1877,7 +1877,7 @@ func TestDeleteBundle_Failure_BundleNonExistent(t *testing.T) {
 						State: models.BundleStateDraft,
 					}, nil
 				}
-				return nil, errs.ErrBundleNotFound
+				return nil, apierrors.ErrBundleNotFound
 			},
 		}
 
@@ -1896,7 +1896,7 @@ func TestDeleteBundle_Failure_BundleNonExistent(t *testing.T) {
 				Errors: []*models.Error{
 					{
 						Code:        &code,
-						Description: errs.ErrorDescriptionNotFound,
+						Description: apierrors.ErrorDescriptionNotFound,
 					},
 				},
 			}

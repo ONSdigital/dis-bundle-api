@@ -275,7 +275,7 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: "Failed to check if bundle exists",
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -303,7 +303,7 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeNotFound,
-							Description: "Bundle not found",
+							Description: apierrors.ErrorDescriptionNotFound,
 						},
 					},
 				}
@@ -484,7 +484,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: "Failed to get version from dataset API",
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -557,7 +557,7 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: "Content item already exists for the given dataset, edition and version",
+							Description: apierrors.ErrorDescriptionConflict,
 						},
 					},
 				}
@@ -590,7 +590,7 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: "Failed to check if content item exists",
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -663,7 +663,7 @@ func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: "Failed to create content item in the datastore",
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -731,7 +731,7 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 				Errors: []*models.Error{
 					{
 						Code:        &codeInternalError,
-						Description: "Failed to get user identity from JWT",
+						Description: apierrors.ErrorDescriptionInternalError,
 					},
 				},
 			}
@@ -805,7 +805,7 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 				Errors: []*models.Error{
 					{
 						Code:        &codeInternalError,
-						Description: "Failed to create event",
+						Description: apierrors.ErrorDescriptionInternalError,
 					},
 				},
 			}
@@ -882,7 +882,7 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 				Errors: []*models.Error{
 					{
 						Code:        &codeInternalError,
-						Description: "Failed to update bundle ETag",
+						Description: apierrors.ErrorDescriptionInternalError,
 					},
 				},
 			}
@@ -1051,7 +1051,7 @@ func TestDeleteContentItem_ContentItemIsPublished_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: apierrors.ErrorDescriptionAlreadyPublished,
+							Description: apierrors.ErrorDescriptionConflict,
 						},
 					},
 				}
@@ -1560,7 +1560,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeNotFound,
-							Description: "Bundle not found",
+							Description: apierrors.ErrorDescriptionNotFound,
 						},
 					},
 				}
@@ -1599,7 +1599,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: "Failed to get dataset from dataset API",
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}
@@ -1671,7 +1671,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeNotFound,
-							Description: "The requested resource does not exist",
+							Description: apierrors.ErrorDescriptionNotFound,
 							Source: &models.Source{
 								Field: "/metadata/dataset_id",
 							},

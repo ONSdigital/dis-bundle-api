@@ -49,7 +49,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to check if bundle exists",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -59,7 +59,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeNotFound
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Bundle not found",
+			Description: apierrors.ErrorDescriptionNotFound,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		return
@@ -113,7 +113,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			code := models.CodeInternalError
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Failed to get version from dataset API",
+				Description: apierrors.ErrorDescriptionInternalError,
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 			return
@@ -126,7 +126,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to check if content item exists",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -137,7 +137,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Content item already exists for the given dataset, edition and version",
+			Description: apierrors.ErrorDescriptionConflict,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
@@ -149,7 +149,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to create content item in the datastore",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -161,7 +161,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to get user identity from JWT",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -185,7 +185,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to validate event",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -197,7 +197,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to create event",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -209,7 +209,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to update bundle ETag",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -221,7 +221,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to marshal content item to JSON",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
@@ -270,7 +270,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionAlreadyPublished,
+			Description: apierrors.ErrorDescriptionConflict,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
@@ -358,7 +358,7 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Failed to check if bundle exists",
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		return []*models.ContentItem{}, 0, errInfo
 	}
@@ -367,7 +367,7 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 		code := models.CodeNotFound
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Bundle not found",
+			Description: apierrors.ErrorDescriptionNotFound,
 		}
 		return []*models.ContentItem{}, 0, errInfo
 	}
@@ -396,7 +396,7 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 			code := models.CodeInternalError
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "Failed to get dataset from dataset API",
+				Description: apierrors.ErrorDescriptionInternalError,
 			}
 			return nil, 0, errInfo
 		}

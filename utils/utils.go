@@ -24,7 +24,7 @@ func HandleBundleAPIErr(w http.ResponseWriter, r *http.Request, httpStatusCode i
 			codeInternalError := models.CodeInternalError
 			genericError := &models.Error{
 				Code:        &codeInternalError,
-				Description: "Failed to process the request due to an internal error",
+				Description: apierrors.ErrorDescriptionInternalError,
 			}
 			httpStatusCode = http.StatusInternalServerError
 			errList.Errors = append(errList.Errors, genericError)

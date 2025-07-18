@@ -342,7 +342,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 		code := models.CodeConflict
 		e := &models.Error{
 			Code:        &code,
-			Description: errs.ErrorDescriptionAlreadyPublished,
+			Description: errs.ErrorDescriptionConflict,
 		}
 		return http.StatusConflict, e, err
 	}

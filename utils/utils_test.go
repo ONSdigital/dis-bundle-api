@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -66,7 +67,7 @@ func TestHandleBundleAPIErr_Failure(t *testing.T) {
 				err := json.NewDecoder(w.Body).Decode(&response)
 				So(err, ShouldBeNil)
 				So(response.Errors[0].Code.String(), ShouldEqual, models.CodeInternalError.String())
-				So(response.Errors[0].Description, ShouldEqual, "Failed to process the request due to an internal error")
+				So(response.Errors[0].Description, ShouldEqual, apierrors.ErrorDescriptionInternalError)
 			})
 		})
 	})

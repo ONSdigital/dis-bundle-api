@@ -34,7 +34,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.",
+			Description: apierrors.ErrorDescriptionConflict,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
@@ -60,7 +60,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.",
+			Description: apierrors.ErrorDescriptionConflict,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
@@ -109,7 +109,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 			code := models.CodeNotFound
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: "The requested resource does not exist.",
+				Description: apierrors.ErrorDescriptionNotFound,
 				Source:      &models.Source{Field: "/dataset_id"},
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)

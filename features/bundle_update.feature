@@ -218,7 +218,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "Conflict",
-                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published."
+                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
                     }
                 ]
             }
@@ -246,7 +246,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "Conflict",
-                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published."
+                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
                     }
                 ]
             }
@@ -271,35 +271,35 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/bundle_type"
                         }
                     },
                     {
                         "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
                         "source": {
                             "field": "/preview_teams"
                         }
                     },
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/state"
                         }
                     },
                     {
                         "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
                         "source": {
                             "field": "/title"
                         }
                     },
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/managed_by"
                         }
@@ -331,7 +331,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/title"
                         }
@@ -364,7 +364,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -397,7 +397,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -430,7 +430,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -462,7 +462,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/state"
                         }
@@ -493,7 +493,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }

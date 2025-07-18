@@ -159,7 +159,7 @@ func TestPutBundle_MissingIfMatchHeader_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.",
+							Description: apierrors.ErrorDescriptionConflict,
 						},
 					},
 				}
@@ -221,7 +221,7 @@ func TestPutBundle_ETagMismatch_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: "Change rejected due to a conflict with the current resource state. A common cause is attempted to change a bundle that is already locked pending publication or has already been published.",
+							Description: apierrors.ErrorDescriptionConflict,
 						},
 					},
 				}

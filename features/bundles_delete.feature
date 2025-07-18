@@ -131,7 +131,7 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }

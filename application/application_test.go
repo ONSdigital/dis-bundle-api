@@ -1257,7 +1257,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 				code := models.CodeConflict
 				expectedErr := &models.Error{
 					Code:        &code,
-					Description: apierrors.ErrorDescriptionAlreadyPublished,
+					Description: apierrors.ErrorDescriptionConflict,
 				}
 				So(errObject, ShouldResemble, expectedErr)
 			})

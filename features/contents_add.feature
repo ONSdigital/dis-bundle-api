@@ -133,14 +133,14 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/content_type"
                         }
                     },
                     {
                         "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
                         "source": {
                             "field": "/links/edit"
                         }
@@ -173,7 +173,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "Bundle not found"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }
@@ -203,7 +203,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist",
+                        "description": "The requested resource does not exist.",
                         "source": {
                             "field": "/metadata/dataset_id"
                         }
@@ -236,7 +236,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist",
+                        "description": "The requested resource does not exist.",
                         "source": {
                             "field": "/metadata/edition_id"
                         }
@@ -269,7 +269,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist",
+                        "description": "The requested resource does not exist.",
                         "source": {
                             "field": "/metadata/version_id"
                         }
@@ -302,7 +302,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "Conflict",
-                        "description": "Content item already exists for the given dataset, edition and version"
+                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
                     }
                 ]
             }

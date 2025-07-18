@@ -195,7 +195,7 @@ Feature: List bundles - GET /Bundles
                 "errors": [
                     {
                         "code": "BadRequest",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "parameter": " offset"
                         }
@@ -214,7 +214,7 @@ Feature: List bundles - GET /Bundles
                 "errors": [
                     {
                         "code": "BadRequest",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "parameter": " limit"
                         }
@@ -280,7 +280,7 @@ Feature: List bundles - GET /Bundles
                 "errors": [
                     {
                         "code": "NotFound",
-                        "description": "The requested resource does not exist"
+                        "description": "The requested resource does not exist."
                     }
                 ]
             }
@@ -297,7 +297,7 @@ Feature: List bundles - GET /Bundles
                     "errors": [
                         {
                             "code": "InvalidParameters",
-                            "description": "Unable to process request due to a malformed or invalid request body or query parameter",
+                            "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                             "source": {
                                 "parameter": "publish_date"
                             }

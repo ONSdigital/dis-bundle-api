@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -28,7 +28,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
+				Description: apierrors.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: param},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -47,7 +47,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
+				Description: apierrors.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: "after"},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -62,7 +62,7 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 			code := models.CodeInvalidParameters
 			errInfo := &models.Error{
 				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
+				Description: apierrors.ErrorDescriptionMalformedRequest,
 				Source:      &models.Source{Parameter: "before"},
 			}
 			validationErrors = append(validationErrors, errInfo)
@@ -80,14 +80,14 @@ func (api *BundleAPI) getBundleEvents(w http.ResponseWriter, r *http.Request, li
 	if err != nil {
 		code := models.CodeInternalError
 		log.Error(ctx, "failed to get bundle events", err)
-		errInfo := &models.Error{Code: &code, Description: "Failed to process the request due to an internal error"}
+		errInfo := &models.Error{Code: &code, Description: apierrors.ErrorDescriptionInternalError}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return nil, 0, nil
 	}
 
 	if totalCount == 0 {
 		code := models.CodeNotFound
-		errInfo := &models.Error{Code: &code, Description: "The requested resource does not exist."}
+		errInfo := &models.Error{Code: &code, Description: apierrors.ErrorDescriptionNotFound}
 		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
 		return nil, 0, errInfo
 	}
