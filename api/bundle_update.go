@@ -31,12 +31,12 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	ifMatchHeader := r.Header.Get("If-Match")
 	if ifMatchHeader == "" {
 		log.Error(ctx, "putBundle endpoint: missing If-Match header", nil, logdata)
-		code := models.CodeConflict
+		code := models.CodeMissingParameters
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionConflict,
+			Description: apierrors.ErrorDescriptionMissingIfMatchHeader,
 		}
-		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 		return
 	}
 
@@ -52,8 +52,8 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trimmedIfMatch := strings.Trim(ifMatchHeader, "\"")
-	trimmedDBETag := strings.Trim(currentBundle.ETag, "\"")
+	trimmedIfMatch := trimETag(ifMatchHeader)
+	trimmedDBETag := trimETag(currentBundle.ETag)
 
 	if trimmedDBETag != trimmedIfMatch {
 		log.Error(ctx, "putBundle endpoint: ETag mismatch", nil, logdata)
@@ -86,12 +86,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var authHeaders datasetAPISDK.Headers
-	if r.Header.Get("X-Florence-Token") != "" {
-		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
-	} else {
-		authHeaders.ServiceToken = r.Header.Get("Authorization")
-	}
+	authHeaders := getAuthHeaders(r)
 
 	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, entityData, authHeaders)
 	if err != nil {
@@ -188,4 +183,18 @@ func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID str
 	}
 
 	return bundleUpdate, nil, nil
+}
+
+func trimETag(etag string) string {
+	return strings.Trim(etag, "\"")
+}
+
+func getAuthHeaders(r *http.Request) datasetAPISDK.Headers {
+	var authHeaders datasetAPISDK.Headers
+	if r.Header.Get("X-Florence-Token") != "" {
+		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
+	} else {
+		authHeaders.ServiceToken = r.Header.Get("Authorization")
+	}
+	return authHeaders
 }

@@ -495,27 +495,7 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		return nil, err
 	}
 
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    userID,
-			Email: userID,
-		},
-		Action:   models.ActionUpdate,
-		Resource: "/bundles/" + bundleID,
-		Bundle: &models.EventBundle{
-			ID:            updatedBundle.ID,
-			BundleType:    updatedBundle.BundleType,
-			CreatedBy:     updatedBundle.CreatedBy,
-			CreatedAt:     updatedBundle.CreatedAt,
-			LastUpdatedBy: updatedBundle.LastUpdatedBy,
-			PreviewTeams:  updatedBundle.PreviewTeams,
-			ScheduledAt:   updatedBundle.ScheduledAt,
-			State:         updatedBundle.State,
-			Title:         updatedBundle.Title,
-			UpdatedAt:     updatedBundle.UpdatedAt,
-			ManagedBy:     updatedBundle.ManagedBy,
-		},
-	}
+	event := createEventFromUpdatedBundle(userID, bundleID, updatedBundle)
 
 	err = models.ValidateEvent(event)
 	if err != nil {
@@ -568,39 +548,23 @@ func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleU
 		}
 		if exists {
 			code := models.CodeInvalidParameters
-			validationErrors = append(validationErrors, &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
-				Source:      &models.Source{Field: "/title"},
-			})
+			validationErrors = append(validationErrors, createValidationError(code, "/title"))
 		}
 	}
 
 	if bundleUpdate.BundleType == models.BundleTypeScheduled {
 		if bundleUpdate.ScheduledAt == nil {
 			code := models.CodeInvalidParameters
-			validationErrors = append(validationErrors, &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
-				Source:      &models.Source{Field: "/scheduled_at"},
-			})
+			validationErrors = append(validationErrors, createValidationError(code, "/scheduled_at"))
 		} else if bundleUpdate.ScheduledAt.Before(time.Now()) {
 			code := models.CodeInvalidParameters
-			validationErrors = append(validationErrors, &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionMalformedRequest,
-				Source:      &models.Source{Field: "/scheduled_at"},
-			})
+			validationErrors = append(validationErrors, createValidationError(code, "/scheduled_at"))
 		}
 	}
 
 	if bundleUpdate.BundleType == models.BundleTypeManual && bundleUpdate.ScheduledAt != nil {
 		code := models.CodeInvalidParameters
-		validationErrors = append(validationErrors, &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionMalformedRequest,
-			Source:      &models.Source{Field: "/scheduled_at"},
-		})
+		validationErrors = append(validationErrors, createValidationError(code, "/scheduled_at"))
 	}
 
 	return validationErrors
@@ -649,4 +613,36 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 		}
 	}
 	return nil
+}
+
+func createValidationError(code models.Code, field string) *models.Error {
+	return &models.Error{
+		Code:        &code,
+		Description: errs.ErrorDescriptionMalformedRequest,
+		Source:      &models.Source{Field: field},
+	}
+}
+
+func createEventFromUpdatedBundle(userID, bundleID string, updatedBundle *models.Bundle) *models.Event {
+	return &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    userID,
+			Email: userID,
+		},
+		Action:   models.ActionUpdate,
+		Resource: "/bundles/" + bundleID,
+		Bundle: &models.EventBundle{
+			ID:            updatedBundle.ID,
+			BundleType:    updatedBundle.BundleType,
+			CreatedBy:     updatedBundle.CreatedBy,
+			CreatedAt:     updatedBundle.CreatedAt,
+			LastUpdatedBy: updatedBundle.LastUpdatedBy,
+			PreviewTeams:  updatedBundle.PreviewTeams,
+			ScheduledAt:   updatedBundle.ScheduledAt,
+			State:         updatedBundle.State,
+			Title:         updatedBundle.Title,
+			UpdatedAt:     updatedBundle.UpdatedAt,
+			ManagedBy:     updatedBundle.ManagedBy,
+		},
+	}
 }

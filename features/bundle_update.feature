@@ -197,7 +197,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             }
             """
 
-    Scenario: PUT /bundles/{id} without If-Match header returns 409
+    Scenario: PUT /bundles/{id} without If-Match header returns 400
         Given I am an admin user
         When I PUT "/bundles/bundle-1"
             """
@@ -212,13 +212,13 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "managed_by": "DATA-ADMIN"
             }
             """
-        Then I should receive the following JSON response with status "409":
+        Then I should receive the following JSON response with status "400":
             """
             {
                 "errors": [
                     {
-                        "code": "Conflict",
-                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
+                        "code": "MissingParameters",
+                        "description": "Unable to process request due to missing If-Match header."
                     }
                 ]
             }

@@ -147,19 +147,19 @@ func TestPutBundle_MissingIfMatchHeader_Failure(t *testing.T) {
 
 			bundleAPI.putBundle(w, r)
 
-			Convey("Then it should return 409 Conflict", func() {
-				So(w.Code, ShouldEqual, http.StatusConflict)
+			Convey("Then it should return 400 Bad Request", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
 
 				var errResp models.ErrorList
 				err := json.NewDecoder(w.Body).Decode(&errResp)
 				So(err, ShouldBeNil)
 
-				codeConflict := models.CodeConflict
+				codeMissingParameters := models.CodeMissingParameters
 				expectedErrResp := models.ErrorList{
 					Errors: []*models.Error{
 						{
-							Code:        &codeConflict,
-							Description: apierrors.ErrorDescriptionConflict,
+							Code:        &codeMissingParameters,
+							Description: apierrors.ErrorDescriptionMissingIfMatchHeader,
 						},
 					},
 				}
