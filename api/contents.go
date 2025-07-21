@@ -72,7 +72,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		authHeaders.ServiceToken = r.Header.Get("Authorization")
 	}
 
-	_, err = api.stateMachineBundleAPI.DatasetAPIClient.GetVersion(ctx, authHeaders, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
+	_, err = api.stateMachineBundleAPI.GetVersion(ctx, authHeaders, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "dataset not found"):
@@ -348,11 +348,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 }
 
 func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, limit, offset int) (contents any, totalCount int, contentErrors *models.Error) {
-	// Fetch bundle ID
 	ctx := r.Context()
 	bundleID, logData := getBundleIDAndLogData(r)
 
-	// Check if the bundle exists
 	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
 	if err != nil {
 		code := models.CodeInternalError

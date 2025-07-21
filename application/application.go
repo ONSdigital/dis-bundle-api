@@ -447,7 +447,7 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 
 	for _, contentItem := range contentResults {
 		datasetID := contentItem.Metadata.DatasetID
-		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
+		dataset, err := s.GetDataset(ctx, authHeaders, datasetID)
 
 		if err != nil {
 			log.Error(ctx, "failed to fetch dataset", err, log.Data{"dataset_id": datasetID})
