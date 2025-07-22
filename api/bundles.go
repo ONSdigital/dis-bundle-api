@@ -164,7 +164,7 @@ func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r
 	bundleBytes, err := json.Marshal(bundle)
 	if err != nil {
 		log.Error(ctx, "failed to marshal bundle into bytes", err, logData)
-		errInfo := models.CreateModelError(models.CodeInternalError, errs.ErrMarshalJSONObject)
+		errInfo := models.CreateModelError(models.CodeInternalError, errs.ErrorDescriptionMarshalJSONObject)
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return nil
 	}
