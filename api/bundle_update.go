@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -52,10 +51,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	trimmedIfMatch := trimETag(ifMatchHeader)
-	trimmedDBETag := trimETag(currentBundle.ETag)
-
-	if trimmedDBETag != trimmedIfMatch {
+	if currentBundle.ETag != ifMatchHeader {
 		log.Error(ctx, "putBundle endpoint: ETag mismatch", nil, logdata)
 		code := models.CodeConflict
 		errInfo := &models.Error{
@@ -183,10 +179,6 @@ func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID str
 	}
 
 	return bundleUpdate, nil, nil
-}
-
-func trimETag(etag string) string {
-	return strings.Trim(etag, "\"")
 }
 
 func getAuthHeaders(r *http.Request) datasetAPISDK.Headers {

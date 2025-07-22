@@ -624,6 +624,12 @@ func createValidationError(code models.Code, field string) *models.Error {
 }
 
 func createEventFromUpdatedBundle(userID, bundleID string, updatedBundle *models.Bundle) *models.Event {
+	eventBundle, err := models.ConvertBundleToBundleEvent(updatedBundle)
+	if err != nil {
+		log.Error(context.Background(), "failed to convert bundle to event bundle", err)
+		return nil
+	}
+
 	return &models.Event{
 		RequestedBy: &models.RequestedBy{
 			ID:    userID,
@@ -631,18 +637,6 @@ func createEventFromUpdatedBundle(userID, bundleID string, updatedBundle *models
 		},
 		Action:   models.ActionUpdate,
 		Resource: "/bundles/" + bundleID,
-		Bundle: &models.EventBundle{
-			ID:            updatedBundle.ID,
-			BundleType:    updatedBundle.BundleType,
-			CreatedBy:     updatedBundle.CreatedBy,
-			CreatedAt:     updatedBundle.CreatedAt,
-			LastUpdatedBy: updatedBundle.LastUpdatedBy,
-			PreviewTeams:  updatedBundle.PreviewTeams,
-			ScheduledAt:   updatedBundle.ScheduledAt,
-			State:         updatedBundle.State,
-			Title:         updatedBundle.Title,
-			UpdatedAt:     updatedBundle.UpdatedAt,
-			ManagedBy:     updatedBundle.ManagedBy,
-		},
+		Bundle:   eventBundle,
 	}
 }
