@@ -41,12 +41,12 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		authMiddleware.Require("bundles:read", api.getBundle),
 	)
 	api.get(
-		"/bundle-events",
-		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleEvents)),
-	)
-	api.get(
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleContents)),
+	)
+	api.get(
+		"/bundle-events",
+		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleEvents)),
 	)
 
 	// post
@@ -58,17 +58,14 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *s
 		"/bundles/{bundle-id}/contents",
 		authMiddleware.Require("bundles:create", api.postBundleContents),
 	)
-	api.delete(
-		"/bundles/{bundle-id}/contents/{content-id}",
-		authMiddleware.Require("bundles:delete", api.deleteContentItem),
-	)
 
 	// put
-	api.put("/bundles/{bundle-id}/state",
-		authMiddleware.Require("bundles:update", api.putBundleState))
-	// put
 	api.put("/bundles/{bundle-id}",
-		authMiddleware.Require("bundles:update", api.putBundle))
+		authMiddleware.Require("bundles:update", api.putBundle),
+	)
+	api.put("/bundles/{bundle-id}/state",
+		authMiddleware.Require("bundles:update", api.putBundleState),
+	)
 
 	// delete
 	api.delete(
