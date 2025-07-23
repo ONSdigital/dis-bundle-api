@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -495,18 +496,14 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		return nil, err
 	}
 
-	event := createEventFromUpdatedBundle(userID, bundleID, updatedBundle)
-
-	err = models.ValidateEvent(event)
+	errObject, err := s.CreateEventFromBundle(ctx, updatedBundle, userID, models.ActionUpdate)
 	if err != nil {
-		log.Error(ctx, "event validation failed", err, logdata)
+		log.Error(ctx, "failed to create event from bundle", err, logdata)
 		return nil, err
 	}
-
-	err = s.CreateBundleEvent(ctx, event)
-	if err != nil {
-		log.Error(ctx, "failed to create event in database", err, logdata)
-		return nil, err
+	if errObject != nil {
+		log.Error(ctx, "error object returned from CreateEventFromBundle", nil, logdata)
+		return nil, errors.New("failed to create bundle event")
 	}
 
 	return updatedBundle, nil
@@ -620,23 +617,5 @@ func createValidationError(code models.Code, field string) *models.Error {
 		Code:        &code,
 		Description: errs.ErrorDescriptionMalformedRequest,
 		Source:      &models.Source{Field: field},
-	}
-}
-
-func createEventFromUpdatedBundle(userID, bundleID string, updatedBundle *models.Bundle) *models.Event {
-	eventBundle, err := models.ConvertBundleToBundleEvent(updatedBundle)
-	if err != nil {
-		log.Error(context.Background(), "failed to convert bundle to event bundle", err)
-		return nil
-	}
-
-	return &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    userID,
-			Email: userID,
-		},
-		Action:   models.ActionUpdate,
-		Resource: "/bundles/" + bundleID,
-		Bundle:   eventBundle,
 	}
 }
