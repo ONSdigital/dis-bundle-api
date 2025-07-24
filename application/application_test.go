@@ -14,7 +14,7 @@ import (
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
-	"github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPIMocks "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 
@@ -965,7 +965,7 @@ func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
 
 func TestGetBundleContents(t *testing.T) {
 	ctx := context.Background()
-	authHeaders := sdk.Headers{}
+	authHeaders := datasetAPISDK.Headers{}
 
 	Convey("Given a GetBundleContents application method", t, func() {
 		mockedDatastore := &storetest.StorerMock{}
@@ -1040,7 +1040,7 @@ func TestGetBundleContents(t *testing.T) {
 				}}, 1, nil
 			}
 
-			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{
 					ID:          datasetID,
 					Title:       "Dataset Title",
@@ -1079,7 +1079,7 @@ func TestGetBundleContents(t *testing.T) {
 				}}, 1, nil
 			}
 
-			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{}, errors.New("dataset fetch failed")
 			}
 
@@ -1526,11 +1526,15 @@ func TestPutBundle_Success(t *testing.T) {
 			ETag:  "new-etag",
 		}
 
-		authEntityData := &permissionsSDK.EntityData{
-			UserID: userEmail,
+		authEntityData := &models.AuthEntityData{
+			EntityData: &permissionsSDK.EntityData{
+				UserID: userEmail,
+			},
+			Headers: datasetAPISDK.Headers{
+				ServiceToken:    "test-token",
+				UserAccessToken: "test-token",
+			},
 		}
-
-		authHeaders := sdk.Headers{ServiceToken: "test-token"}
 
 		mockedDatastore := &storetest.StorerMock{
 			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
@@ -1549,7 +1553,7 @@ func TestPutBundle_Success(t *testing.T) {
 		}
 
 		Convey("When UpdateBundleWIP is called with no state change", func() {
-			result, err := stateMachine.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData, authHeaders)
+			result, err := stateMachine.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData)
 
 			Convey("Then it should update the bundle successfully", func() {
 				So(err, ShouldBeNil)
@@ -1730,7 +1734,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 		}
 
 		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{
 					ID:    datasetID,
 					Title: "New Dataset Title",
@@ -1745,7 +1749,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should update content items successfully", func() {
@@ -1775,7 +1779,7 @@ func TestUpdateContentItemsWithDatasetInfo_NoContentItems(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should complete without error", func() {
@@ -1808,7 +1812,7 @@ func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 		}
 
 		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers sdk.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{}, errors.New("dataset API failure")
 			},
 		}
@@ -1819,7 +1823,7 @@ func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := sdk.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should complete with error and log the failure", func() {

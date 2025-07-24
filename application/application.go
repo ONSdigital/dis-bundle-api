@@ -14,7 +14,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
-	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
@@ -227,11 +226,7 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 	return bundle, nil
 }
 
-func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Context, contentItem *models.ContentItem, targetState *models.BundleState, authToken string) error {
-	headers := datasetAPISDK.Headers{
-		UserAccessToken: authToken,
-	}
-
+func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Context, contentItem *models.ContentItem, targetState *models.BundleState, headers datasetAPISDK.Headers) error {
 	versionID := strconv.Itoa(contentItem.Metadata.VersionID)
 
 	version, err := s.DatasetAPIClient.GetVersion(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
@@ -462,9 +457,9 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	return contentResults, totalCount, nil
 }
 
-func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, entityData *permSDK.EntityData, authHeaders datasetAPISDK.Headers) (*models.Bundle, error) {
+func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 	logdata := log.Data{"bundle_id": bundleID}
-	userID := entityData.UserID
+	userID := authEntityData.GetUserID()
 
 	stateChangingToPublished, err := s.handleStateTransition(ctx, bundleUpdate, currentBundle)
 	if err != nil {
@@ -473,7 +468,7 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	}
 
 	if stateChangingToPublished {
-		err = s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
+		err = s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authEntityData.Headers)
 		if err != nil {
 			log.Error(ctx, "failed to validate/update content items with dataset info", err, logdata)
 			return nil, err

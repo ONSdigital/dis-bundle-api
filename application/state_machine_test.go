@@ -13,7 +13,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
-	"github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
@@ -427,11 +427,14 @@ func TestTransitionBundle_Success(t *testing.T) {
 			},
 		},
 	}
-	mockAuthData := models.AuthEntityData{
+	mockAuthEntityData := models.AuthEntityData{
 		EntityData: &permissionsSDK.EntityData{
 			UserID: mockUserID,
 		},
-		ServiceToken: mockServiceToken,
+		Headers: datasetAPISDK.Headers{
+			ServiceToken:    mockServiceToken,
+			UserAccessToken: mockServiceToken,
+		},
 	}
 
 	var createdEvents []*models.Event
@@ -441,7 +444,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 	states := getMockStates()
 	transitions := getMockTransitions()
 
-	getVersionFunc := func(_ context.Context, _ sdk.Headers, datasetID, editionID, versionID string) (*datasetAPIModels.Version, error) {
+	getVersionFunc := func(_ context.Context, _ datasetAPISDK.Headers, datasetID, editionID, versionID string) (*datasetAPIModels.Version, error) {
 		for index := range mockVersions {
 			mockVersion := mockVersions[index]
 
@@ -497,7 +500,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 		},
 	}
 	mockdatasetAPIClient := datasetAPISDKMock.ClienterMock{
-		GetVersionFunc: func(ctx context.Context, headers sdk.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
 			version, err := getVersionFunc(ctx, headers, datasetID, editionID, versionID)
 
 			if err != nil {
@@ -506,7 +509,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 
 			return *version, nil
 		},
-		PutVersionStateFunc: func(ctx context.Context, headers sdk.Headers, datasetID, editionID, versionID, state string) error {
+		PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
 			version, err := getVersionFunc(ctx, headers, datasetID, editionID, versionID)
 
 			if err != nil {
@@ -520,7 +523,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
 	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
-	bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthData)
+	bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 
 	Convey("When TransitionBundle is called with a valid transition and valid bundle", t, func() {
 		So(err, ShouldBeNil)
@@ -643,11 +646,14 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		},
 	}
 
-	mockAuthData := models.AuthEntityData{
+	mockAuthEntityData := models.AuthEntityData{
 		EntityData: &permissionsSDK.EntityData{
 			UserID: mockUserID,
 		},
-		ServiceToken: mockServiceToken,
+		Headers: datasetAPISDK.Headers{
+			ServiceToken:    mockServiceToken,
+			UserAccessToken: mockServiceToken,
+		},
 	}
 
 	var createdEvents []*models.Event
@@ -657,7 +663,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 	states := getMockStates()
 	transitions := getMockTransitions()
 
-	getVersionFunc := func(_ context.Context, _ sdk.Headers, datasetID, editionID, versionID string) (*datasetAPIModels.Version, error) {
+	getVersionFunc := func(_ context.Context, _ datasetAPISDK.Headers, datasetID, editionID, versionID string) (*datasetAPIModels.Version, error) {
 		for index := range mockVersions {
 			mockVersion := mockVersions[index]
 
@@ -721,7 +727,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 	}
 
 	mockdatasetAPIClient := datasetAPISDKMock.ClienterMock{
-		GetVersionFunc: func(ctx context.Context, headers sdk.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
 			version, err := getVersionFunc(ctx, headers, datasetID, editionID, versionID)
 
 			if err != nil {
@@ -730,7 +736,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 
 			return *version, nil
 		},
-		PutVersionStateFunc: func(ctx context.Context, headers sdk.Headers, datasetID, editionID, versionID, state string) error {
+		PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
 			version, err := getVersionFunc(ctx, headers, datasetID, editionID, versionID)
 
 			if err != nil {
@@ -750,7 +756,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
-		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthData)
+		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("the error should be returned", func() {
 				So(err, ShouldNotBeNil)
@@ -775,7 +781,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
-		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthData)
+		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("Then a not found error should be returned", func() {
 				So(err, ShouldNotBeNil)
@@ -804,7 +810,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 
 		bundleInstance := *mockBundle
 
-		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthData)
+		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("the error should be returned", func() {
 				So(err, ShouldNotBeNil)
@@ -845,7 +851,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 
 		bundleInstance := *mockBundle
-		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthData)
+		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("the error should be returned", func() {
 				So(err, ShouldNotBeNil)

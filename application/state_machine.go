@@ -187,7 +187,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 }
 
 func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
-	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.ServiceToken); err != nil {
+	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.Headers); err != nil {
 		return err
 	}
 
@@ -195,7 +195,7 @@ func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *mod
 		return err
 	}
 
-	event, err := models.CreateEventModel(authEntityData.EntityData.UserID, authEntityData.EntityData.UserID, models.ActionUpdate, models.CreateBundleContentResourceLocation(contentItem), contentItem, nil)
+	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleContentResourceLocation(contentItem), contentItem, nil)
 	if err != nil {
 		return err
 	}

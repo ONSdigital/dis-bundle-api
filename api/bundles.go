@@ -12,7 +12,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
-	permSDK "github.com/ONSdigital/dp-permissions-api/sdk"
 
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
@@ -24,8 +23,15 @@ const (
 	RouteVariableContentID = "content-id"
 
 	// Route names
-	RouteNameGetBundle = "getBundle"
-	RouteNamePutBundle = "putBundle"
+	RouteNameGetBundle      = "getBundle"
+	RouteNamePostBundle     = "createBundle"
+	RouteNamePutBundle      = "putBundle"
+	RouteNamePutBundleState = "putBundleState"
+	RouteNameDeleteBundle   = "deleteBundle"
+
+	RouteNameGetBundleContents  = "getBundleContents"
+	RouteNamePostBundleContents = "postBundleContents"
+	RouteNameDeleteContentItem  = "deleteContentItem"
 )
 
 func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, offset int) (successResult *models.PaginationSuccessResult[models.Bundle], errorResult *models.ErrorResult[models.Error]) {
@@ -87,34 +93,33 @@ func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) {
 
 	etag, err := utils.GetETag(r)
 	if err != nil {
-		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}
 
 	stateRequest, err := getUpdateStateRequestBody(r)
 	if err != nil {
-		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}
 
-	authData, err := api.GetAuthEntityData(r)
-
+	authEntityData, err := api.GetAuthEntityData(r)
 	if err != nil {
-		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}
 
-	bundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, bundleID, *etag, stateRequest.State, authData)
+	bundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, bundleID, *etag, stateRequest.State, authEntityData)
 
 	if err != nil {
-		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}
 
 	setETagAndCacheControlHeaders(ctx, w, r, bundle, logData)
 
 	w.WriteHeader(http.StatusOK)
-	logSuccessfulRequest(ctx, logData, RouteNamePutBundle)
+	logSuccessfulRequest(ctx, logData, RouteNamePutBundleState)
 }
 
 func getUpdateStateRequestBody(r *http.Request) (*models.UpdateStateRequest, error) {
@@ -171,7 +176,6 @@ func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r
 
 	w.Header().Set("Cache-Control", "no-store")
 
-	// Set Etag
 	ETag := bundle.ETag
 
 	if ETag == "" {
@@ -186,20 +190,13 @@ func setETagAndCacheControlHeaders(ctx context.Context, w http.ResponseWriter, r
 func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	var entityData *permSDK.EntityData
-	entityData, err := api.getAuthData(r)
+	authEntityData, err := api.GetAuthEntityData(r)
 	if err != nil {
-		log.Error(ctx, "createBundle: failed to parse auth token", err)
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		handleErr(ctx, w, r, err, log.Data{}, RouteNamePostBundle)
 		return
 	}
 
-	bundle, err := models.CreateBundle(r.Body, entityData.UserID)
+	bundle, err := models.CreateBundle(r.Body, authEntityData.GetUserID())
 	if err != nil {
 		if err == errs.ErrUnableToParseJSON {
 			log.Error(ctx, "createBundle: failed to create bundle from request body", err)
@@ -315,20 +312,13 @@ func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bundleID, logData := getBundleIDAndLogData(r)
 
-	var entityData *permSDK.EntityData
-	entityData, err := api.getAuthData(r)
+	authEntityData, err := api.GetAuthEntityData(r)
 	if err != nil {
-		log.Error(ctx, "deleteBundle: failed to parse auth token", err)
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		handleErr(ctx, w, r, err, logData, RouteNameDeleteBundle)
 		return
 	}
 
-	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, entityData.UserID)
+	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, authEntityData.GetUserEmail())
 	if err != nil {
 		log.Error(ctx, "deleteBundle endpoint: failed to delete bundle", err, logData)
 		utils.HandleBundleAPIErr(w, r, statusCode, errObject)

@@ -9,7 +9,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/utils"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -20,6 +19,12 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	ctx := r.Context()
 	bundleID, logData := getBundleIDAndLogData(r)
+
+	authEntityData, err := api.GetAuthEntityData(r)
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNamePostBundleContents)
+		return
+	}
 
 	contentItem, err := models.CreateContentItem(r.Body)
 	if err != nil {
@@ -65,14 +70,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var authHeaders datasetAPISDK.Headers
-	if r.Header.Get("X-Florence-Token") != "" {
-		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
-	} else {
-		authHeaders.ServiceToken = r.Header.Get("Authorization")
-	}
-
-	_, err = api.stateMachineBundleAPI.GetVersion(ctx, authHeaders, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
+	_, err = api.stateMachineBundleAPI.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "dataset not found"):
@@ -155,24 +153,12 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to parse JWT from authorization header", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
 	location := "/bundles/" + bundleID + "/contents/" + contentItem.ID
 
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
-			ID:    JWTEntityData.UserID,
-			Email: JWTEntityData.UserID,
+			ID:    authEntityData.GetUserID(),
+			Email: authEntityData.GetUserEmail(),
 		},
 		Action:      models.ActionCreate,
 		Resource:    location,
@@ -203,7 +189,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	bundleUpdate, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, JWTEntityData.UserID)
+	bundleUpdate, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserEmail())
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to update bundle ETag", err, logData)
 		code := models.CodeInternalError
@@ -242,6 +228,12 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bundleID, contentID, logData := getBundleIDAndContentIDAndLogData(r)
+
+	authEntityData, err := api.GetAuthEntityData(r)
+	if err != nil {
+		handleErr(ctx, w, r, err, logData, RouteNameDeleteContentItem)
+		return
+	}
 
 	contentItem, err := api.stateMachineBundleAPI.Datastore.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentID)
 	if err != nil {
@@ -298,22 +290,10 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	JWTEntityData, err := api.authMiddleware.Parse(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
-	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: failed to parse JWT from authorization header", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
-			ID:    JWTEntityData.UserID,
-			Email: JWTEntityData.UserID,
+			ID:    authEntityData.GetUserID(),
+			Email: authEntityData.GetUserEmail(),
 		},
 		Action:      models.ActionDelete,
 		Resource:    "/bundles/" + bundleID + "/contents/" + contentID,
@@ -351,6 +331,12 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 	ctx := r.Context()
 	bundleID, logData := getBundleIDAndLogData(r)
 
+	authEntityData, err := api.GetAuthEntityData(r)
+	if err != nil {
+		errInfo := models.GetMatchingModelError(err)
+		return []*models.ContentItem{}, 0, errInfo
+	}
+
 	bundleExists, err := api.stateMachineBundleAPI.CheckBundleExists(ctx, bundleID)
 	if err != nil {
 		code := models.CodeInternalError
@@ -370,14 +356,7 @@ func (api *BundleAPI) getBundleContents(w http.ResponseWriter, r *http.Request, 
 		return []*models.ContentItem{}, 0, errInfo
 	}
 
-	authHeaders := datasetAPISDK.Headers{}
-	if r.Header.Get("X-Florence-Token") != "" {
-		authHeaders.ServiceToken = r.Header.Get("X-Florence-Token")
-	} else {
-		authHeaders.ServiceToken = r.Header.Get("Authorization")
-	}
-
-	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit, authHeaders)
+	bundleContents, totalCount, err := api.stateMachineBundleAPI.GetBundleContents(ctx, bundleID, offset, limit, authEntityData.Headers)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {

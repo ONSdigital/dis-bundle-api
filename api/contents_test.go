@@ -134,6 +134,7 @@ func TestPostBundleContents_MalformedJSON_Failure(t *testing.T) {
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a malformed JSON body", t, func() {
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader([]byte("invalid json")))
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
@@ -186,6 +187,7 @@ func TestPostBundleContents_InvalidBody_Failure(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(invalidContentItemJSON))
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
@@ -257,6 +259,7 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 
 		Convey("When postBundleContents is called and CheckBundleExists fails", func() {
 			r := httptest.NewRequest("POST", "/bundles/database-failure-bundle/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -285,6 +288,7 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 
 		Convey("When postBundleContents is called with a non-existent bundle", func() {
 			r := httptest.NewRequest("POST", "/bundles/non-existent-bundle/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -360,7 +364,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 
 		Convey("When postBundleContents is called with a non-existent dataset", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-			r.Header.Set("X-Florence-Token", "test-auth-token")
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -394,7 +398,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 			So(err, ShouldBeNil)
 
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-			r.Header.Set("X-Florence-Token", "test-auth-token")
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -429,7 +433,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 			So(err, ShouldBeNil)
 
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-			r.Header.Set("X-Florence-Token", "test-auth-token")
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -465,7 +469,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 			So(err, ShouldBeNil)
 
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-			r.Header.Set("X-Florence-Token", "test-auth-token")
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -956,6 +960,7 @@ func TestDeleteContentItem_ContentItemNotFound_Failure(t *testing.T) {
 
 		Convey("When deleteContentItem is called with a non-existent content item or bundle", func() {
 			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1015,6 +1020,7 @@ func TestDeleteContentItem_ContentItemIsPublished_Failure(t *testing.T) {
 
 	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id} for a published content item", t, func() {
 		r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		publishedState := models.StatePublished
@@ -1096,6 +1102,7 @@ func TestDeleteContentItem_DeleteContentItem_Failure(t *testing.T) {
 
 		Convey("When deleteContentItem is called and the content item is not found", func() {
 			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1123,6 +1130,7 @@ func TestDeleteContentItem_DeleteContentItem_Failure(t *testing.T) {
 
 		Convey("When deleteContentItem is called and the DeleteContentItem fails", func() {
 			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-2", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1314,7 +1322,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 
 		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When the handler is called with no pagination params", func() {
@@ -1396,7 +1404,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 
 		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents"+"?offset=1&limit=1", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When the handler is called with custom pagination params", func() {
@@ -1444,7 +1452,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		}
 
 		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		mockedDatastore := &storetest.StorerMock{
@@ -1504,7 +1512,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{}, mockAPIClient, false)
 		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents?offset=-1", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When called", func() {
@@ -1542,7 +1550,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 		r := httptest.NewRequest("GET", "/bundles/non-existent-bundle-id/contents", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When called", func() {
@@ -1581,7 +1589,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When called", func() {
@@ -1653,7 +1661,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockedDatasetAPI, false)
 		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
-		r.Header.Set("Authorization", "valid-token")
+		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
 		Convey("When called", func() {
