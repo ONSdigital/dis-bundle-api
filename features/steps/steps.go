@@ -21,23 +21,38 @@ import (
 
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
+
+	// Background setup steps
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^I have these dataset versions:$`, c.iHaveTheseDatasetVersions)
+
+	// Database assertions
 	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
+
+	// Response assertions
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
+	ctx.Step(`^the response should contain with dynamic timestamp:$`, c.theResponseShouldContainWithDynamicTimestamp)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
+
+	// Content Item assertions
+	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+
+	// Header assertions
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
 	ctx.Step(`^the response header "([^"]*)" should be present$`, c.theResponseHeaderShouldBePresent)
-	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+
 	ctx.Step(`^I set the header "([^"]*)" to "([^"]*)"$`, c.iSetTheHeaderTo)
-	ctx.Step(`^the response should contain with dynamic timestamp:$`, c.theResponseShouldContainWithDynamicTimestamp)
+
+	// Bundle assertions
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
+
+	// State assertions
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
 	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
 }
