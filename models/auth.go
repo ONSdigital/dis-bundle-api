@@ -1,31 +1,34 @@
 package models
 
-import "github.com/ONSdigital/dp-permissions-api/sdk"
+import (
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
+)
 
 type AuthEntityData struct {
-	EntityData   *sdk.EntityData
-	ServiceToken string
+	EntityData *permissionsAPISDK.EntityData
+	Headers    datasetAPISDK.Headers
 }
 
-func CreateAuthEntityData(entityData *sdk.EntityData, serviceToken string) *AuthEntityData {
+func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken, florenceToken string) *AuthEntityData {
+	// florenceToken is only used for local development, when in an environment we use the service token
+	if florenceToken == "" {
+		florenceToken = serviceToken
+	}
+
 	return &AuthEntityData{
-		EntityData:   entityData,
-		ServiceToken: serviceToken,
+		EntityData: entityData,
+		Headers: datasetAPISDK.Headers{
+			ServiceToken:    serviceToken,
+			UserAccessToken: florenceToken,
+		},
 	}
 }
 
 func (a *AuthEntityData) GetUserID() string {
-	if a.EntityData != nil {
-		return a.EntityData.UserID
-	}
-
-	return ""
+	return a.EntityData.UserID
 }
 
 func (a *AuthEntityData) GetUserEmail() string {
-	if a.EntityData != nil {
-		return a.EntityData.UserID
-	}
-
-	return ""
+	return a.EntityData.UserID
 }

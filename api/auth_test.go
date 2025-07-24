@@ -14,11 +14,9 @@ import (
 )
 
 var (
-	EmptyString      = ""
-	WhitespaceString = " "
-	NotABearerToken  = "notabearertoken"
 	BearerTokenValue = "abearertoken"
 	BearerToken      = fmt.Sprintf("Bearer %s", BearerTokenValue)
+	FlorenceToken    = "florencetoken"
 )
 
 func TestGetAuthEntityData_Success(t *testing.T) {
@@ -38,23 +36,47 @@ func TestGetAuthEntityData_Success(t *testing.T) {
 	r := http.Request{
 		Header: http.Header{},
 	}
-
 	r.Header.Set("Authorization", BearerToken)
+
 	store := &store.Datastore{}
 
 	api := GetBundleAPIWithMocksWithAuthMiddleware(*store, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware)
 
-	Convey("When GetAuthEntityData is called with a valid authorization header", t, func() {
-		entityData, err := api.GetAuthEntityData(&r)
-		Convey("Then it should return an instance of AuthEntityData", func() {
-			So(entityData, ShouldNotBeNil)
+	Convey("When GetAuthEntityData is called with a valid Authorization header", t, func() {
+		authEntityData, err := api.GetAuthEntityData(&r)
 
-			Convey("With entity data from the auth middleware", func() {
-				So(entityData.EntityData, ShouldEqual, mockEntityData)
+		Convey("Then authEntityData should not be nil", func() {
+			So(authEntityData, ShouldNotBeNil)
+
+			Convey("And it should contain EntityData from the auth middleware", func() {
+				So(authEntityData.EntityData, ShouldEqual, mockEntityData)
 			})
 
-			Convey("And the bearer token should be returned", func() {
-				So(entityData.ServiceToken, ShouldEqual, BearerTokenValue)
+			Convey("And it should contain the correct Headers", func() {
+				So(authEntityData.Headers.ServiceToken, ShouldEqual, BearerTokenValue)
+				So(authEntityData.Headers.UserAccessToken, ShouldEqual, BearerTokenValue)
+			})
+		})
+
+		Convey("And no error should be returned", func() {
+			So(err, ShouldBeNil)
+		})
+	})
+
+	Convey("When GetAuthEntityData is called with a valid Authorization header and Florence token", t, func() {
+		r.Header.Set("X-Florence-Token", FlorenceToken)
+		authEntityData, err := api.GetAuthEntityData(&r)
+
+		Convey("Then authEntityData should not be nil", func() {
+			So(authEntityData, ShouldNotBeNil)
+
+			Convey("And it should contain EntityData from the auth middleware", func() {
+				So(authEntityData.EntityData, ShouldEqual, mockEntityData)
+			})
+
+			Convey("And it should contain the correct Headers", func() {
+				So(authEntityData.Headers.ServiceToken, ShouldEqual, BearerTokenValue)
+				So(authEntityData.Headers.UserAccessToken, ShouldEqual, FlorenceToken)
 			})
 		})
 
@@ -116,38 +138,4 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 			})
 		})
 	})
-}
-
-func TestGetBearerTokenValue(t *testing.T) {
-	testCases := []struct {
-		name           string
-		headerValue    *string
-		expectedResult *string
-	}{
-		{"no value", nil, &EmptyString},
-		{"an empty value", &EmptyString, &EmptyString},
-		{"a whitespace value", &WhitespaceString, nil},
-		{"a value that isn't a bearer token", &NotABearerToken, nil},
-		{"a value that is a bearer token", &BearerToken, &BearerTokenValue},
-	}
-
-	for index := range testCases {
-		tc := testCases[index]
-		testCaseName := fmt.Sprintf("When getBearerTokenValue is called with/%s", tc.name)
-
-		t.Run(testCaseName, func(t *testing.T) {
-			t.Parallel()
-			r := http.Request{
-				Header: http.Header{},
-			}
-
-			if tc.headerValue != nil {
-				r.Header.Set("Authorization", *tc.headerValue)
-			}
-			token := getBearerTokenValue(&r)
-			Convey("Then it should return the expected value", t, func() {
-				So(token, ShouldEqual, tc.expectedResult)
-			})
-		})
-	}
 }
