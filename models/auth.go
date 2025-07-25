@@ -10,17 +10,12 @@ type AuthEntityData struct {
 	Headers    datasetAPISDK.Headers
 }
 
-func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken, florenceToken string) *AuthEntityData {
-	// florenceToken is only used for local development, when in an environment we use the service token
-	if florenceToken == "" {
-		florenceToken = serviceToken
-	}
-
+func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string) *AuthEntityData {
 	return &AuthEntityData{
 		EntityData: entityData,
 		Headers: datasetAPISDK.Headers{
 			ServiceToken:    serviceToken,
-			UserAccessToken: florenceToken,
+			UserAccessToken: serviceToken,
 		},
 	}
 }

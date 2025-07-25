@@ -10,12 +10,11 @@ import (
 
 func (api *BundleAPI) GetAuthEntityData(r *http.Request) (*models.AuthEntityData, error) {
 	bearerToken := strings.TrimPrefix(r.Header.Get(request.AuthHeaderKey), request.BearerPrefix)
-	florenceToken := r.Header.Get(request.FlorenceHeaderKey)
 
 	JWTEntityData, err := api.authMiddleware.Parse(bearerToken)
 	if err != nil {
 		return nil, err
 	}
 
-	return models.CreateAuthEntityData(JWTEntityData, bearerToken, florenceToken), nil
+	return models.CreateAuthEntityData(JWTEntityData, bearerToken), nil
 }
