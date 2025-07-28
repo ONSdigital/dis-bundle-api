@@ -369,6 +369,9 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             ]
             """
+        And the total number of events should be 2
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
+        And the number of events with action "UPDATE" and datatype "content_item" should be 1
 
     Scenario: PUT /bundles/{id}/state with no authentication
         Given I am not authenticated
@@ -540,6 +543,14 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                         "state": "APPROVED"
                     },
                     {
+                        "id": "content-item-14",
+                        "state": "APPROVED"
+                    },
+                    {
+                        "id": "content-item-15",
+                        "state": "APPROVED"
+                    },
+                    {
                         "id": "content-item-16",
                         "state": "APPROVED"
                     }
@@ -570,3 +581,6 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             ]
             """
+        And the total number of events should be 6
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
+        And the number of events with action "UPDATE" and datatype "content_item" should be 5

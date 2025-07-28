@@ -54,6 +54,8 @@ Feature: Create bundle - POST /Bundles
         And the response header "Cache-Control" should be "no-store"
         And the response header "ETag" should not be empty
         And the response header "Location" should not be empty
+        And the total number of events should be 1
+        And the number of events with action "CREATE" and datatype "bundle" should be 1
 
     Scenario: POST /bundles invalid body (missing double quotes)
         Given I am an admin user
