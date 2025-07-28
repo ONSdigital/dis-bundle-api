@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
+	ctx.Step(`I should receive the following bundle JSON response:$`, c.iShouldReceiveTheFollowingBundleJSONResponse)
 
 	// State assertions
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
@@ -228,6 +230,38 @@ func (c *BundleComponent) theResponseHeaderShouldContain(headerName, expectedVal
 	if !strings.Contains(value, expectedValue) {
 		return fmt.Errorf("expected header %q to contain %q, but got %q", headerName, expectedValue, value)
 	}
+	return nil
+}
+
+func (c *BundleComponent) iShouldReceiveTheFollowingBundleJSONResponse(expectedJSON *godog.DocString) error {
+	var expectedBundle models.Bundle
+	if err := json.Unmarshal([]byte(expectedJSON.Content), &expectedBundle); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	var actualBundle models.Bundle
+	if err = json.Unmarshal(bodyBytes, &actualBundle); err != nil {
+		return fmt.Errorf("failed to parse JSON response: %w", err)
+	}
+	if actualBundle.ID == "" ||
+		actualBundle.BundleType != expectedBundle.BundleType ||
+		actualBundle.CreatedBy.Email != expectedBundle.CreatedBy.Email ||
+		actualBundle.CreatedAt == nil ||
+		actualBundle.LastUpdatedBy.Email != expectedBundle.LastUpdatedBy.Email ||
+		!reflect.DeepEqual(actualBundle.PreviewTeams, expectedBundle.PreviewTeams) ||
+		actualBundle.ScheduledAt != expectedBundle.ScheduledAt ||
+		actualBundle.State != expectedBundle.State ||
+		actualBundle.Title != expectedBundle.Title ||
+		actualBundle.UpdatedAt == nil ||
+		actualBundle.ManagedBy != expectedBundle.ManagedBy {
+		return fmt.Errorf("actual bundle does not match expected bundle:\nExpected: %+v\nActual: %+v", expectedBundle, actualBundle)
+	}
+
 	return nil
 }
 

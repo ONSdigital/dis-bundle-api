@@ -346,7 +346,28 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             """
         Then the HTTP status code should be "200"
-        And the response body should be empty
+        And I should receive the following bundle JSON response:
+            """
+                {
+                    "id": "bundle-4",
+                    "bundle_type": "SCHEDULED",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {
+                        "email": "janedoe@example.com"
+                    },
+                    "preview_teams": [
+                        {
+                            "id": "567j908h-98df-11ec-b909-0242ac120002"
+                        }
+                    ],
+                    "state": "PUBLISHED",
+                    "title": "bundle-4",
+                    "managed_by": "WAGTAIL"
+                }
+            """
         And the response header "Cache-Control" should be "no-store"
         And the response header "ETag" should not be empty
         And bundle "bundle-4" should have state "PUBLISHED"
@@ -523,7 +544,27 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             """
         Then the HTTP status code should be "200"
-        And the response body should be empty
+        And I should receive the following bundle JSON response:
+            """
+                {
+                    "id": "bundle-3",
+                    "bundle_type": "MANUAL",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "last_updated_by": {
+                        "email": "janedoe@example.com"
+                    },
+                    "preview_teams": [
+                        {
+                            "id": "567j908h-98df-11ec-b909-0242ac120002"
+                        }
+                    ],
+                    "state": "APPROVED",
+                    "title": "bundle-3",
+                    "managed_by": "WAGTAIL"
+                }
+            """
         And the response header "Cache-Control" should be "no-store"
         And the response header "ETag" should not be empty
         And bundle "bundle-3" should have state "APPROVED"

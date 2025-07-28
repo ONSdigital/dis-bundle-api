@@ -116,7 +116,11 @@ func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setETagAndCacheControlHeaders(ctx, w, r, bundle, logData)
+	bundleBytes := setETagAndCacheControlHeaders(ctx, w, r, bundle, logData)
+	if _, err = w.Write(bundleBytes); err != nil {
+		log.Error(ctx, "failed writing bytes to response", err, logData)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 	logSuccessfulRequest(ctx, logData, RouteNamePutBundleState)

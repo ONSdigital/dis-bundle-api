@@ -813,6 +813,15 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 					So(rec.Code, ShouldEqual, http.StatusOK)
 				})
 
+				Convey("And the response body should contain the updated bundle with the new state", func() {
+					var responseBundle models.Bundle
+					err := json.NewDecoder(rec.Body).Decode(&responseBundle)
+					So(err, ShouldBeNil)
+
+					So(responseBundle.ID, ShouldEqual, data.bundle.ID)
+					So(responseBundle.State.String(), ShouldEqual, tc.toState.String())
+				})
+
 				Convey("And a bundle event should be created", func() {
 					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 2+additionalEventCalls)
 				})
