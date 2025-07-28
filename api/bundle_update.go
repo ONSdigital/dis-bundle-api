@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -63,18 +64,32 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		api.handleBadRequestError(ctx, w, r, "bundle creation or validation failed", err, logdata)
 		return
 	}
-	if len(validationErrors) > 0 {
-		logdata["validation_errors"] = validationErrors
-		log.Error(ctx, "putBundle endpoint: bundle validation failed", nil, logdata)
-		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, validationErrors...)
-		return
-	}
+
+	var allValidationErrors []*models.Error
+	allValidationErrors = append(allValidationErrors, validationErrors...)
 
 	validationErrs := api.stateMachineBundleAPI.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
-	if len(validationErrs) > 0 {
-		logdata["validation_errors"] = validationErrs
-		log.Error(ctx, "putBundle endpoint: bundle business rule validation failed", nil, logdata)
-		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, validationErrs...)
+	allValidationErrors = append(allValidationErrors, validationErrs...)
+
+	if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
+		err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
+		if err != nil {
+			if err == apierrors.ErrInvalidTransition || strings.Contains(err.Error(), "state not allowed to transition") {
+				code := models.CodeInvalidParameters
+				stateError := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionMalformedRequest,
+					Source:      &models.Source{Field: "/state"},
+				}
+				allValidationErrors = append(allValidationErrors, stateError)
+			}
+		}
+	}
+
+	if len(allValidationErrors) > 0 {
+		logdata["validation_errors"] = allValidationErrors
+		log.Error(ctx, "putBundle endpoint: bundle validation failed", nil, logdata)
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, allValidationErrors...)
 		return
 	}
 
@@ -169,7 +184,7 @@ func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID str
 
 	validationErrors := models.ValidateBundle(bundleUpdate)
 	if len(validationErrors) > 0 {
-		return nil, validationErrors, nil
+		return bundleUpdate, validationErrors, nil
 	}
 
 	return bundleUpdate, nil, nil
