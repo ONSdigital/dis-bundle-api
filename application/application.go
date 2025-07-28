@@ -214,15 +214,6 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		return nil, err
 	}
 
-	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleResourceLocation(bundle), nil, bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.Datastore.CreateBundleEvent(ctx, event); err != nil {
-		return nil, err
-	}
-
 	return bundle, nil
 }
 
