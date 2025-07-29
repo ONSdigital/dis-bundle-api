@@ -89,7 +89,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
         And the response header "Content-Type" should be "application/json"
         And the response header "Cache-Control" should be "no-store"
         And the response header "ETag" should not be empty
-        And the response should contain with dynamic timestamp:
+        And the response should contain the following JSON response with a dynamic timestamp:
             """
             {
                 "bundle_type": "MANUAL",
@@ -133,7 +133,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             }
             """
         Then the HTTP status code should be "200"
-        And the response should contain with dynamic timestamp:
+        And the response should contain the following JSON response with a dynamic timestamp:
             """
             {
                 "bundle_type": "MANUAL",
@@ -177,7 +177,7 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             }
             """
         Then the HTTP status code should be "200"
-        And the response should contain with dynamic timestamp:
+        And the response should contain the following JSON response with a dynamic timestamp:
             """
             {
                 "bundle_type": "MANUAL",

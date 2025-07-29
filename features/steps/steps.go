@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"time"
 
@@ -31,7 +30,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 
 	// Response assertions
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
-	ctx.Step(`^the response should contain with dynamic timestamp:$`, c.theResponseShouldContainWithDynamicTimestamp)
+	ctx.Step(`^the response should contain the following JSON response with a dynamic timestamp:$`, c.theResponseShouldContainTheFollowingJSONResponseWithADynamicTimestamp)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
 
 	// Header assertions
@@ -49,7 +48,6 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
-	ctx.Step(`I should receive the following bundle JSON response:$`, c.iShouldReceiveTheFollowingBundleJSONResponse)
 
 	// Content Item assertions
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
@@ -237,38 +235,6 @@ func (c *BundleComponent) theResponseHeaderShouldContain(headerName, expectedVal
 	return nil
 }
 
-func (c *BundleComponent) iShouldReceiveTheFollowingBundleJSONResponse(expectedJSON *godog.DocString) error {
-	var expectedBundle models.Bundle
-	if err := json.Unmarshal([]byte(expectedJSON.Content), &expectedBundle); err != nil {
-		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
-	}
-
-	bodyBytes, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var actualBundle models.Bundle
-	if err = json.Unmarshal(bodyBytes, &actualBundle); err != nil {
-		return fmt.Errorf("failed to parse JSON response: %w", err)
-	}
-	if actualBundle.ID == "" ||
-		actualBundle.BundleType != expectedBundle.BundleType ||
-		actualBundle.CreatedBy.Email != expectedBundle.CreatedBy.Email ||
-		actualBundle.CreatedAt == nil ||
-		actualBundle.LastUpdatedBy.Email != expectedBundle.LastUpdatedBy.Email ||
-		!reflect.DeepEqual(actualBundle.PreviewTeams, expectedBundle.PreviewTeams) ||
-		actualBundle.ScheduledAt != expectedBundle.ScheduledAt ||
-		actualBundle.State != expectedBundle.State ||
-		actualBundle.Title != expectedBundle.Title ||
-		actualBundle.UpdatedAt == nil ||
-		actualBundle.ManagedBy != expectedBundle.ManagedBy {
-		return fmt.Errorf("actual bundle does not match expected bundle:\nExpected: %+v\nActual: %+v", expectedBundle, actualBundle)
-	}
-
-	return nil
-}
-
 func (c *BundleComponent) iShouldReceiveTheFollowingContentItemJSONResponse(expectedJSON *godog.DocString) error {
 	var expectedContentItem models.ContentItem
 	if err := json.Unmarshal([]byte(expectedJSON.Content), &expectedContentItem); err != nil {
@@ -322,7 +288,7 @@ func (c *BundleComponent) iSetTheHeaderTo(headerName, headerValue string) error 
 	return c.apiFeature.ISetTheHeaderTo(headerName, headerValue)
 }
 
-func (c *BundleComponent) theResponseShouldContainWithDynamicTimestamp(expectedJSON *godog.DocString) error {
+func (c *BundleComponent) theResponseShouldContainTheFollowingJSONResponseWithADynamicTimestamp(expectedJSON *godog.DocString) error {
 	b, err := io.ReadAll(c.apiFeature.HTTPResponse.Body)
 	if err != nil {
 		return fmt.Errorf("reading body: %w", err)

@@ -346,7 +346,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             """
         Then the HTTP status code should be "200"
-        And I should receive the following bundle JSON response:
+        And the response should contain the following JSON response with a dynamic timestamp:
             """
                 {
                     "id": "bundle-4",
@@ -365,6 +365,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     ],
                     "state": "PUBLISHED",
                     "title": "bundle-4",
+                    "updated_at": "{{DYNAMIC_TIMESTAMP}}",
                     "managed_by": "WAGTAIL"
                 }
             """
@@ -547,7 +548,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                 }
             """
         Then the HTTP status code should be "200"
-        And I should receive the following bundle JSON response:
+        And the response should contain the following JSON response with a dynamic timestamp:
             """
                 {
                     "id": "bundle-3",
@@ -555,6 +556,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "created_by": {
                         "email": "publisher@ons.gov.uk"
                     },
+                    "created_at": "2025-04-05T13:40:00Z",
                     "last_updated_by": {
                         "email": "janedoe@example.com"
                     },
@@ -565,6 +567,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     ],
                     "state": "APPROVED",
                     "title": "bundle-3",
+                    "updated_at": "{{DYNAMIC_TIMESTAMP}}",
                     "managed_by": "WAGTAIL"
                 }
             """
