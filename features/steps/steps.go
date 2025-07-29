@@ -29,16 +29,10 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^I have these dataset versions:$`, c.iHaveTheseDatasetVersions)
 
-	// Database assertions
-	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
-
 	// Response assertions
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
 	ctx.Step(`^the response should contain with dynamic timestamp:$`, c.theResponseShouldContainWithDynamicTimestamp)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
-
-	// Content Item assertions
-	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
 
 	// Header assertions
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
@@ -48,11 +42,21 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 
 	ctx.Step(`^I set the header "([^"]*)" to "([^"]*)"$`, c.iSetTheHeaderTo)
 
+	// Database assertions
+	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
+
 	// Bundle assertions
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
 	ctx.Step(`I should receive the following bundle JSON response:$`, c.iShouldReceiveTheFollowingBundleJSONResponse)
+
+	// Content Item assertions
+	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+
+	// Event assertions
+	ctx.Step(`the total number of events should be (\d+)`, c.theTotalNumberOfEventsShouldBe)
+	ctx.Step(`the number of events with action "([^"]*)" and datatype "([^"]*)" should be (\d+)`, c.theNumberOfEventsWithActionAndDatatypeShouldBe)
 
 	// State assertions
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
@@ -490,6 +494,41 @@ func (c *BundleComponent) theseVersionsShouldHaveTheseStates(expectedVersionsJSO
 		return fmt.Errorf("content items do not match:\n%s", strings.Join(errs, "\n"))
 	}
 
+	return nil
+}
+
+func (c *BundleComponent) theTotalNumberOfEventsShouldBe(expectedCount int) error {
+	ctx := context.Background()
+	collectionName := c.MongoClient.ActualCollectionName("BundleEventsCollection")
+
+	count, err := c.MongoClient.Connection.Collection(collectionName).Count(ctx, bson.M{})
+	if err != nil {
+		return fmt.Errorf("failed to count events: %w", err)
+	}
+
+	if count != expectedCount {
+		return fmt.Errorf("expected %d bundle events, but found %d", expectedCount, count)
+	}
+	return nil
+}
+
+func (c *BundleComponent) theNumberOfEventsWithActionAndDatatypeShouldBe(action, datatype string, expectedCount int) error {
+	ctx := context.Background()
+	collectionName := c.MongoClient.ActualCollectionName("BundleEventsCollection")
+
+	filter := bson.M{
+		"action": action,
+		datatype: bson.M{"$exists": true},
+	}
+
+	count, err := c.MongoClient.Connection.Collection(collectionName).Count(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to count events: %w", err)
+	}
+
+	if count != expectedCount {
+		return fmt.Errorf("expected %d events with action '%s' and type '%s', but found %d", expectedCount, action, datatype, count)
+	}
 	return nil
 }
 

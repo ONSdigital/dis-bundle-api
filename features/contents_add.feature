@@ -109,6 +109,8 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 }
             }
             """
+        And the total number of events should be 1
+        And the number of events with action "CREATE" and datatype "content_item" should be 1
     
     Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type and missing edit link)
         Given I am an admin user

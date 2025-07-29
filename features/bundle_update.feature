@@ -112,6 +112,8 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
             }
             """
+        And the total number of events should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
 
     Scenario: PUT /bundles/{id} with state transition from DRAFT to IN_REVIEW
         Given I am an admin user
@@ -154,6 +156,8 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
             }
             """
+        And the total number of events should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
 
     Scenario: PUT /bundles/{id} with state transition from APPROVED to PUBLISHED
         Given I am an admin user
@@ -196,6 +200,8 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
             }
             """
+        And the total number of events should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
 
     Scenario: PUT /bundles/{id} without If-Match header returns 400
         Given I am an admin user

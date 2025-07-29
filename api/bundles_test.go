@@ -823,7 +823,7 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				})
 
 				Convey("And a bundle event should be created", func() {
-					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 2+additionalEventCalls)
+					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 1+additionalEventCalls)
 				})
 
 				Convey("And only matching content items should be updated", func() {
@@ -870,7 +870,7 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				})
 
 				Convey("And bundle events should have been created", func() {
-					So(len(*data.events), ShouldEqual, 2+additionalEventCalls)
+					So(len(*data.events), ShouldEqual, 1+additionalEventCalls)
 
 					for index := range *data.events {
 						event := (*data.events)[index]
