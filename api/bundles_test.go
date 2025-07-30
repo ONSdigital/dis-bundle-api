@@ -768,7 +768,9 @@ var validTransitionTestCases = []struct {
 }{
 	{"DRAFT to IN_REVIEW", models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished, nil, "associated"},
 	{"IN_REVIEW to APPROVED", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft, nil, "associated"},
+	{"IN_REVIEW to APPROVED with version already approved", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft, nil, "approved"},
 	{"APPROVED to PUBLISHED", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft, utils.PtrContentItemState(models.StateApproved), "approved"},
+	{"APPROVED to PUBLISHED with version already published", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft, utils.PtrContentItemState(models.StateApproved), "published"},
 }
 
 const (
@@ -847,7 +849,12 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				Convey("And only matching versions should be updated", func() {
 					calls := mockAPIClient.PutVersionStateCalls()
 
-					So(len(calls), ShouldEqual, 0+additionalEventCalls)
+					// TODO: remove if condition and keep else block once we know if approved or published versions can be added to bundles
+					if strings.EqualFold(tc.toState.String(), tc.versionState) {
+						So(len(calls), ShouldEqual, 0)
+					} else {
+						So(len(calls), ShouldEqual, 0+additionalEventCalls)
+					}
 
 					if len(calls) > 0 {
 						for _, call := range calls {

@@ -225,6 +225,12 @@ func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Con
 		return err
 	}
 
+	// TODO: remove this if condition once we know if approved or published versions can be added to bundles
+	// If the version state is the same as the target state or if it is already published then do not update the version state
+	if strings.EqualFold(version.State, targetState.String()) || strings.EqualFold(version.State, models.StatePublished.String()) {
+		return nil
+	}
+
 	if targetState.String() == models.StatePublished.String() && !strings.EqualFold(version.State, models.StateApproved.String()) {
 		log.Warn(ctx, "Version state is not approved", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "target-state": targetState.String()})
 		return errs.ErrVersionStateNotApproved

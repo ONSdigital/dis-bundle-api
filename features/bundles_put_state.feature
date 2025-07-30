@@ -285,6 +285,22 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                         "edit": "edit/link",
                         "preview": "preview/link"
                     }
+                },
+                {
+                    "id": "content-item-18",
+                    "bundle_id": "bundle-5",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset10",
+                        "edition_id": "edition10",
+                        "version_id": 7,
+                        "title": "Test Dataset 11"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    },
+                    "state": "APPROVED"
                 }
             ]
             """
@@ -332,6 +348,13 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "dataset_id": "dataset9",
                     "edition": "edition9",
                     "state": "associated" 
+                },
+                {
+                    "id": "version-7",
+                    "version": 7,
+                    "dataset_id": "dataset10",
+                    "edition": "edition10",
+                    "state": "published" 
                 }
             ]
             """
@@ -387,6 +410,65 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
             [
                 {
                     "id": "version-1",
+                    "state": "published"
+                }
+            ]
+            """
+        And the total number of events should be 2
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
+        And the number of events with action "UPDATE" and datatype "content_item" should be 1
+
+    Scenario: PUT /bundles/{id}/state with valid arguments for 'APPROVED' -> 'PUBLISHED' and the version is already published
+        Given I am an admin user
+        And I set the "If-Match" header to "etag-bundle-5"
+        When I PUT "/bundles/bundle-5/state"
+            """
+                {
+                    "state": "PUBLISHED"
+                }
+            """
+        Then the HTTP status code should be "200"
+        And the response should contain the following JSON response with a dynamic timestamp:
+            """
+                {
+                    "id": "bundle-5",
+                    "bundle_type": "SCHEDULED",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {
+                        "email": "janedoe@example.com"
+                    },
+                    "preview_teams": [
+                        {
+                            "id": "567j908h-98df-11ec-b909-0242ac120002"
+                        }
+                    ],
+                    "state": "PUBLISHED",
+                    "title": "bundle-5",
+                    "updated_at": "{{DYNAMIC_TIMESTAMP}}",
+                    "managed_by": "WAGTAIL"
+                }
+            """
+        And the response header "Cache-Control" should be "no-store"
+        And the response header "ETag" should not be empty
+        And bundle "bundle-5" should have state "PUBLISHED"
+        And bundle "bundle-5" should not have this etag "etag-bundle-5"
+        And these content item states should match:
+            """
+            [
+                {
+                    "id": "content-item-18",
+                    "state": "PUBLISHED"
+                }
+            ]
+            """
+        And these dataset versions states should match:
+            """
+            [
+                {
+                    "id": "version-7",
                     "state": "published"
                 }
             ]
@@ -502,8 +584,8 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
             
     Scenario: PUT /bundles/{id}/state with a bundle with no content items
         Given I am an admin user
-        And I set the "If-Match" header to "etag-bundle-5"
-        When I PUT "/bundles/bundle-5/state"
+        And I set the "If-Match" header to "etag-bundle-6"
+        When I PUT "/bundles/bundle-6/state"
             """
                 {
                     "state": "PUBLISHED"
@@ -521,8 +603,8 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     ]
                 }
             """
-        And bundle "bundle-5" should have state "APPROVED"
-        And bundle "bundle-5" should have this etag "etag-bundle-5"
+        And bundle "bundle-6" should have state "APPROVED"
+        And bundle "bundle-6" should have this etag "etag-bundle-6"
 
     Scenario: PUT /bundles/{id}/state with a bundle with a missing version
         Given I am an admin user
