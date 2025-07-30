@@ -400,7 +400,7 @@ func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
 		}
 
 		updateRequest := map[string]interface{}{
-			"state": "PUBLISHED",
+			"state": "INVALID_STATE",
 		}
 
 		updateRequestJSON, err := json.Marshal(updateRequest)
