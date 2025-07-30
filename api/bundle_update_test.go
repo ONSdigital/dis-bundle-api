@@ -419,7 +419,6 @@ func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
 
 		Convey("When putBundle is called", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
-			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
 			r.Header.Set("If-Match", "original-etag")
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()

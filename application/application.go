@@ -595,9 +595,7 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 			return err
 		}
 
-		datasetState := strings.ToUpper(dataset.State)
-
-		err = s.UpdateContentItemDatasetInfo(ctx, contentItem.ID, dataset.Title, datasetState)
+		err = s.UpdateContentItemDatasetInfo(ctx, contentItem.ID, dataset.Title, strings.ToUpper(dataset.State))
 		if err != nil {
 			log.Error(ctx, "update content item failed", err, log.Data{
 				"content_item_id": contentItem.ID,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -74,7 +73,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
 		err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
 		if err != nil {
-			if err == apierrors.ErrInvalidTransition || strings.Contains(err.Error(), "state not allowed to transition") {
+			if err == apierrors.ErrInvalidTransition {
 				code := models.CodeInvalidParameters
 				stateError := &models.Error{
 					Code:        &code,
@@ -82,6 +81,9 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 					Source:      &models.Source{Field: "/state"},
 				}
 				allValidationErrors = append(allValidationErrors, stateError)
+			} else {
+				api.handleInternalError(ctx, w, r, "state transition validation failed", err, logdata)
+				return
 			}
 		}
 	}
