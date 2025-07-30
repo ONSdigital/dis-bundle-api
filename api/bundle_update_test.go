@@ -384,3 +384,69 @@ func TestPutBundle_AuthenticationFailure(t *testing.T) {
 		})
 	})
 }
+
+func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request with multiple validation errors", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:        bundle1,
+			Title:     "Original Title",
+			ETag:      "original-etag",
+			State:     models.BundleStateDraft,
+			CreatedAt: &now,
+			CreatedBy: &models.User{Email: "creator@example.com"},
+		}
+
+		updateRequest := map[string]interface{}{
+			"state": "INVALID_STATE",
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 400 Bad Request with multiple errors", func() {
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				So(len(errResp.Errors), ShouldBeGreaterThan, 1)
+
+				errorFields := make([]string, len(errResp.Errors))
+				for i, err := range errResp.Errors {
+					if err.Source != nil {
+						errorFields[i] = err.Source.Field
+					}
+				}
+
+				So(errorFields, ShouldContain, "/state")
+				So(errorFields, ShouldContain, "/bundle_type")
+				So(errorFields, ShouldContain, "/title")
+				So(errorFields, ShouldContain, "/managed_by")
+				So(errorFields, ShouldContain, "/preview_teams")
+			})
+		})
+	})
+}

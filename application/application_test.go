@@ -1757,7 +1757,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 				So(len(mockedDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
 				So(len(mockedDatastore.UpdateContentItemDatasetInfoCalls()), ShouldEqual, 1)
 				So(mockedDatastore.UpdateContentItemDatasetInfoCalls()[0].Title, ShouldEqual, "New Dataset Title")
-				So(mockedDatastore.UpdateContentItemDatasetInfoCalls()[0].State, ShouldEqual, "published")
+				So(mockedDatastore.UpdateContentItemDatasetInfoCalls()[0].State, ShouldEqual, "PUBLISHED")
 			})
 		})
 	})

@@ -119,7 +119,7 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 	}
 
 	if !match {
-		return errors.New("state not allowed to transition")
+		return apierrors.ErrInvalidTransition
 	}
 
 	return nil
