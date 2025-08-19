@@ -13,7 +13,6 @@ type Headers struct {
 }
 
 func (h *Headers) Add(req *http.Request) {
-
 	if h.ServiceAuthToken != "" {
 		dprequest.AddServiceTokenHeader(req, h.ServiceAuthToken)
 	}
@@ -21,5 +20,4 @@ func (h *Headers) Add(req *http.Request) {
 	if h.UserAccessToken != "" {
 		dprequest.AddFlorenceHeader(req, h.UserAccessToken)
 	}
-
 }

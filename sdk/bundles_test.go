@@ -43,7 +43,6 @@ var (
 )
 
 func TestGetBundles(t *testing.T) {
-
 	t.Parallel()
 	ctx := context.Background()
 
@@ -79,11 +78,9 @@ func TestGetBundles(t *testing.T) {
 				})
 			})
 		})
-
 	})
 
 	Convey("When GetBundles is called with no response body returned", t, func() {
-
 		httpClient := newMockHTTPClient(
 			&http.Response{
 				StatusCode: http.StatusOK,
@@ -132,11 +129,9 @@ func TestGetBundles(t *testing.T) {
 			})
 		})
 	})
-
 }
 
 func TestGetBundle(t *testing.T) {
-
 	t.Parallel()
 	ctx := context.Background()
 
@@ -173,11 +168,9 @@ func TestGetBundle(t *testing.T) {
 				})
 			})
 		})
-
 	})
 
 	Convey("When GetBundle is called with no response body returned", t, func() {
-
 		httpClient := newMockHTTPClient(
 			&http.Response{
 				StatusCode: http.StatusOK,
@@ -226,11 +219,9 @@ func TestGetBundle(t *testing.T) {
 			})
 		})
 	})
-
 }
 
 func TestPutBundleState(t *testing.T) {
-
 	t.Parallel()
 	ctx := context.Background()
 
@@ -268,11 +259,9 @@ func TestPutBundleState(t *testing.T) {
 				})
 			})
 		})
-
 	})
 
 	Convey("When PutBundleState is called and responds with no response body", t, func() {
-
 		httpClient := newMockHTTPClient(
 			&http.Response{
 				StatusCode: http.StatusOK,

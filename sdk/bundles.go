@@ -23,7 +23,6 @@ type BundlesList struct {
 
 // GetBundles gets a list of bundles
 func (cli *Client) GetBundles(ctx context.Context, headers Headers, scheduledAt time.Time) (*BundlesList, apiError.Error) {
-
 	var bundlesList BundlesList
 	path := fmt.Sprintf("%s/bundles", cli.hcCli.URL)
 	if !scheduledAt.IsZero() {
@@ -45,7 +44,6 @@ func (cli *Client) GetBundles(ctx context.Context, headers Headers, scheduledAt 
 }
 
 func (cli *Client) GetBundle(ctx context.Context, headers Headers, id string) (*ResponseInfo, apiError.Error) {
-
 	path := fmt.Sprintf("%s/bundles/%s", cli.hcCli.URL, id)
 
 	respInfo, apiErr := cli.callBundleAPI(ctx, path, http.MethodGet, headers, nil)
@@ -64,7 +62,6 @@ func (cli *Client) GetBundle(ctx context.Context, headers Headers, id string) (*
 }
 
 func (cli *Client) PutBundleState(ctx context.Context, headers Headers, id string, state models.BundleState) (*models.Bundle, apiError.Error) {
-
 	path := fmt.Sprintf("%s/bundles/%s/state", cli.hcCli.URL, id)
 
 	stateRequest := models.UpdateStateRequest{

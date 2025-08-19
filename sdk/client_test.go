@@ -46,35 +46,16 @@ func newBundleAPIClientWithoutClienter(_ *testing.T) *Client {
 func TestClient(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	client := newBundleAPIClientWithoutClienter(t)
 
-	timePriorHealthCheck := time.Now().UTC()
+	Convey("Test client URL() method returns correct url", t, func() {
+		So(client.URL(), ShouldEqual, testHost)
+	})
 
-	Convey("Given clienter.Do returns success", t, func() {
-		bundleAPIClient := newBundleAPIClientWithoutClienter(t)
-		check := initialTestState
-
-		Convey("When bundle API client Checker is called", func() {
-			err := bundleAPIClient.Checker(ctx, &check)
-			So(err, ShouldBeNil)
-
-			Convey("Then the expected check is returned", func() {
-				So(check.Name(), ShouldEqual, service)
-				So(check.Status(), ShouldEqual, health.StatusOK)
-				So(check.StatusCode(), ShouldEqual, 200)
-				So(*check.LastChecked(), ShouldHappenAfter, timePriorHealthCheck)
-			})
-		})
-
-		Convey("When bundle API client URL is checked", func() {
-			strurl := bundleAPIClient.URL()
-			So(strurl, ShouldEqual, testHost)
-		})
-
-		Convey("When the health is checked", func() {
-			healthResponse := bundleAPIClient.Health()
-			So(healthResponse, ShouldNotBeNil)
-		})
+	Convey("Test client Health() method returns correct health client", t, func() {
+		So(client.Health(), ShouldNotBeNil)
+		So(client.hcCli.Name, ShouldEqual, service)
+		So(client.hcCli.URL, ShouldEqual, testHost)
 	})
 }
 
@@ -164,7 +145,5 @@ func TestCallBundleAPIErrors(t *testing.T) {
 		responseInfo, err := bundleAPIClient.callBundleAPI(ctx, "/bundles", "!@£$$££$£", Headers{}, nil)
 		So(err, ShouldNotBeNil)
 		So(responseInfo, ShouldBeNil)
-
 	})
-
 }

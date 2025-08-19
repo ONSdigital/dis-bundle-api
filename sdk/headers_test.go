@@ -24,7 +24,6 @@ func TestAdd(t *testing.T) {
 
 			Convey("Then no headers is set on the request", func() {
 				So(req.Header, ShouldBeEmpty)
-
 			})
 		})
 	})
@@ -42,7 +41,6 @@ func TestAdd(t *testing.T) {
 				So(req.Header, ShouldContainKey, dprequest.AuthHeaderKey)
 				So(req.Header[dprequest.AuthHeaderKey], ShouldHaveLength, 1)
 				So(req.Header[dprequest.AuthHeaderKey][0], ShouldEqual, expectedHeader)
-
 			})
 		})
 	})
@@ -62,5 +60,4 @@ func TestAdd(t *testing.T) {
 			})
 		})
 	})
-
 }

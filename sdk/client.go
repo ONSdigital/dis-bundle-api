@@ -86,10 +86,9 @@ func (cli *Client) callBundleAPI(ctx context.Context, path, method string, heade
 
 	if payload != nil {
 		req.Header.Add("Content-type", "application/json")
-
 	}
 
-	if len(headers.IfMatch) > 0 {
+	if headers.IfMatch != "" {
 		req.Header.Add("If-Match", headers.IfMatch)
 	}
 	headers.Add(req)

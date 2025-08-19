@@ -749,9 +749,8 @@ func createUpdateStateRequest(bundleID, etag string, state models.BundleState, r
 
 	if isAuthorised {
 		req.Header.Set("Authorization", MockAuthBearerHeaderValue)
-	} else {
-		Print("Hmm")
 	}
+
 	if etag != "" {
 		req.Header.Add(utils.HeaderIfMatch, etag)
 	}

@@ -67,7 +67,5 @@ func Test(t *testing.T) {
 				So(statusCode, ShouldEqual, 0)
 			})
 		})
-
 	})
-
 }
