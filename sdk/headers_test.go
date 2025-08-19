@@ -31,7 +31,7 @@ func TestAdd(t *testing.T) {
 
 	Convey("Given the sdk Headers struct contains a value for Service Auth Token", t, func() {
 		headers := &Headers{
-			ServiceAuthToken: "4egqsf4378gfwqf44356h",
+			ServiceAuthToken: "a-test-value",
 		}
 
 		Convey("When calling the Add method on Headers", func() {
@@ -49,7 +49,7 @@ func TestAdd(t *testing.T) {
 
 	Convey("Given the sdk Headers struct contains a value for User Auth Token", t, func() {
 		headers := &Headers{
-			UserAccessToken: "3wOx0VLG6xnbyDNjfGP4",
+			UserAccessToken: "another-test-value",
 		}
 
 		Convey("When calling the Add method on Headers", func() {
