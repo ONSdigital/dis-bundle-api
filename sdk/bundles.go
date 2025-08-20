@@ -3,8 +3,11 @@ package sdk
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -21,12 +24,44 @@ type BundlesList struct {
 	TotalCount int             `json:"total_count"`
 }
 
+// QueryParams represents the possible query parameters that a caller can provide
+type QueryParams struct {
+	Limit  int
+	Offset int
+}
+
+// Validate validates tht no negative values are provided for limit or offset, and that the length of
+// IDs is lower than the maximum
+func (q *QueryParams) Validate() error {
+	if q.Limit < 0 || q.Offset < 0 {
+		return errors.New("negative offsets or limits are not allowed")
+	}
+	return nil
+}
+
 // GetBundles gets a list of bundles
-func (cli *Client) GetBundles(ctx context.Context, headers Headers, scheduledAt time.Time) (*BundlesList, apiError.Error) {
+func (cli *Client) GetBundles(ctx context.Context, headers Headers, scheduledAt *time.Time, queryParams *QueryParams) (*BundlesList, apiError.Error) {
 	var bundlesList BundlesList
 	path := fmt.Sprintf("%s/bundles", cli.hcCli.URL)
 	if !scheduledAt.IsZero() {
 		path += "?publish_date=" + scheduledAt.Format(time.RFC3339)
+	}
+
+	// Add query parameters to request if valid
+	if queryParams != nil {
+		if err := queryParams.Validate(); err != nil {
+			return nil, apiError.StatusError{
+				Code: 400,
+				Err:  fmt.Errorf("failed to validate parameters, error is: %v", err),
+			}
+		}
+
+		// Add query parameters
+		query := url.Values{}
+		query.Add("limit", strconv.Itoa(queryParams.Limit))
+		query.Add("offset", strconv.Itoa(queryParams.Offset))
+
+		path += query.Encode()
 	}
 
 	respInfo, apiErr := cli.callBundleAPI(ctx, path, http.MethodGet, headers, nil)

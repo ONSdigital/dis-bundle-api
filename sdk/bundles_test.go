@@ -18,6 +18,11 @@ var (
 	now         = time.Now().UTC()
 	oneDayLater = now.Add(24 * time.Hour)
 
+	testQueryParamsValid = QueryParams{
+		Limit:  1,
+		Offset: 0,
+	}
+
 	testBundle = models.Bundle{
 		ID:            "bundle1",
 		BundleType:    models.BundleTypeScheduled,
@@ -32,11 +37,34 @@ var (
 		ManagedBy:     models.ManagedByDataAdmin,
 	}
 
-	testBundleItems = []models.Bundle{testBundle}
+	testBundle2 = models.Bundle{
+		ID:            "bundle2",
+		BundleType:    models.BundleTypeScheduled,
+		CreatedBy:     &models.User{Email: "creator@example.com"},
+		CreatedAt:     &now,
+		LastUpdatedBy: &models.User{Email: "updater@example.com"},
+		PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+		ScheduledAt:   &oneDayLater,
+		State:         models.BundleStatePublished,
+		Title:         "Scheduled Bundle 2",
+		UpdatedAt:     &now,
+		ManagedBy:     models.ManagedByDataAdmin,
+	}
+
+	testPaginationItems = []models.Bundle{testBundle}
+
+	testBundleItems = []models.Bundle{testBundle, testBundle2}
 
 	testBundles = BundlesList{
-		Count:  1,
+		Count:  2,
 		Items:  testBundleItems,
+		Offset: 0,
+		Limit:  20,
+	}
+
+	testPaginationBundles = BundlesList{
+		Count:  1,
+		Items:  testPaginationItems,
 		Offset: 0,
 		Limit:  20,
 	}
@@ -62,10 +90,43 @@ func TestGetBundles(t *testing.T) {
 		bundleAPIClient := newBundleAPIClient(t, httpClient)
 
 		Convey("When GetBundles is called", func() {
-			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, oneDayLater)
+			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, &oneDayLater, nil)
 
 			Convey("Then the expected bundles are returned", func() {
 				So(*bundlesResponse, ShouldResemble, testBundles)
+				So(bundlesResponse.Count, ShouldEqual, 2)
+
+				Convey("And no error is returned", func() {
+					So(err, ShouldBeNil)
+
+					Convey("And client.Do should be called once with the expected parameters", func() {
+						doCalls := httpClient.DoCalls()
+						So(doCalls, ShouldHaveLength, 1)
+						So(doCalls[0].Req.URL.Path, ShouldEqual, "/bundles")
+					})
+				})
+			})
+		})
+
+		Convey("When GetBundles is called with pagination params", func() {
+			body, err := json.Marshal(testPaginationBundles)
+			if err != nil {
+				t.Errorf("failed to setup test data, error: %v", err)
+			}
+
+			httpClient := newMockHTTPClient(
+				&http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(bytes.NewReader(body)),
+				},
+				nil)
+
+			bundleAPIClient := newBundleAPIClient(t, httpClient)
+			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, &oneDayLater, &testQueryParamsValid)
+
+			Convey("Then the expected bundles are returned", func() {
+				So(*bundlesResponse, ShouldResemble, testPaginationBundles)
+				So(bundlesResponse.Count, ShouldEqual, 1)
 
 				Convey("And no error is returned", func() {
 					So(err, ShouldBeNil)
@@ -89,7 +150,7 @@ func TestGetBundles(t *testing.T) {
 			nil)
 
 		bundleAPIClient := newBundleAPIClient(t, httpClient)
-		bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, oneDayLater)
+		bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, &oneDayLater, nil)
 
 		Convey("Then no bundles are returned", func() {
 			So(bundlesResponse, ShouldBeNil)
@@ -106,12 +167,35 @@ func TestGetBundles(t *testing.T) {
 		})
 	})
 
+	Convey("Given a request is made with invalid query parameters", t, func() {
+		httpClient := newMockHTTPClient(&http.Response{StatusCode: http.StatusBadRequest}, nil)
+		bundleAPIClient := newBundleAPIClient(t, httpClient)
+
+		Convey("When GetBundles is called", func() {
+			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, &oneDayLater, &QueryParams{Limit: -1})
+
+			Convey("Then an error should be returned ", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Status(), ShouldEqual, http.StatusBadRequest)
+
+				Convey("And the expected bundle list should be empty", func() {
+					So(bundlesResponse, ShouldBeNil)
+
+					Convey("And client.Do should be called once with the expected parameters", func() {
+						doCalls := httpClient.DoCalls()
+						So(doCalls, ShouldHaveLength, 0)
+					})
+				})
+			})
+		})
+	})
+
 	Convey("Given a 500 response from bundle api", t, func() {
 		httpClient := newMockHTTPClient(&http.Response{StatusCode: http.StatusInternalServerError}, nil)
 		bundleAPIClient := newBundleAPIClient(t, httpClient)
 
 		Convey("When GetBundles is called", func() {
-			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, oneDayLater)
+			bundlesResponse, err := bundleAPIClient.GetBundles(ctx, Headers{}, &oneDayLater, nil)
 
 			Convey("Then an error should be returned ", func() {
 				So(err, ShouldNotBeNil)
