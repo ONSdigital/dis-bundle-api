@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/api"
 	"github.com/ONSdigital/dis-bundle-api/application"
@@ -122,7 +121,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
 
 	// Create Zebedee client
-	svc.ZebedeeClient = health.NewClientWithClienter("Zebedee", cfg.ZebedeeURL, dphttp.ClientWithTimeout(dphttp.NewClient(), 100*time.Second))
+	svc.ZebedeeClient = health.NewClientWithClienter("Zebedee", cfg.ZebedeeURL, dphttp.ClientWithTimeout(dphttp.NewClient(), cfg.ZebedeeClientTimeout))
 
 	// Get HealthCheck
 	svc.HealthCheck, err = svc.ServiceList.GetHealthCheck(svc.Config, buildTime, gitCommit, version)

@@ -31,6 +31,7 @@ type Config struct {
 	DefaultOffset              int           `envconfig:"DEFAULT_OFFSET"`
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
+	ZebedeeClientTimeout       time.Duration `envconfig:"ZEBEDEE_CLIENT_TIMEOUT"`
 	MongoConfig
 	AuthConfig *authorisation.Config
 }
@@ -59,11 +60,12 @@ func Get() (*Config, error) {
 		OTBatchTimeout:             5 * time.Second,
 		OTExporterOTLPEndpoint:     "localhost:4317",
 		OTServiceName:              "dis-bundle-api",
-
-		OtelEnabled:     false,
-		DefaultMaxLimit: 1000,
-		DefaultLimit:    20,
-		DefaultOffset:   0,
+		OtelEnabled:                false,
+		DefaultMaxLimit:            1000,
+		DefaultLimit:               20,
+		DefaultOffset:              0,
+		ZebedeeURL:                 "http://localhost:8082",
+		ZebedeeClientTimeout:       30 * time.Second,
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",
