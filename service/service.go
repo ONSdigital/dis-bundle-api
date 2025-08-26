@@ -2,15 +2,19 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/api"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -29,6 +33,7 @@ type Service struct {
 	mongoDB               store.MongoDB
 	stateMachineBundleAPI *application.StateMachineBundleAPI
 	AuthMiddleware        auth.Middleware
+	ZebedeeClient         *health.Client
 }
 
 type BundleAPIStore struct {
@@ -117,6 +122,12 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	// Get Datastore
 	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
 
+	// Create Zebedee client
+	svc.ZebedeeClient = health.NewClientWithClienter("Zebedee", cfg.ZebedeeURL, dphttp.ClientWithTimeout(dphttp.NewClient(), 100*time.Second))
+
+	if svc.ZebedeeClient == nil {
+		fmt.Println("CANT INSTANTIATE ZEBEDEE")
+	}
 	// Get HealthCheck
 	svc.HealthCheck, err = svc.ServiceList.GetHealthCheck(svc.Config, buildTime, gitCommit, version)
 	if err != nil {
@@ -147,7 +158,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	}
 
 	// Setup API
-	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth, svc.ZebedeeClient.Client)
 
 	svc.HealthCheck.Start(ctx)
 
@@ -241,6 +252,10 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	if err = svc.HealthCheck.AddCheck("Mongo DB", svc.mongoDB.Checker); err != nil {
 		hasErrors = true
 		log.Error(ctx, "error adding check for mongo db", err)
+	}
+	if err = svc.HealthCheck.AddCheck("Zebedee", svc.ZebedeeClient.Checker); err != nil {
+		hasErrors = true
+		log.Error(ctx, "error adding check for zebedee", err)
 	}
 
 	if hasErrors {

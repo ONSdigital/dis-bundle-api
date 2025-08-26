@@ -9,6 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/pagination"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	"github.com/gorilla/mux"
 )
 
@@ -18,15 +19,17 @@ type BundleAPI struct {
 	Store                 *store.Datastore
 	stateMachineBundleAPI *application.StateMachineBundleAPI
 	authMiddleware        auth.Middleware
+	cli                   dphttp.Clienter
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware) *BundleAPI {
+func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware, cli dphttp.Clienter) *BundleAPI {
 	api := &BundleAPI{
 		Router:                router,
 		Store:                 store,
 		stateMachineBundleAPI: stateMachineBundleAPI,
 		authMiddleware:        authMiddleware,
+		cli:                   cli,
 	}
 
 	paginator := pagination.NewPaginator(cfg.DefaultLimit, cfg.DefaultOffset, cfg.DefaultMaxLimit)
