@@ -103,11 +103,11 @@ func TestListBundles_Success(t *testing.T) {
 				expectedBundle := mockBundles[0]
 				scheduledAtDate := expectedBundle.ScheduledAt
 
-				filters := filters.BundleFilters{
+				bundleFilters := filters.BundleFilters{
 					PublishDate: scheduledAtDate,
 				}
 
-				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &filters)
+				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &bundleFilters)
 
 				So(err, ShouldBeNil)
 				So(totalCount, ShouldEqual, 1)
@@ -120,11 +120,11 @@ func TestListBundles_Success(t *testing.T) {
 			Convey("Then it should return no bundles when no bundles matching", func() {
 				scheduledAtDate := time.Now()
 
-				filters := filters.BundleFilters{
+				bundleFilters := filters.BundleFilters{
 					PublishDate: &scheduledAtDate,
 				}
 
-				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &filters)
+				bundles, totalCount, err := mongodb.ListBundles(ctx, 0, 10, &bundleFilters)
 
 				So(err, ShouldBeNil)
 				So(totalCount, ShouldEqual, 0)

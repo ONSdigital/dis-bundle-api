@@ -20,16 +20,18 @@ type BundleAPI struct {
 	stateMachineBundleAPI *application.StateMachineBundleAPI
 	authMiddleware        auth.Middleware
 	cli                   dphttp.Clienter
+	config                *config.Config
 }
 
 // Setup function sets up the api and returns an api
-func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, store *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware, cli dphttp.Clienter) *BundleAPI {
+func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, dataStore *store.Datastore, stateMachineBundleAPI *application.StateMachineBundleAPI, authMiddleware auth.Middleware, cli dphttp.Clienter) *BundleAPI {
 	api := &BundleAPI{
 		Router:                router,
-		Store:                 store,
+		Store:                 dataStore,
 		stateMachineBundleAPI: stateMachineBundleAPI,
 		authMiddleware:        authMiddleware,
 		cli:                   cli,
+		config:                cfg,
 	}
 
 	paginator := pagination.NewPaginator(cfg.DefaultLimit, cfg.DefaultOffset, cfg.DefaultMaxLimit)

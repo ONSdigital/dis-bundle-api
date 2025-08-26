@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -125,9 +124,6 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	// Create Zebedee client
 	svc.ZebedeeClient = health.NewClientWithClienter("Zebedee", cfg.ZebedeeURL, dphttp.ClientWithTimeout(dphttp.NewClient(), 100*time.Second))
 
-	if svc.ZebedeeClient == nil {
-		fmt.Println("CANT INSTANTIATE ZEBEDEE")
-	}
 	// Get HealthCheck
 	svc.HealthCheck, err = svc.ServiceList.GetHealthCheck(svc.Config, buildTime, gitCommit, version)
 	if err != nil {
@@ -151,14 +147,14 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient)
 
 	// Get Permissions
-	auth, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
+	authorisation, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
 		return err
 	}
 
 	// Setup API
-	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, auth, svc.ZebedeeClient.Client)
+	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, authorisation, svc.ZebedeeClient.Client)
 
 	svc.HealthCheck.Start(ctx)
 

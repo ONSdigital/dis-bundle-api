@@ -157,8 +157,9 @@ func TestRun(t *testing.T) {
 			})
 
 			Convey("The checkers are registered and the healthcheck and http server started", func() {
-				So(len(hcMock.AddCheckCalls()), ShouldEqual, 1)
+				So(len(hcMock.AddCheckCalls()), ShouldEqual, 2)
 				So(hcMock.AddCheckCalls()[0].Name, ShouldResemble, "Mongo DB")
+				So(hcMock.AddCheckCalls()[1].Name, ShouldResemble, "Zebedee")
 				So(len(initMock.DoGetHTTPServerCalls()), ShouldEqual, 1)
 				So(initMock.DoGetHTTPServerCalls()[0].BindAddr, ShouldEqual, ":29800")
 				So(len(hcMock.StartCalls()), ShouldEqual, 1)
@@ -190,8 +191,9 @@ func TestRun(t *testing.T) {
 				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
 				So(svcList.MongoDB, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 1)
+				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 2)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Mongo DB")
+				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Zebedee")
 			})
 		})
 

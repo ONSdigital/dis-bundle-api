@@ -168,7 +168,6 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 		DatasetAPIClient: datasetAPIClient,
 	}
 
-	//tokenMock := identity.New(cfg.ZebedeeURL)
 	var cliMock *dphttp.ClienterMock
 	if !serviceAuthFails {
 		cliMock = createHTTPClientMock(http.StatusOK, testIdentityResponse)
@@ -402,12 +401,12 @@ func TestGetBundles_Failure(t *testing.T) {
 
 				var errList models.ErrorList
 				errList.Errors = append(errList.Errors, expectedError)
-				bytes, err := json.Marshal(errList)
+				errBytes, err := json.Marshal(errList)
 				if err != nil {
 					fmt.Println(err)
 					return
 				}
-				expectedErrorString := fmt.Sprintf("%s\n", string(bytes))
+				expectedErrorString := fmt.Sprintf("%s\n", string(errBytes))
 				So(w.Body.String(), ShouldEqual, expectedErrorString)
 			})
 		})
@@ -619,7 +618,9 @@ func TestGetBundle_Failure(t *testing.T) {
 				},
 			}
 
-			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware, true)
+			cliMock := createHTTPClientMock(500, nil)
+
+			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware, cliMock)
 			bundleAPI.Router.HandleFunc("/bundles/{bundle-id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
@@ -1012,7 +1013,7 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 		}
 
 		mockAuthMiddleware := newAuthMiddlwareMock(true, parseFunc)
-		bundleAPI := GetBundleAPIWithMocksWithAuthMiddleware(store.Datastore{Backend: mockStore}, mockAPIClient, mockAuthMiddleware)
+		bundleAPI := GetBundleAPIWithMocksWithAuthMiddleware(store.Datastore{Backend: mockStore}, mockAPIClient, mockAuthMiddleware, true)
 
 		req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, models.BundleStatePublished, nil, true)
 		rec := httptest.NewRecorder()
@@ -1425,7 +1426,7 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{}
 		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is missing", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))

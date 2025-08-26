@@ -12,8 +12,8 @@ import (
 
 func TestSetup(t *testing.T) {
 	Convey("Given an API instance", t, func() {
-		store := &store.Datastore{}
-		api := GetBundleAPIWithMocks(*store, &datasetAPISDKMock.ClienterMock{}, false)
+		dataStore := &store.Datastore{}
+		api := GetBundleAPIWithMocks(*dataStore, &datasetAPISDKMock.ClienterMock{}, false)
 
 		Convey("When created the following routes should have been added", func() {
 			So(hasRoute(api.Router, "/bundles", "GET"), ShouldBeTrue)

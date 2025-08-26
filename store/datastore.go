@@ -64,8 +64,8 @@ type Storer interface {
 	dataMongoDB
 }
 
-func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
-	return ds.Backend.ListBundles(ctx, offset, limit, filters)
+func (ds *Datastore) ListBundles(ctx context.Context, offset, limit int, bundleFilters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+	return ds.Backend.ListBundles(ctx, offset, limit, bundleFilters)
 }
 
 func (ds *Datastore) ListBundleEvents(ctx context.Context, offset, limit int, bundleID string, after, before *time.Time) ([]*models.Event, int, error) {

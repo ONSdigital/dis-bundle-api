@@ -37,7 +37,7 @@ const (
 func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, offset int) (successResult *models.PaginationSuccessResult[models.Bundle], errorResult *models.ErrorResult[models.Error]) {
 	ctx := r.Context()
 
-	filters, filtersErr := filters.CreateBundlefilters(r)
+	bundleFilters, filtersErr := filters.CreateBundlefilters(r)
 	if filtersErr != nil {
 		log.Error(ctx, filtersErr.Error.Error(), errs.ErrInvalidQueryParameter)
 		code := models.CodeInvalidParameters
@@ -45,7 +45,7 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 		return nil, models.CreateBadRequestErrorResult(invalidRequestError)
 	}
 
-	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit, filters)
+	bundles, totalCount, err := api.stateMachineBundleAPI.ListBundles(ctx, offset, limit, bundleFilters)
 	if err != nil {
 		code := models.CodeInternalError
 		log.Error(ctx, "failed to get bundles", err)
@@ -53,9 +53,9 @@ func (api *BundleAPI) getBundles(w http.ResponseWriter, r *http.Request, limit, 
 		return nil, models.CreateInternalErrorResult(internalError)
 	}
 
-	if totalCount == 0 && filters.PublishDate != nil {
+	if totalCount == 0 && bundleFilters.PublishDate != nil {
 		code := models.CodeNotFound
-		log.Warn(ctx, fmt.Sprintf("Request for bundles with publish_date %s produced no results", filters.PublishDate))
+		log.Warn(ctx, fmt.Sprintf("Request for bundles with publish_date %s produced no results", bundleFilters.PublishDate))
 		notFoundError := &models.Error{Code: &code, Description: errs.ErrorDescriptionNotFound}
 		return nil, models.CreateNotFoundResult(notFoundError)
 	}
@@ -202,7 +202,8 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 
 	bundle, err := models.CreateBundle(r.Body, authEntityData.GetUserID())
 	if err != nil {
-		if err == errs.ErrUnableToParseJSON {
+		switch err {
+		case errs.ErrUnableToParseJSON:
 			log.Error(ctx, "createBundle: failed to create bundle from request body", err)
 			code := models.CodeBadRequest
 			e := &models.Error{
@@ -211,7 +212,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
 			return
-		} else if err == errs.ErrUnableToParseTime {
+		case errs.ErrUnableToParseTime:
 			log.Error(ctx, "createBundle: invalid time format in request body", err)
 			code := models.CodeInvalidParameters
 			e := &models.Error{
@@ -223,7 +224,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			}
 			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, e)
 			return
-		} else {
+		default:
 			log.Error(ctx, "createBundle: failed to read request body", err)
 			code := models.CodeInternalError
 			e := &models.Error{

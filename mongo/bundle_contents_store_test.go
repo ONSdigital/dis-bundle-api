@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	Bundle1ID = "bundle1"
+	Bundle1ID         = "bundle1"
+	NonExistentBundle = "non-existent-id"
 )
 
 var (
@@ -112,7 +113,7 @@ func TestGetContentItemByBundleIDAndContentItemID_Failure(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When GetContentItemByBundleIDAndContentItemID is called with a non-existent content item ID", func() {
-			contentItemID := "non-existent-id"
+			contentItemID := NonExistentBundle
 			bundleID := contentsTestData[0].BundleID
 			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
 
@@ -125,7 +126,7 @@ func TestGetContentItemByBundleIDAndContentItemID_Failure(t *testing.T) {
 
 		Convey("When GetContentItemByBundleIDAndContentItemID is called with a non-existent bundle ID", func() {
 			contentItemID := contentsTestData[0].ID
-			bundleID := "non-existent-bundle"
+			bundleID := NonExistentBundle
 			contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentItemID)
 
 			Convey("Then it returns a content item not found error", func() {
@@ -372,7 +373,7 @@ func TestDeleteContentItem_Failure(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When DeleteContentItem is called with a non-existent content item ID", func() {
-			contentItemID := "non-existent-id"
+			contentItemID := NonExistentBundle
 			err := mongodb.DeleteContentItem(ctx, contentItemID)
 
 			Convey("Then it returns a content item not found error", func() {
@@ -491,7 +492,7 @@ func TestListBundleContentIDsWithoutLimit_Success(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When ListBundleContentIDsWithoutLimit is called with a valid bundle ID", func() {
-			bundleID := "bundle1"
+			bundleID := Bundle1ID
 			contents, err := mongodb.ListBundleContentIDsWithoutLimit(ctx, bundleID)
 
 			Convey("Then it returns the contents and total count without error", func() {

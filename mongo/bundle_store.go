@@ -16,10 +16,10 @@ import (
 )
 
 // ListBundles retrieves all bundles based on the provided offset, limit, and BundleFilters
-func (m *Mongo) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error) {
+func (m *Mongo) ListBundles(ctx context.Context, offset, limit int, bundleFilters *filters.BundleFilters) (bundles []*models.Bundle, totalCount int, err error) {
 	bundles = []*models.Bundle{}
 
-	filter, sort := buildListBundlesQuery(filters)
+	filter, sort := buildListBundlesQuery(bundleFilters)
 
 	totalCount, err = m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).
 		Find(ctx, filter, &bundles, mongodriver.Sort(sort), mongodriver.Offset(offset), mongodriver.Limit(limit))
@@ -32,16 +32,16 @@ func (m *Mongo) ListBundles(ctx context.Context, offset, limit int, filters *fil
 }
 
 // buildListBundlesQuery Builds the MongoDB filter query based on the supplied BundleFilters value
-func buildListBundlesQuery(filters *filters.BundleFilters) (filter, sort bson.M) {
+func buildListBundlesQuery(bundleFilters *filters.BundleFilters) (filter, sort bson.M) {
 	filter = bson.M{}
 	sort = bson.M{"updated_at": -1}
 
-	if filters == nil {
+	if bundleFilters == nil {
 		return filter, sort
 	}
 
-	if filters.PublishDate != nil {
-		filter["scheduled_at"] = buildDateTimeFilter(*filters.PublishDate)
+	if bundleFilters.PublishDate != nil {
+		filter["scheduled_at"] = buildDateTimeFilter(*bundleFilters.PublishDate)
 	}
 
 	return filter, sort

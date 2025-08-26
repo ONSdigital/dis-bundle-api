@@ -27,6 +27,11 @@ var (
 	tomorrow  = today.Add(24 * time.Hour)
 )
 
+const (
+	bundle1   = "bundle-1"
+	bundle123 = "bundle-123"
+)
+
 var fullyPopulatedBundle = models.Bundle{
 	ID:            "123",
 	BundleType:    models.BundleTypeManual,
@@ -48,7 +53,7 @@ func TestListBundles(t *testing.T) {
 
 		expectedBundles := []*models.Bundle{
 			{
-				ID:         "bundle-123",
+				ID:         bundle123,
 				Title:      "Example Bundle",
 				CreatedAt:  &yesterday,
 				UpdatedAt:  &today,
@@ -69,10 +74,10 @@ func TestListBundles(t *testing.T) {
 
 		Convey("When ListBundles is called", func() {
 			now := time.Now()
-			filters := filters.BundleFilters{
+			bundleFilters := filters.BundleFilters{
 				PublishDate: &now,
 			}
-			results, totalCount, err := stateMachine.ListBundles(ctx, 0, 10, &filters)
+			results, totalCount, err := stateMachine.ListBundles(ctx, 0, 10, &bundleFilters)
 
 			Convey("Then it should return the expected bundles without error", func() {
 				So(err, ShouldBeNil)
@@ -88,7 +93,7 @@ func TestGetBundle(t *testing.T) {
 		ctx := context.Background()
 
 		expectedBundle := &models.Bundle{
-			ID:         "bundle-123",
+			ID:         bundle123,
 			Title:      "Example Bundle",
 			CreatedAt:  &yesterday,
 			UpdatedAt:  &today,
@@ -134,7 +139,7 @@ func TestUpdateBundleETag(t *testing.T) {
 		ctx := context.Background()
 
 		oldBundle := &models.Bundle{
-			ID:        "bundle-123",
+			ID:        bundle123,
 			Title:     "Example Bundle",
 			CreatedAt: &yesterday,
 			UpdatedAt: &today,
@@ -485,7 +490,7 @@ func TestCreateBundle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			CreatedBy:   &models.User{Email: "user@example.com"},
@@ -532,7 +537,7 @@ func TestCreateBundle_Failure_Transition(t *testing.T) {
 	Convey("Given a valid bundle", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
@@ -569,7 +574,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
@@ -620,7 +625,7 @@ func TestCreateBundle_Failure_Backend_CheckBundleExistsByTitle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
@@ -668,7 +673,7 @@ func TestCreateBundle_Failure_CreateBundle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
@@ -716,7 +721,7 @@ func TestCreateBundle_Failure_CreateEventFromBundle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			CreatedBy:   &models.User{Email: "user@example.com"},
@@ -771,7 +776,7 @@ func TestCreateBundle_Failure_GetBundle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
-			ID:          "bundle-123",
+			ID:          bundle123,
 			Title:       "Example Bundle",
 			ScheduledAt: &tomorrow,
 			BundleType:  models.BundleTypeScheduled,
@@ -823,7 +828,7 @@ func TestCheckBundleExistsByTitle_Success(t *testing.T) {
 		ctx := context.Background()
 
 		expectedBundle := &models.Bundle{
-			ID:    "bundle-123",
+			ID:    bundle123,
 			Title: "Example Bundle",
 		}
 
@@ -865,7 +870,7 @@ func TestCheckBundleExistsByTitle_Failure(t *testing.T) {
 		ctx := context.Background()
 
 		expectedBundle := &models.Bundle{
-			ID:    "bundle-123",
+			ID:    bundle123,
 			Title: "Example Bundle",
 		}
 
@@ -1008,13 +1013,13 @@ func TestGetBundleContents(t *testing.T) {
 			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
 				return []*models.ContentItem{{
 					ID:          "1",
-					BundleID:    "bundle-1",
+					BundleID:    bundle1,
 					ContentType: models.ContentTypeDataset,
 					Metadata:    models.Metadata{DatasetID: "dataset-1"},
 				}}, 1, nil
 			}
 
-			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+			items, total, err := app.GetBundleContents(ctx, bundle1, 0, 10, authHeaders)
 
 			So(err, ShouldBeNil)
 			So(items, ShouldHaveLength, 1)
@@ -1034,7 +1039,7 @@ func TestGetBundleContents(t *testing.T) {
 			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
 				return []*models.ContentItem{{
 					ID:          "1",
-					BundleID:    "bundle-1",
+					BundleID:    bundle1,
 					ContentType: models.ContentTypeDataset,
 					Metadata:    models.Metadata{DatasetID: "dataset-1"},
 				}}, 1, nil
@@ -1051,7 +1056,7 @@ func TestGetBundleContents(t *testing.T) {
 				}, nil
 			}
 
-			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+			items, total, err := app.GetBundleContents(ctx, bundle1, 0, 10, authHeaders)
 
 			So(err, ShouldBeNil)
 			So(items, ShouldHaveLength, 1)
@@ -1073,7 +1078,7 @@ func TestGetBundleContents(t *testing.T) {
 			mockedDatastore.ListBundleContentsFunc = func(ctx context.Context, id string, offset, limit int) ([]*models.ContentItem, int, error) {
 				return []*models.ContentItem{{
 					ID:          "1",
-					BundleID:    "bundle-1",
+					BundleID:    bundle1,
 					ContentType: models.ContentTypeDataset,
 					Metadata:    models.Metadata{DatasetID: "dataset-1"},
 				}}, 1, nil
@@ -1083,7 +1088,7 @@ func TestGetBundleContents(t *testing.T) {
 				return datasetAPIModels.Dataset{}, errors.New("dataset fetch failed")
 			}
 
-			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+			items, total, err := app.GetBundleContents(ctx, bundle1, 0, 10, authHeaders)
 
 			So(err, ShouldNotBeNil)
 			So(items, ShouldBeNil)
@@ -1104,7 +1109,7 @@ func TestGetBundleContents(t *testing.T) {
 				return []*models.ContentItem{}, 0, nil
 			}
 
-			items, total, err := app.GetBundleContents(ctx, "bundle-1", 0, 10, authHeaders)
+			items, total, err := app.GetBundleContents(ctx, bundle1, 0, 10, authHeaders)
 
 			So(err, ShouldBeNil)
 			So(items, ShouldBeEmpty)
@@ -1119,9 +1124,9 @@ func TestDeleteBundle_Success(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				if id == "bundle-1" {
+				if id == bundle1 {
 					return &models.Bundle{
-						ID:    "bundle-1",
+						ID:    bundle1,
 						State: models.BundleStateDraft,
 					}, nil
 				}
@@ -1156,7 +1161,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with an existing bundle ID", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "example@email.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "example@email.com")
 
 			Convey("Then it should return a status code of 204 and no error", func() {
 				So(err, ShouldBeNil)
@@ -1173,7 +1178,7 @@ func TestDeleteBundle_Failure_GetBundle(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				if id == "bundle-1" {
+				if id == bundle1 {
 					return nil, apierrors.ErrBundleNotFound
 				}
 				return nil, errors.New("unexpected error")
@@ -1185,7 +1190,7 @@ func TestDeleteBundle_Failure_GetBundle(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with a non-existing bundle ID", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 404 Not Found error", func() {
 				So(statusCode, ShouldEqual, 404)
@@ -1233,7 +1238,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStatePublished,
 				}, nil
 			},
@@ -1244,7 +1249,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with a bundle that is already published", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 409 Conflict error", func() {
 				So(statusCode, ShouldEqual, 409)
@@ -1272,7 +1277,7 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStateDraft,
 				}, nil
 			},
@@ -1286,7 +1291,7 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and listing bundle contents fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1314,7 +1319,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStateDraft,
 				}, nil
 			},
@@ -1334,7 +1339,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and deleting a content item fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1362,7 +1367,7 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStateDraft,
 				}, nil
 			},
@@ -1384,7 +1389,7 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and creating an event from content item fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1412,7 +1417,7 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStateDraft,
 				}, nil
 			},
@@ -1432,7 +1437,7 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and deleting the bundle fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1460,7 +1465,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
 				return &models.Bundle{
-					ID:    "bundle-1",
+					ID:    bundle1,
 					State: models.BundleStateDraft,
 				}, nil
 			},
@@ -1483,7 +1488,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and creating an event from the bundle fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "bundle-1", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1507,7 +1512,7 @@ func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
 func TestPutBundle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
 		ctx := context.Background()
-		bundleID := "bundle-123"
+		bundleID := bundle123
 		userEmail := "user@example.com"
 
 		currentBundle := &models.Bundle{
@@ -1571,12 +1576,12 @@ func TestValidateBundleRules_Success(t *testing.T) {
 		ctx := context.Background()
 
 		currentBundle := &models.Bundle{
-			ID:    "bundle-123",
+			ID:    bundle123,
 			Title: "Original Title",
 		}
 
 		bundleUpdate := &models.Bundle{
-			ID:         "bundle-123",
+			ID:         bundle123,
 			Title:      "New Title",
 			BundleType: models.BundleTypeManual,
 		}
@@ -1606,12 +1611,12 @@ func TestValidateBundleRules_DuplicateTitle(t *testing.T) {
 		ctx := context.Background()
 
 		currentBundle := &models.Bundle{
-			ID:    "bundle-123",
+			ID:    bundle123,
 			Title: "Original Title",
 		}
 
 		bundleUpdate := &models.Bundle{
-			ID:         "bundle-123",
+			ID:         bundle123,
 			Title:      "Existing Title",
 			BundleType: models.BundleTypeManual,
 		}
@@ -1646,7 +1651,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 		ctx := context.Background()
 
 		currentBundle := &models.Bundle{
-			ID:    "bundle-123",
+			ID:    bundle123,
 			Title: "Test Bundle",
 		}
 
@@ -1656,7 +1661,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 
 		Convey("When validating SCHEDULED bundle without scheduled_at", func() {
 			bundleUpdate := &models.Bundle{
-				ID:         "bundle-123",
+				ID:         bundle123,
 				Title:      "Test Bundle",
 				BundleType: models.BundleTypeScheduled,
 			}
@@ -1673,7 +1678,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 		Convey("When validating MANUAL bundle with scheduled_at", func() {
 			futureTime := time.Now().Add(24 * time.Hour)
 			bundleUpdate := &models.Bundle{
-				ID:          "bundle-123",
+				ID:          bundle123,
 				Title:       "Test Bundle",
 				BundleType:  models.BundleTypeManual,
 				ScheduledAt: &futureTime,
@@ -1691,7 +1696,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 		Convey("When validating SCHEDULED bundle with past scheduled_at", func() {
 			pastTime := time.Now().Add(-24 * time.Hour)
 			bundleUpdate := &models.Bundle{
-				ID:          "bundle-123",
+				ID:          bundle123,
 				Title:       "Test Bundle",
 				BundleType:  models.BundleTypeScheduled,
 				ScheduledAt: &pastTime,
@@ -1711,7 +1716,7 @@ func TestValidateBundleRules_ScheduledValidation(t *testing.T) {
 func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
 		ctx := context.Background()
-		bundleID := "bundle-123"
+		bundleID := bundle123
 
 		contentItems := []*models.ContentItem{
 			{
@@ -1766,7 +1771,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 func TestUpdateContentItemsWithDatasetInfo_NoContentItems(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with no content items", t, func() {
 		ctx := context.Background()
-		bundleID := "bundle-123"
+		bundleID := bundle123
 
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
@@ -1793,7 +1798,7 @@ func TestUpdateContentItemsWithDatasetInfo_NoContentItems(t *testing.T) {
 func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with failing dataset API", t, func() {
 		ctx := context.Background()
-		bundleID := "bundle-123"
+		bundleID := bundle123
 
 		contentItems := []*models.ContentItem{
 			{

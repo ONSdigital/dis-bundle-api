@@ -37,9 +37,9 @@ func TestGetAuthEntityData_Success(t *testing.T) {
 	}
 	r.Header.Set("Authorization", BearerToken)
 
-	store := &store.Datastore{}
+	dataStore := &store.Datastore{}
 
-	api := GetBundleAPIWithMocksWithAuthMiddleware(*store, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware)
+	api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, false)
 
 	Convey("When GetAuthEntityData is called with a valid Authorization header", t, func() {
 		authEntityData, err := api.GetAuthEntityData(&r)
@@ -80,9 +80,9 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 			}
 
 			r.Header.Set("Authorization", BearerToken)
-			store := &store.Datastore{}
+			dataStore := &store.Datastore{}
 
-			api := GetBundleAPIWithMocksWithAuthMiddleware(*store, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware)
+			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
 
 			entityData, err := api.GetAuthEntityData(&r)
 
@@ -91,7 +91,7 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 			})
 
 			Convey("And an error should be returned", func() {
-				So(err, ShouldEqual, apierrors.ErrUnauthorised)
+				So(err.Error(), ShouldContainSubstring, "unable to determine the user or service making the request")
 			})
 		})
 
@@ -100,9 +100,9 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 				Header: http.Header{},
 			}
 
-			store := &store.Datastore{}
+			dataStore := &store.Datastore{}
 
-			api := GetBundleAPIWithMocksWithAuthMiddleware(*store, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware)
+			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
 
 			entityData, err := api.GetAuthEntityData(&r)
 
@@ -111,7 +111,7 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 			})
 
 			Convey("And an error should be returned", func() {
-				So(err, ShouldEqual, apierrors.ErrUnauthorised)
+				So(err.Error(), ShouldContainSubstring, "Empty token provided")
 			})
 		})
 	})

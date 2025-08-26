@@ -34,8 +34,8 @@ func getTestMongoDB(ctx context.Context) (*Mongo, *mim.Server, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	config := getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections)
-	conn, err := mongoDriver.Open(config)
+	mongoConfig := getTestMongoDriverConfig(mongoServer, cfg.Database, cfg.Collections)
+	conn, err := mongoDriver.Open(mongoConfig)
 	if err != nil {
 		return nil, nil, err
 	}

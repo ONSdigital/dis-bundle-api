@@ -352,7 +352,7 @@ func TestPutBundle_AuthenticationFailure(t *testing.T) {
 		updateRequestJSON, err := json.Marshal(updateRequest)
 		So(err, ShouldBeNil)
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with invalid JWT", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))

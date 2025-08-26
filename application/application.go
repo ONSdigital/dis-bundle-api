@@ -31,8 +31,8 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClie
 	}
 }
 
-func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int, filters *filters.BundleFilters) ([]*models.Bundle, int, error) {
-	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit, filters)
+func (s *StateMachineBundleAPI) ListBundles(ctx context.Context, offset, limit int, bundleFilters *filters.BundleFilters) ([]*models.Bundle, int, error) {
+	results, totalCount, err := s.Datastore.ListBundles(ctx, offset, limit, bundleFilters)
 	if err != nil {
 		return nil, 0, err
 	}

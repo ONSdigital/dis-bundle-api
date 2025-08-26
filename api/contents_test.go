@@ -19,6 +19,13 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+const (
+	dataset2 = "dataset-2"
+	edition2 = "edition-2"
+	cont1    = "content-1"
+	cont2    = "content-2"
+)
+
 func TestPostBundleContents_Success(t *testing.T) {
 	t.Parallel()
 
@@ -46,12 +53,14 @@ func TestPostBundleContents_Success(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+				//nolint:goconst //The strings aren't actually the same.
 				if bundleID == "bundle-1" {
 					return true, nil
 				}
 				return false, nil
 			},
 			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+				//nolint:goconst //The strings aren't actually the same.
 				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == 1 {
 					return false, nil
 				}
@@ -393,7 +402,7 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 		})
 
 		Convey("When postBundleContents is called with a non-existent edition", func() {
-			newContentItem.Metadata.DatasetID = "dataset-2"
+			newContentItem.Metadata.DatasetID = dataset2
 			newContentItemJSON, err := json.Marshal(newContentItem)
 			So(err, ShouldBeNil)
 
@@ -427,8 +436,8 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 		})
 
 		Convey("When postBundleContents is called with a non-existent version", func() {
-			newContentItem.Metadata.DatasetID = "dataset-2"
-			newContentItem.Metadata.EditionID = "edition-2"
+			newContentItem.Metadata.DatasetID = dataset2
+			newContentItem.Metadata.EditionID = edition2
 			newContentItemJSON, err := json.Marshal(newContentItem)
 			So(err, ShouldBeNil)
 
@@ -462,8 +471,8 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 		})
 
 		Convey("When postBundleContents is called and getVersion fails", func() {
-			newContentItem.Metadata.DatasetID = "dataset-2"
-			newContentItem.Metadata.EditionID = "edition-2"
+			newContentItem.Metadata.DatasetID = dataset2
+			newContentItem.Metadata.EditionID = edition2
 			newContentItem.Metadata.VersionID = 2
 			newContentItemJSON, err := json.Marshal(newContentItem)
 			So(err, ShouldBeNil)
@@ -716,7 +725,7 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
 		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
@@ -905,22 +914,22 @@ func TestDeleteContentItem_Success(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return &models.ContentItem{
-						ID:       "content-1",
+						ID:       cont1,
 						BundleID: "bundle-1",
 					}, nil
 				}
 				return nil, errors.New("content item not found")
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
-				if contentItemID == "content-1" {
+				if contentItemID == cont1 {
 					return nil
 				}
 				return errors.New("failed to delete content item")
 			},
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.ContentItem.BundleID == "bundle-1" && event.ContentItem.ID == "content-1" {
+				if event.ContentItem.BundleID == "bundle-1" && event.ContentItem.ID == cont1 {
 					return nil
 				}
 				return errors.New("failed to create bundle event")
@@ -949,7 +958,7 @@ func TestDeleteContentItem_ContentItemNotFound_Failure(t *testing.T) {
 	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id} for a non-existent content item", t, func() {
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return nil, apierrors.ErrContentItemNotFound
 				}
 				return nil, errors.New("unexpected error")
@@ -1027,9 +1036,9 @@ func TestDeleteContentItem_ContentItemIsPublished_Failure(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return &models.ContentItem{
-						ID:       "content-1",
+						ID:       cont1,
 						BundleID: "bundle-1",
 						State:    &publishedState,
 					}, nil
@@ -1073,25 +1082,25 @@ func TestDeleteContentItem_DeleteContentItem_Failure(t *testing.T) {
 	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return &models.ContentItem{
-						ID:       "content-1",
+						ID:       cont1,
 						BundleID: "bundle-1",
 					}, nil
 				}
-				if bundleID == "bundle-1" && contentItemID == "content-2" {
+				if bundleID == "bundle-1" && contentItemID == cont2 {
 					return &models.ContentItem{
-						ID:       "content-2",
+						ID:       cont2,
 						BundleID: "bundle-1",
 					}, nil
 				}
 				return nil, apierrors.ErrContentItemNotFound
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
-				if contentItemID == "content-1" {
+				if contentItemID == cont1 {
 					return apierrors.ErrContentItemNotFound
 				}
-				if contentItemID == "content-2" {
+				if contentItemID == cont2 {
 					return errors.New("failed to delete content item")
 				}
 				return nil
@@ -1168,23 +1177,23 @@ func TestDeleteContentItem_ParseJWT_Failure(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return &models.ContentItem{
-						ID:       "content-1",
+						ID:       cont1,
 						BundleID: "bundle-1",
 					}, nil
 				}
 				return nil, errors.New("content item not found")
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
-				if contentItemID == "content-1" {
+				if contentItemID == cont1 {
 					return nil
 				}
 				return errors.New("failed to delete content item")
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 
 		Convey("When deleteContentItem is called", func() {
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -1217,16 +1226,16 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				if bundleID == "bundle-1" && contentItemID == "content-1" {
+				if bundleID == "bundle-1" && contentItemID == cont1 {
 					return &models.ContentItem{
-						ID:       "content-1",
+						ID:       cont1,
 						BundleID: "bundle-1",
 					}, nil
 				}
 				return nil, apierrors.ErrContentItemNotFound
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
-				if contentItemID == "content-1" {
+				if contentItemID == cont1 {
 					return nil
 				}
 				return errors.New("failed to delete content item")
@@ -1291,7 +1300,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 				BundleID:    bundleID,
 				ContentType: models.ContentType("dataset"),
 				Metadata: models.Metadata{
-					DatasetID: "dataset-2",
+					DatasetID: dataset2,
 					EditionID: "2023-02",
 					Title:     "Dataset Two Title",
 					VersionID: 2,
@@ -1373,7 +1382,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 				BundleID:    bundleID,
 				ContentType: models.ContentType("dataset"),
 				Metadata: models.Metadata{
-					DatasetID: "dataset-2",
+					DatasetID: dataset2,
 					EditionID: "2023-02",
 					Title:     "Dataset Two Title",
 					VersionID: 2,
