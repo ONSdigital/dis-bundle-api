@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	dphttp "github.com/ONSdigital/dp-net/v3/http"
+
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
@@ -89,10 +91,40 @@ func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *author
 
 func GetBundleAPIWithMocks(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, validateAuth bool) *BundleAPI {
 	authMiddleware := newAuthMiddlwareMock(validateAuth, nil)
-	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, authMiddleware)
+	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, authMiddleware, false)
 }
 
-func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, authMiddleware *authorisationMock.MiddlewareMock) *BundleAPI {
+func GetBundleAPIWithMocksWhereAuthFails(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, validateAuth bool) *BundleAPI {
+	authMiddleware := newAuthMiddlwareMock(validateAuth, nil)
+	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, authMiddleware, true)
+}
+
+// valid identity response for testing
+
+var testIdentity = "myIdentity"
+var testIdentityResponse = &dprequest.IdentityResponse{
+	Identifier: testIdentity,
+}
+
+// utility function to generate Clienter mocks
+func createHTTPClientMock(retCode int, retBody interface{}) *dphttp.ClienterMock {
+	return &dphttp.ClienterMock{
+		GetPathsWithNoRetriesFunc: func() []string {
+			return []string{}
+		},
+		SetPathsWithNoRetriesFunc: func([]string) {
+		},
+		DoFunc: func(ctx context.Context, req *http.Request) (*http.Response, error) {
+			body, _ := json.Marshal(retBody)
+			return &http.Response{
+				StatusCode: retCode,
+				Body:       io.NopCloser(bytes.NewReader(body)),
+			}, nil
+		},
+	}
+}
+
+func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, authMiddleware *authorisationMock.MiddlewareMock, serviceAuthFails bool) *BundleAPI {
 	ctx := context.Background()
 	cfg := &config.Config{
 		DefaultMaxLimit: 100,
@@ -135,7 +167,16 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 		StateMachine:     stateMachine,
 		DatasetAPIClient: datasetAPIClient,
 	}
-	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, authMiddleware)
+
+	//tokenMock := identity.New(cfg.ZebedeeURL)
+	var cliMock *dphttp.ClienterMock
+	if !serviceAuthFails {
+		cliMock = createHTTPClientMock(http.StatusOK, testIdentityResponse)
+	} else {
+		cliMock = createHTTPClientMock(500, nil)
+	}
+
+	return Setup(ctx, cfg, r, &datastore, stateMachineBundleAPI, authMiddleware, cliMock)
 }
 
 func createRequestWithAuth(method, target string, body io.Reader) *http.Request {
@@ -578,7 +619,7 @@ func TestGetBundle_Failure(t *testing.T) {
 				},
 			}
 
-			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware)
+			bundleAPI := Setup(ctx, &config.Config{}, mux.NewRouter(), nil, nil, authMiddleware, true)
 			bundleAPI.Router.HandleFunc("/bundles/{bundle-id}", func(w http.ResponseWriter, r *http.Request) {}).Methods(http.MethodGet)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
