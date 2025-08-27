@@ -1842,7 +1842,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{
 			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				if id == "bundle-1" {
+				if id == bundle1 {
 					return &models.Bundle{
 						ID:    "bundle-1",
 						State: models.BundleStateDraft,
