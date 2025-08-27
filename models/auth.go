@@ -6,13 +6,15 @@ import (
 )
 
 type AuthEntityData struct {
-	EntityData *permissionsAPISDK.EntityData
-	Headers    datasetAPISDK.Headers
+	EntityData    *permissionsAPISDK.EntityData
+	IsServiceAuth bool
+	Headers       datasetAPISDK.Headers
 }
 
-func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string) *AuthEntityData {
+func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string, isServiceAuth bool) *AuthEntityData {
 	return &AuthEntityData{
-		EntityData: entityData,
+		EntityData:    entityData,
+		IsServiceAuth: isServiceAuth,
 		Headers: datasetAPISDK.Headers{
 			ServiceToken:    serviceToken,
 			UserAccessToken: serviceToken,

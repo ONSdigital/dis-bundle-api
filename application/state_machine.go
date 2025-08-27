@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -17,6 +18,7 @@ type StateMachine struct {
 	transitions map[string][]string
 	datastore   store.Datastore
 	ctx         context.Context
+	cfg         *config.Config
 }
 
 type Transition struct {
@@ -48,7 +50,7 @@ func getStateByName(stateName string) (*State, bool) {
 	}
 }
 
-func NewStateMachine(ctx context.Context, states []State, transitions []Transition, datastore store.Datastore) *StateMachine {
+func NewStateMachine(ctx context.Context, states []State, transitions []Transition, datastore store.Datastore, cfg *config.Config) *StateMachine {
 	statesMap := make(map[string]State)
 	for _, state := range states {
 		statesMap[state.String()] = state
@@ -64,6 +66,7 @@ func NewStateMachine(ctx context.Context, states []State, transitions []Transiti
 		transitions: transitionsMap,
 		datastore:   datastore,
 		ctx:         ctx,
+		cfg:         cfg,
 	}
 
 	return StateMachine
@@ -158,7 +161,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	if targetState.String() == models.BundleStateApproved.String() || targetState.String() == models.BundleStatePublished.String() {
 		for index := range *contents {
 			contentItem := &(*contents)[index]
-			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
+			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData, sm.cfg)
 			if err != nil {
 				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
 				return nil, err
@@ -186,7 +189,10 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	return updatedBundle, err
 }
 
-func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
+func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData, cfg *config.Config) error {
+	if authEntityData.IsServiceAuth {
+		authEntityData.Headers.ServiceToken = cfg.DatasetServiceAuthToken
+	}
 	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.Headers); err != nil {
 		return err
 	}

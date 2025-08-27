@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
@@ -128,6 +129,8 @@ func TestGetStateByName_Failure(t *testing.T) {
 func TestTransition_success(t *testing.T) {
 	ctx := context.Background()
 
+	cfg := &config.Config{}
+
 	states := getMockStates()
 	transitions := getMockTransitions()
 
@@ -138,7 +141,7 @@ func TestTransition_success(t *testing.T) {
 	}
 
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient)
 
 	Convey("When transitioning from 'DRAFT' to 'IN_REVIEW'", t, func() {
@@ -207,6 +210,7 @@ func TestTransition_success(t *testing.T) {
 
 func TestTransition_failure(t *testing.T) {
 	ctx := context.Background()
+	cfg := &config.Config{}
 
 	states := getMockStates()
 	transitions := getMockTransitions()
@@ -214,7 +218,7 @@ func TestTransition_failure(t *testing.T) {
 	mockedDatastore := &storetest.StorerMock{}
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 
-	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient)
 
 	Convey("When transitioning from a state that is not in the transition list", t, func() {
@@ -311,6 +315,8 @@ func TestIsValidTransition(t *testing.T) {
 
 	ctx := context.Background()
 
+	cfg := &config.Config{}
+
 	states := getMockStates()
 	transitions := getMockTransitions()
 
@@ -320,7 +326,7 @@ func TestIsValidTransition(t *testing.T) {
 		},
 	}
 
-	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 
 	for index := range validTransitions {
 		tc := validTransitions[index]
@@ -440,6 +446,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 	var createdEvents []*models.Event
 
 	ctx := context.Background()
+	cfg := &config.Config{}
 
 	states := getMockStates()
 	transitions := getMockTransitions()
@@ -521,7 +528,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 		},
 	}
 
-	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 	bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 
@@ -754,7 +761,9 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			return nil, dbError
 		}
 
-		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+		cfg := &config.Config{}
+
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
@@ -779,7 +788,9 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			return nil, nil
 		}
 
-		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+		cfg := &config.Config{}
+
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
@@ -805,7 +816,9 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		mockedDatastore.UpdateBundleFunc = func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
 			return nil, updateBundleError
 		}
-		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+
+		cfg := &config.Config{}
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 
 		bundleInstance := *mockBundle
@@ -847,7 +860,9 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			return nil
 		}
 
-		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+		cfg := &config.Config{}
+
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, cfg)
 		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient)
 
 		bundleInstance := *mockBundle

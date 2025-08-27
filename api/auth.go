@@ -18,6 +18,7 @@ func (api *BundleAPI) GetAuthEntityData(r *http.Request) (*models.AuthEntityData
 		Name:   "identity",
 	})
 
+	isServiceAuth := false
 	bearerToken := strings.TrimPrefix(r.Header.Get(request.AuthHeaderKey), request.BearerPrefix)
 	JWTEntityData, err := api.authMiddleware.Parse(bearerToken)
 	if err != nil {
@@ -27,9 +28,10 @@ func (api *BundleAPI) GetAuthEntityData(r *http.Request) (*models.AuthEntityData
 			return nil, err
 		} else {
 			// valid
+			isServiceAuth = true
 			JWTEntityData = &sdk.EntityData{UserID: resp.Identifier}
 		}
 	}
 
-	return models.CreateAuthEntityData(JWTEntityData, bearerToken), nil
+	return models.CreateAuthEntityData(JWTEntityData, bearerToken, isServiceAuth), nil
 }
