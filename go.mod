@@ -6,11 +6,11 @@ require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.267.0
 	github.com/ONSdigital/dp-authorisation/v2 v2.32.3
 	github.com/ONSdigital/dp-component-test v0.25.0
-	github.com/ONSdigital/dp-dataset-api v1.82.1
+	github.com/ONSdigital/dp-dataset-api v1.83.0
 	github.com/ONSdigital/dp-healthcheck v1.6.4
 	github.com/ONSdigital/dp-mongodb-in-memory v1.8.1
 	github.com/ONSdigital/dp-mongodb/v3 v3.8.0
-	github.com/ONSdigital/dp-net/v3 v3.3.0
+	github.com/ONSdigital/dp-net/v3 v3.4.0
 	github.com/ONSdigital/dp-permissions-api v1.3.0
 	github.com/ONSdigital/log.go/v2 v2.4.6
 	github.com/cucumber/godog v0.15.1

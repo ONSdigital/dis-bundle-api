@@ -3,13 +3,11 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type StateMachine struct {
@@ -26,7 +24,8 @@ type Transition struct {
 }
 
 type State struct {
-	Name string
+	Name      string
+	EnterFunc func(ctx context.Context, sm *StateMachine, smAPI *StateMachineBundleAPI, bundle *models.Bundle, auth *models.AuthEntityData) error
 }
 
 func (s State) String() string {
@@ -69,17 +68,15 @@ func NewStateMachine(ctx context.Context, states []State, transitions []Transiti
 	return StateMachine
 }
 
-func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, currentBundle, bundleUpdate *models.Bundle) error {
+func (sm *StateMachine) Transition(ctx context.Context, smAPI *StateMachineBundleAPI, currentBundle, bundleUpdate *models.Bundle) error {
 	var valid bool
-
 	match := false
 
 	if currentBundle == nil {
 		if bundleUpdate.State.String() == models.BundleStateDraft.String() {
 			return nil
-		} else {
-			return errors.New("bundle state must be DRAFT when creating a new bundle")
 		}
+		return errors.New("bundle state must be DRAFT when creating a new bundle")
 	}
 
 	if bundleUpdate == nil {
@@ -91,27 +88,14 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 
 	for state, transitions := range sm.transitions {
 		if state == bundleUpdate.State.String() {
-			for i := range transitions {
-				if currentBundle.State.String() != transitions[i] {
+			for _, allowed := range transitions {
+				if currentBundle.State.String() != allowed {
 					continue
 				}
 				match = true
-
 				_, valid = getStateByName(state)
 				if !valid {
 					return errors.New("incorrect state value")
-				}
-
-				if currentBundle.State.String() == InReview.String() && bundleUpdate.State.String() == Approved.String() {
-					allBundleContentsApproved, err := stateMachineBundleAPI.CheckAllBundleContentsAreApproved(ctx, currentBundle.ID)
-					if err != nil {
-						log.Error(ctx, "error checking if all bundle contents are approved", err, log.Data{"bundle_id": currentBundle.ID})
-						return err
-					}
-
-					if !allBundleContentsApproved {
-						return errors.New("not all bundle contents are approved")
-					}
 				}
 				break
 			}
@@ -121,7 +105,6 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 	if !match {
 		return apierrors.ErrInvalidTransition
 	}
-
 	return nil
 }
 
@@ -140,68 +123,61 @@ func (sm *StateMachine) IsValidTransition(ctx context.Context, sourceState, targ
 	return nil
 }
 
-func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState *models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
+func (sm *StateMachine) TransitionBundle(ctx context.Context, smAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState *models.BundleState, auth *models.AuthEntityData) (*models.Bundle, error) {
+	// Validate transition
 	if err := sm.IsValidTransition(ctx, &bundle.State, targetState); err != nil {
 		return nil, err
 	}
 
-	contents, err := stateMachineBundleAPI.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
+	// Update bundle state + user
+	bundle.State = *targetState
+	bundle.LastUpdatedBy.Email = auth.GetUserEmail()
 
+	updatedBundle, err := smAPI.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
 	if err != nil {
 		return nil, err
 	}
 
-	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
+	// Call the EnterFunc for the new state
+	state, ok := getStateByName(targetState.String())
+	if !ok {
+		return nil, errors.New("target state not found")
 	}
-
-	if targetState.String() == models.BundleStateApproved.String() || targetState.String() == models.BundleStatePublished.String() {
-		for index := range *contents {
-			contentItem := &(*contents)[index]
-			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
-			if err != nil {
-				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
-				return nil, err
-			}
+	if state.EnterFunc != nil {
+		if err := state.EnterFunc(ctx, sm, smAPI, updatedBundle, auth); err != nil {
+			return nil, err
 		}
 	}
 
-	bundle.State = *targetState
-	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
-
-	updatedBundle, err := stateMachineBundleAPI.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	// Create bundle event
+	event, err := models.CreateEventModel(auth.GetUserID(), auth.GetUserEmail(), models.ActionUpdate, models.CreateBundleResourceLocation(updatedBundle), nil, updatedBundle)
 	if err != nil {
 		return nil, err
 	}
-
-	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleResourceLocation(bundle), nil, bundle)
-	if err != nil {
+	if err := smAPI.CreateBundleEvent(ctx, event); err != nil {
 		return nil, err
 	}
 
-	if err := stateMachineBundleAPI.CreateBundleEvent(ctx, event); err != nil {
-		return nil, err
-	}
-
-	return updatedBundle, err
+	return updatedBundle, nil
 }
 
-func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
-	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.Headers); err != nil {
+func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, smAPI *StateMachineBundleAPI, targetState models.BundleState, auth *models.AuthEntityData) error {
+	if err := smAPI.updateVersionStateForContentItem(ctx, contentItem, &targetState, auth.Headers); err != nil {
 		return err
 	}
 
-	if err := stateMachineBundleAPI.Datastore.UpdateContentItemState(ctx, contentItem.ID, targetState.String()); err != nil {
+	if err := smAPI.Datastore.UpdateContentItemState(ctx, contentItem.ID, targetState.String()); err != nil {
 		return err
 	}
 
-	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleContentResourceLocation(contentItem), contentItem, nil)
+	event, err := models.CreateEventModel(auth.GetUserID(), auth.GetUserEmail(), models.ActionUpdate, models.CreateBundleContentResourceLocation(contentItem), contentItem, nil)
 	if err != nil {
 		return err
 	}
 
-	if err := stateMachineBundleAPI.CreateBundleEvent(ctx, event); err != nil {
+	if err := smAPI.CreateBundleEvent(ctx, event); err != nil {
 		return err
 	}
+
 	return nil
 }

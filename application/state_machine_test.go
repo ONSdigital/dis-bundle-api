@@ -235,36 +235,6 @@ func TestTransition_failure(t *testing.T) {
 		})
 	})
 
-	Convey("When transitioning from 'IN_REVIEW' to 'APPROVED' with bundle contents not APPROVED", t, func() {
-		Convey("And CheckAllBundleContentsAreApproved returns false", func() {
-			stateMachineBundleAPI.Datastore.Backend = &storetest.StorerMock{
-				CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
-					return false, nil
-				},
-			}
-
-			Convey("Then the transition should fail", func() {
-				err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "not all bundle contents are approved")
-			})
-		})
-
-		Convey("And CheckAllBundleContentsAreApproved returns an error", func() {
-			stateMachineBundleAPI.Datastore.Backend = &storetest.StorerMock{
-				CheckAllBundleContentsAreApprovedFunc: func(ctx context.Context, bundleID string) (bool, error) {
-					return false, errors.New("datastore error")
-				},
-			}
-
-			Convey("Then the transition should fail with an error", func() {
-				err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved)
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "datastore error")
-			})
-		})
-	})
-
 	Convey("When the state machine has a transition that contains an invalid state", t, func() {
 		stateMachineBundleAPI.StateMachine.transitions["UNKNOWN"] = []string{"DRAFT"}
 		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateDraft, bundleUpdateWithStateUnknown)

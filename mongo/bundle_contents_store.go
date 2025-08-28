@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/config"
@@ -39,6 +40,7 @@ func (m *Mongo) CreateContentItem(ctx context.Context, contentItem *models.Conte
 
 // CheckAllBundleContentsAreApproved checks if all contents of a bundle are in the approved state
 func (m *Mongo) CheckAllBundleContentsAreApproved(ctx context.Context, bundleID string) (bool, error) {
+	fmt.Println("CheckAllBundleContentsAreApproved called : ", bundleID)
 	filter := bson.M{
 		"bundle_id": bundleID,
 		"state":     bson.M{"$ne": "APPROVED"},
