@@ -160,7 +160,7 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 			AllowedSourceStates: []string{"APPROVED"},
 		},
 	}
-	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore, cfg)
+	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
 
 	stateMachineBundleAPI := &application.StateMachineBundleAPI{
 		Datastore:        datastore,

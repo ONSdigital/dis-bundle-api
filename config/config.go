@@ -19,7 +19,6 @@ type AuthConfig = authorisation.Config
 type Config struct {
 	BindAddr                   string        `envconfig:"BIND_ADDR"`
 	DatasetAPIURL              string        `envconfig:"DATASET_API_URL"`
-	DatasetServiceAuthToken    string        `envconfig:"DATASET_SERVICE_AUTH_TOKEN"`
 	GracefulShutdownTimeout    time.Duration `envconfig:"GRACEFUL_SHUTDOWN_TIMEOUT"`
 	HealthCheckInterval        time.Duration `envconfig:"HEALTHCHECK_INTERVAL"`
 	HealthCheckCriticalTimeout time.Duration `envconfig:"HEALTHCHECK_CRITICAL_TIMEOUT"`
@@ -55,7 +54,6 @@ func Get() (*Config, error) {
 	cfg = &Config{
 		BindAddr:                   ":29800",
 		DatasetAPIURL:              "http://localhost:22000",
-		DatasetServiceAuthToken:    "dataset-api-test-auth-token",
 		GracefulShutdownTimeout:    5 * time.Second,
 		HealthCheckInterval:        30 * time.Second,
 		HealthCheckCriticalTimeout: 90 * time.Second,
