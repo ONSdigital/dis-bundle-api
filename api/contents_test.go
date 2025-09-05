@@ -1004,7 +1004,6 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				So(updateETagCalled, ShouldBeTrue)
 				So(updateBundleGotPayload.LastUpdatedBy.Email, ShouldEqual, "newuser@email.com")
 				So(updateBundleGotPayload.ETag, ShouldEqual, "etag-after-delete")
-
 			})
 		})
 	})

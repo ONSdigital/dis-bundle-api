@@ -292,7 +292,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 	}
 	log.Info(ctx, "content item deleted")
 
-	//update UpdatedAt, LastUpdatedBy & Etag
+	// update UpdatedAt, LastUpdatedBy & Etag
 	currentBundle, _ := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
 
 	now := time.Now()
