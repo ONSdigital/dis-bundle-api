@@ -48,6 +48,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
+	ctx.Step(`^bundle "([^"]*)" should not be "([^"]*)"`, c.BundleETagShouldHaveUpdated)
 
 	// Content Item assertions
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
@@ -416,6 +417,14 @@ func (c *BundleComponent) bundleETagShouldMatch(bundleID, etag string) error {
 
 func (c *BundleComponent) bundleETagShouldNotMatch(bundleID, etag string) error {
 	return c.bundleETagValueMatch(bundleID, etag, false)
+}
+
+func (c *BundleComponent) BundleETagShouldHaveUpdated(etag, expected string) error {
+	actual := c.apiFeature.HTTPResponse.Header.Get(etag)
+	if actual == expected {
+		return fmt.Errorf("expected etag %q to be %q, got %q", etag, expected, actual)
+	}
+	return nil
 }
 
 func (c *BundleComponent) bundleETagValueMatch(bundleID, etag string, shouldMatch bool) error {
