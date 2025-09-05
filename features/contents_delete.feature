@@ -2,90 +2,90 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
 
     Background:
         Given I have these bundles:
-        """
-        [
-            {
-                "id": "bundle-1",
-                "bundle_type": "SCHEDULED",
-                "created_by": {
-                    "email": "publisher@ons.gov.uk"
+            """
+            [
+                {
+                    "id": "bundle-1",
+                    "bundle_type": "SCHEDULED",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-01-01T07:00:00Z",
+                    "last_updated_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "preview_teams": [
+                        {
+                            "id": "890m231k-98df-11ec-b909-0242ac120002"
+                        }
+                    ],
+                    "scheduled_at": "2025-01-03T07:00:00Z",
+                    "state": "DRAFT",
+                    "title": "bundle-1",
+                    "updated_at": "2025-01-02T07:00:00Z",
+                    "managed_by": "WAGTAIL",
+                    "e_tag": "original-etag"
                 },
-                "created_at": "2025-01-01T07:00:00Z",
-                "last_updated_by": {
-                    "email": "publisher@ons.gov.uk"
-                },
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
-                "scheduled_at": "2025-01-03T07:00:00Z",
-                "state": "DRAFT",
-                "title": "bundle-1",
-                "updated_at": "2025-01-02T07:00:00Z",
-                "managed_by": "WAGTAIL",
-                "e_tag": "original-etag"
-            },
-            {
-                "id": "bundle-2",
-                "bundle_type": "SCHEDULED",
-                "created_by": {
-                    "email": "publisher@ons.gov.uk"
-                },
-                "created_at": "2025-01-04T07:00:00Z",
-                "last_updated_by": {
-                    "email": "publisher@ons.gov.uk"
-                },
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
-                "scheduled_at": "2025-01-06T07:00:00Z",
-                "state": "PUBLISHED",
-                "title": "bundle-1",
-                "updated_at": "2025-01-06T07:00:00Z",
-                "managed_by": "WAGTAIL",
-                "e_tag": "original-etag"
-            }
-        ]
-        """
-        And I have these content items:
-        """
-        [
-            {
-                "id": "content-item-1",
-                "bundle_id": "bundle-1",
-                "content_type": "DATASET",
-                "metadata": {
-                    "dataset_id": "dataset1",
-                    "edition_id": "edition1",
-                    "version_id": 1,
-                    "title": "Test Dataset 1"
-                },
-                "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
+                {
+                    "id": "bundle-2",
+                    "bundle_type": "SCHEDULED",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-01-04T07:00:00Z",
+                    "last_updated_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "preview_teams": [
+                        {
+                            "id": "890m231k-98df-11ec-b909-0242ac120002"
+                        }
+                    ],
+                    "scheduled_at": "2025-01-06T07:00:00Z",
+                    "state": "PUBLISHED",
+                    "title": "bundle-1",
+                    "updated_at": "2025-01-06T07:00:00Z",
+                    "managed_by": "WAGTAIL",
+                    "e_tag": "original-etag"
                 }
-            },
-            {
-                "id": "content-item-2",
-                "bundle_id": "bundle-2",
-                "content_type": "DATASET",
-                "metadata": {
-                    "dataset_id": "dataset2",
-                    "edition_id": "edition2",
-                    "version_id": 2,
-                    "title": "Test Dataset 2"
+            ]
+            """
+        And I have these content items:
+            """
+            [
+                {
+                    "id": "content-item-1",
+                    "bundle_id": "bundle-1",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset1",
+                        "edition_id": "edition1",
+                        "version_id": 1,
+                        "title": "Test Dataset 1"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    }
                 },
-                "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
-                },
-                "state": "PUBLISHED"
-            }
-        ]
-        """
+                {
+                    "id": "content-item-2",
+                    "bundle_id": "bundle-2",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset2",
+                        "edition_id": "edition2",
+                        "version_id": 2,
+                        "title": "Test Dataset 2"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    },
+                    "state": "PUBLISHED"
+                }
+            ]
+            """
 
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} successfully
         Given I am an admin user
@@ -94,7 +94,13 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         And the record with id "content-item-1" should not exist in the "bundle_contents" collection
         And the total number of events should be 1
         And the number of events with action "DELETE" and datatype "content_item" should be 1
-    
+
+    Scenario: GET /bundles/{bundle-id} to verify ETag update after deletion
+        Given I am an admin user
+        When I GET "/bundles/bundle-1"
+        Then the HTTP status code should be "200"
+        And bundle "ETag" should not be "original-etag"       
+
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with non-existent bundle
         Given I am an admin user
         When I DELETE "/bundles/bundle-3/contents/content-item-1"
@@ -146,4 +152,4 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         Then the HTTP status code should be "401"
         And the response body should be empty
 
-    
+
