@@ -5,6 +5,7 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 )
@@ -30,10 +31,12 @@ type Config struct {
 	DefaultLimit               int           `envconfig:"DEFAULT_LIMIT"`
 	DefaultOffset              int           `envconfig:"DEFAULT_OFFSET"`
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
+	SlackEnabled               bool          `envconfig:"SLACK_ENABLED"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	ZebedeeClientTimeout       time.Duration `envconfig:"ZEBEDEE_CLIENT_TIMEOUT"`
 	MongoConfig
-	AuthConfig *authorisation.Config
+	AuthConfig  *authorisation.Config
+	SlackConfig *slack.SlackConfig
 }
 
 var cfg *Config
@@ -83,7 +86,8 @@ func Get() (*Config, error) {
 				},
 			},
 		},
-		AuthConfig: authorisation.NewDefaultConfig(),
+		AuthConfig:  authorisation.NewDefaultConfig(),
+		SlackConfig: &slack.SlackConfig{},
 	}
 
 	return cfg, envconfig.Process("", cfg)
