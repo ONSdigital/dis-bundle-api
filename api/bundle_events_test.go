@@ -10,6 +10,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
@@ -30,8 +31,9 @@ func TestGetBundleEvents_Success(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -62,8 +64,9 @@ func TestGetBundleEvents_WithBundleFilter(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -101,8 +104,9 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -128,7 +132,8 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 		mockDatastore := &storetest.StorerMock{}
 		stateMachine := &application.StateMachine{}
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		mockSlackNotifier := &slackMock.NotifierMock{}
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -153,8 +158,9 @@ func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 	Convey("Given a request with unknown query parameter", t, func() {
 		mockDatastore := &storetest.StorerMock{}
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -184,8 +190,9 @@ func TestGetBundleEvents_InternalError(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -216,8 +223,9 @@ func TestGetBundleEvents_NoResults(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockSlackNotifier := &slackMock.NotifierMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
