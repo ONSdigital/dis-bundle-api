@@ -10,6 +10,8 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/service"
 	serviceMock "github.com/ONSdigital/dis-bundle-api/service/mock"
+	"github.com/ONSdigital/dis-bundle-api/slack"
+	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storeMock "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
@@ -95,6 +97,10 @@ func TestRun(t *testing.T) {
 			return &datasetAPISDKMock.ClienterMock{}
 		}
 
+		funcDoGetSlackNotifierOk := func(slackConfig *slack.SlackConfig) slack.Notifier {
+			return &slackMock.NotifierMock{}
+		}
+
 		funcDoGetHTTPServer := func(string, http.Handler) service.HTTPServer {
 			return serverMock
 		}
@@ -143,6 +149,7 @@ func TestRun(t *testing.T) {
 				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
 				DoGetHTTPServerFunc:              funcDoGetHTTPServer,
 				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
+				DoGetSlackNotifierFunc:           funcDoGetSlackNotifierOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -204,6 +211,7 @@ func TestRun(t *testing.T) {
 				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
 				DoGetHTTPServerFunc:              funcDoGetFailingHTTPSerer,
 				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
+				DoGetSlackNotifierFunc:           funcDoGetSlackNotifierOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)

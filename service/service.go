@@ -8,6 +8,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/api"
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
@@ -26,6 +27,7 @@ type Service struct {
 	Router                *mux.Router
 	API                   *api.BundleAPI
 	datasetAPIClient      datasetAPISDK.Clienter
+	slackNotifier         slack.Notifier
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
@@ -141,9 +143,12 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	// Get Dataset API Client
 	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
 
+	// Get Slack Notifier
+	svc.slackNotifier = svc.ServiceList.GetSlackNotifier(cfg.SlackConfig)
+
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.slackNotifier)
 
 	// Get Permissions
 	authorisation, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)

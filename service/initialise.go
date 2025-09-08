@@ -6,6 +6,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/mongo"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
@@ -20,6 +21,7 @@ type ExternalServiceList struct {
 	HealthCheck      bool
 	MongoDB          bool
 	DatasetAPIClient bool
+	SlackNotifier    bool
 	Init             Initialiser
 }
 
@@ -99,6 +101,16 @@ func (e *ExternalServiceList) GetDatasetAPIClient(datasetAPIURL string) datasetA
 func (e *Init) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	client := datasetAPISDK.New(datasetAPIURL)
 	return client
+}
+
+func (e *ExternalServiceList) GetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier {
+	client := e.Init.DoGetSlackNotifier(slackConfig)
+	e.SlackNotifier = true
+	return client
+}
+
+func (e *Init) DoGetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier {
+	return slack.NewSlackNotifier(slackConfig)
 }
 
 // DoGetHealthClient creates a new Health Client for the provided name and url

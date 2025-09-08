@@ -146,7 +146,6 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	}
 
 	contents, err := stateMachineBundleAPI.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
-
 	if err != nil {
 		return nil, err
 	}
