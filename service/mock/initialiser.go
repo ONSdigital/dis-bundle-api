@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/service"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
@@ -43,6 +44,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //			DoGetMongoDBFunc: func(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error) {
 //				panic("mock out the DoGetMongoDB method")
 //			},
+//			DoGetSlackNotifierFunc: func(slackConfig *slack.SlackConfig) slack.Notifier {
+//				panic("mock out the DoGetSlackNotifier method")
+//			},
 //		}
 //
 //		// use mockedInitialiser in code that requires service.Initialiser
@@ -67,6 +71,9 @@ type InitialiserMock struct {
 
 	// DoGetMongoDBFunc mocks the DoGetMongoDB method.
 	DoGetMongoDBFunc func(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
+
+	// DoGetSlackNotifierFunc mocks the DoGetSlackNotifier method.
+	DoGetSlackNotifierFunc func(slackConfig *slack.SlackConfig) slack.Notifier
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -114,6 +121,11 @@ type InitialiserMock struct {
 			// Cfg is the cfg argument value.
 			Cfg config.MongoConfig
 		}
+		// DoGetSlackNotifier holds details about calls to the DoGetSlackNotifier method.
+		DoGetSlackNotifier []struct {
+			// SlackConfig is the slackConfig argument value.
+			SlackConfig *slack.SlackConfig
+		}
 	}
 	lockDoGetAuthorisationMiddleware sync.RWMutex
 	lockDoGetDatasetAPIClient        sync.RWMutex
@@ -121,6 +133,7 @@ type InitialiserMock struct {
 	lockDoGetHealthCheck             sync.RWMutex
 	lockDoGetHealthClient            sync.RWMutex
 	lockDoGetMongoDB                 sync.RWMutex
+	lockDoGetSlackNotifier           sync.RWMutex
 }
 
 // DoGetAuthorisationMiddleware calls DoGetAuthorisationMiddlewareFunc.
@@ -340,5 +353,37 @@ func (mock *InitialiserMock) DoGetMongoDBCalls() []struct {
 	mock.lockDoGetMongoDB.RLock()
 	calls = mock.calls.DoGetMongoDB
 	mock.lockDoGetMongoDB.RUnlock()
+	return calls
+}
+
+// DoGetSlackNotifier calls DoGetSlackNotifierFunc.
+func (mock *InitialiserMock) DoGetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier {
+	if mock.DoGetSlackNotifierFunc == nil {
+		panic("InitialiserMock.DoGetSlackNotifierFunc: method is nil but Initialiser.DoGetSlackNotifier was just called")
+	}
+	callInfo := struct {
+		SlackConfig *slack.SlackConfig
+	}{
+		SlackConfig: slackConfig,
+	}
+	mock.lockDoGetSlackNotifier.Lock()
+	mock.calls.DoGetSlackNotifier = append(mock.calls.DoGetSlackNotifier, callInfo)
+	mock.lockDoGetSlackNotifier.Unlock()
+	return mock.DoGetSlackNotifierFunc(slackConfig)
+}
+
+// DoGetSlackNotifierCalls gets all the calls that were made to DoGetSlackNotifier.
+// Check the length with:
+//
+//	len(mockedInitialiser.DoGetSlackNotifierCalls())
+func (mock *InitialiserMock) DoGetSlackNotifierCalls() []struct {
+	SlackConfig *slack.SlackConfig
+} {
+	var calls []struct {
+		SlackConfig *slack.SlackConfig
+	}
+	mock.lockDoGetSlackNotifier.RLock()
+	calls = mock.calls.DoGetSlackNotifier
+	mock.lockDoGetSlackNotifier.RUnlock()
 	return calls
 }
