@@ -12,6 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/mongo"
 	"github.com/ONSdigital/dis-bundle-api/service"
 	serviceMock "github.com/ONSdigital/dis-bundle-api/service/mock"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
@@ -48,6 +49,7 @@ type BundleComponent struct {
 	ServiceRunning          bool
 	initialiser             service.Initialiser
 	datasetAPIClient        datasetAPISDK.Clienter
+	slackNotifier           slack.Notifier
 	apiFeature              *componenttest.APIFeature
 	AuthorisationMiddleware authorisation.Middleware
 	DatasetAPIVersions      []*datasetAPIModels.Version
@@ -77,6 +79,7 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
 		DoGetDatasetAPIClientFunc:        c.DoGetDatasetAPIClient,
+		DoGetSlackNotifierFunc:           c.DoGetSlackNotifier,
 		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
 		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
 		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
@@ -242,6 +245,11 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 	return c.datasetAPIClient
 }
 
+func (c *BundleComponent) DoGetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier {
+	c.slackNotifier = &slack.NoopNotifier{}
+	return c.slackNotifier
+}
+
 func (c *BundleComponent) DoGetAuthorisationMiddleware(ctx context.Context, cfg *authorisation.Config) (authorisation.Middleware, error) {
 	middleware, err := authorisation.NewMiddlewareFromConfig(ctx, cfg, cfg.JWTVerificationPublicKeys)
 	if err != nil {
@@ -256,6 +264,7 @@ func (c *BundleComponent) setInitialiserMock() {
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
 		DoGetDatasetAPIClientFunc:        c.DoGetDatasetAPIClient,
+		DoGetSlackNotifierFunc:           c.DoGetSlackNotifier,
 		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
 		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
 		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
