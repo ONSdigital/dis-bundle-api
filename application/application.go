@@ -12,6 +12,7 @@ import (
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
@@ -21,13 +22,15 @@ type StateMachineBundleAPI struct {
 	Datastore        store.Datastore
 	StateMachine     *StateMachine
 	DatasetAPIClient datasetAPISDK.Clienter
+	SlackNotifier    slack.Notifier
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, slackNotifier slack.Notifier) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:        datastore,
 		StateMachine:     stateMachine,
 		DatasetAPIClient: datasetAPIClient,
+		SlackNotifier:    slackNotifier,
 	}
 }
 
@@ -204,17 +207,20 @@ func (s *StateMachineBundleAPI) GetBundleAndValidateETag(ctx context.Context, bu
 
 func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID, suppliedETag string, targetState models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 	bundle, err := s.GetBundleAndValidateETag(ctx, bundleID, suppliedETag)
-
 	if err != nil {
 		return nil, err
 	}
 
-	bundle, err = s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
+	updatedBundle, err := s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
 	if err != nil {
+		// send slack notification only when there is an error going from approved to published
+		if bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String() {
+			_ = s.SlackNotifier.SendError(ctx, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+		}
 		return nil, err
 	}
 
-	return bundle, nil
+	return updatedBundle, nil
 }
 
 func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Context, contentItem *models.ContentItem, targetState *models.BundleState, headers datasetAPISDK.Headers) error {
