@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -24,6 +25,10 @@ const (
 	edition2 = "edition-2"
 	cont1    = "content-1"
 	cont2    = "content-2"
+)
+
+var (
+	today = time.Now()
 )
 
 func TestPostBundleContents_Success(t *testing.T) {
@@ -934,6 +939,15 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				}
 				return errors.New("failed to create bundle event")
 			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:        "bundle-1",
+					ETag:      "etag-after-delete",
+					UpdatedAt: &today,
+					LastUpdatedBy: &models.User{
+						Email: "newuser@email.com",
+					}}, nil
+			},
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
@@ -943,6 +957,7 @@ func TestDeleteContentItem_Success(t *testing.T) {
 
 			Convey("Then it should return a 204 No Content status", func() {
 				So(w.Code, ShouldEqual, 204)
+				So(w.Header().Get("ETag"), ShouldEqual, "etag-after-delete")
 			})
 
 			Convey("And the response body should be empty", func() {
@@ -1243,11 +1258,138 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
 				return errors.New("failed to create bundle event")
 			},
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return &models.Bundle{}, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+				return &models.Bundle{}, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{}, nil
+			},
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 
 		Convey("When deleteContentItem is called", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+				return &models.ContentItem{
+					ID:       cont1,
+					BundleID: bundleID,
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:   bundleID,
+					ETag: "etag-before-delete",
+				}, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return nil, apierrors.ErrInternalServer
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(
+			store.Datastore{Backend: mockedDatastore},
+			&datasetAPISDKMock.ClienterMock{},
+			false,
+		)
+
+		Convey("When deleteContentItem is called and UpdateBundle fails", func() {
+			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+
+	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+				return &models.ContentItem{
+					ID:       cont1,
+					BundleID: bundleID,
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:   bundleID,
+					ETag: "etag-before-delete",
+				}, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return nil, apierrors.ErrInternalServer
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(
+			store.Datastore{Backend: mockedDatastore},
+			&datasetAPISDKMock.ClienterMock{},
+			false,
+		)
+
+		Convey("When deleteContentItem is called and UpdateBundleETag fails", func() {
+			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			Convey("Then it should return a 500 Internal Server Error status code", func() {

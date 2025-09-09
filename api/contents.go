@@ -290,6 +290,18 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
+	if err != nil {
+		log.Error(ctx, "failed to update bundle ETag", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
 			ID:    authEntityData.GetUserID(),
@@ -323,7 +335,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-
+	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.WriteHeader(http.StatusNoContent)
 }
 
