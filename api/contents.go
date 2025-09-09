@@ -297,7 +297,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: err.Error(),
+			Description: apierrors.ErrorDescriptionInternalError,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return

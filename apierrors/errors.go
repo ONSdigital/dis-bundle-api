@@ -35,7 +35,6 @@ const (
 	// Header Error Descriptions
 	ErrorDescriptionMissingIfMatchHeader = "Unable to process request due to missing If-Match header."
 	ErrorDescriptionInvalidIfMatchHeader = "Unable to process request invalid If-Match header."
-	ErrEtagNotUpdatedHeader              = "failed to update etag"
 
 	// Auth Error Descriptions
 	ErrorDescriptionAccessDenied = "Access denied."
