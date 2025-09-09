@@ -1319,7 +1319,7 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 				}, nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				return nil, errors.New("Failed to process the request due to an internal error.")
+				return nil, apierrors.ErrInternalServer
 			},
 		}
 
@@ -1379,7 +1379,7 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 				return update, nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				return nil, errors.New("failed to update etag")
+				return nil, apierrors.ErrInternalServer
 			},
 		}
 
