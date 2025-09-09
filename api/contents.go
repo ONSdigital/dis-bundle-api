@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -290,34 +289,11 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	log.Info(ctx, "content item deleted")
-
-	currentBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
-	if err != nil {
-		api.handleGetBundleError(ctx, w, r, err, logData)
-		return
-	}
-
-	now := time.Now()
-	currentBundle.UpdatedAt = &now
 	userID := authEntityData.GetUserID()
-	currentBundle.LastUpdatedBy = &models.User{Email: userID}
 
 	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, userID)
 	if err != nil {
 		log.Error(ctx, "failed to update bundle ETag", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: err.Error(),
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	_, err = api.stateMachineBundleAPI.UpdateBundle(ctx, bundleID, currentBundle)
-	if err != nil {
-		log.Error(ctx, "failed to update bundle in database", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,

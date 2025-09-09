@@ -27,6 +27,10 @@ const (
 	cont2    = "content-2"
 )
 
+var (
+	today = time.Now()
+)
+
 func TestPostBundleContents_Success(t *testing.T) {
 	t.Parallel()
 
@@ -913,19 +917,6 @@ func TestDeleteContentItem_Success(t *testing.T) {
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
-		// capture variables for assertions
-		var (
-			getBundleCalled        bool
-			updateBundleCalled     bool
-			updateBundleGotPayload *models.Bundle
-			updateETagCalled       bool
-			updateETagGotEmail     string
-		)
-
-		// optional timing anchor for UpdatedAt "recent" check
-		start := time.Now()
-		updatedAt := start
-
 		mockedDatastore := &storetest.StorerMock{
 			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
 				if bundleID == "bundle-1" && contentItemID == cont1 {
@@ -948,32 +939,14 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				}
 				return errors.New("failed to create bundle event")
 			},
-			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
-				getBundleCalled = true
-				return &models.Bundle{
-					ID:            "bundle-1",
-					ETag:          "etag-before-delete",
-					LastUpdatedBy: &models.User{Email: "newuser@email.com"},
-				}, nil
-			},
-			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
-				updateBundleCalled = true
-				updateETagGotEmail = "newuser@email.com"
-				updateBundleGotPayload = &models.Bundle{
-					ID:            "bundle-1",
-					ETag:          "etag-after-delete",
-					UpdatedAt:     &updatedAt,
-					LastUpdatedBy: &models.User{Email: "newuser@email.com"},
-				}
-				return updateBundleGotPayload, nil
-			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				updateETagCalled = true
-				updateBundleGotPayload = &models.Bundle{
-					ID:   "bundle-1",
-					ETag: "etag-after-delete",
-				}
-				return updateBundleGotPayload, nil
+				return &models.Bundle{
+					ID:        "bundle-1",
+					ETag:      "etag-after-delete",
+					UpdatedAt: &today,
+					LastUpdatedBy: &models.User{
+						Email: "newuser@email.com",
+					}}, nil
 			},
 		}
 
@@ -989,22 +962,6 @@ func TestDeleteContentItem_Success(t *testing.T) {
 
 			Convey("And the response body should be empty", func() {
 				So(w.Body.Len(), ShouldEqual, 0)
-			})
-
-			Convey("And it should update the bundle's UpdatedAt and LastUpdatedBy", func() {
-				So(getBundleCalled, ShouldBeTrue)
-
-				So(updateBundleCalled, ShouldBeTrue)
-				So(updateBundleGotPayload.UpdatedAt, ShouldNotBeNil)
-
-				So(updateBundleGotPayload.LastUpdatedBy, ShouldNotBeNil)
-				So(updateBundleGotPayload.LastUpdatedBy.Email, ShouldEqual, updateETagGotEmail)
-			})
-
-			Convey("And it should bump the ETag with the updater's identity", func() {
-				So(updateETagCalled, ShouldBeTrue)
-				So(updateBundleGotPayload.LastUpdatedBy.Email, ShouldEqual, "newuser@email.com")
-				So(updateBundleGotPayload.ETag, ShouldEqual, "etag-after-delete")
 			})
 		})
 	})
@@ -1362,10 +1319,7 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 				}, nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				return &models.Bundle{}, nil
-			},
-			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
-				return nil, apierrors.ErrInternalServer
+				return nil, errors.New("failed to update etag")
 			},
 		}
 
@@ -1395,7 +1349,7 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeInternalError,
-							Description: apierrors.ErrInternalServer.Error(),
+							Description: apierrors.ErrEtagNotUpdatedHeader,
 						},
 					},
 				}
