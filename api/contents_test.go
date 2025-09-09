@@ -1375,9 +1375,6 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 					ETag: "etag-before-delete",
 				}, nil
 			},
-			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
-				return update, nil
-			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				return nil, apierrors.ErrInternalServer
 			},

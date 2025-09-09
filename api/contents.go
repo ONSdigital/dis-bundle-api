@@ -289,9 +289,8 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	userID := authEntityData.GetUserID()
 
-	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, userID)
+	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
 	if err != nil {
 		log.Error(ctx, "failed to update bundle ETag", err, logData)
 		code := models.CodeInternalError
