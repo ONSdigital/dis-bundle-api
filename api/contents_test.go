@@ -956,8 +956,9 @@ func TestDeleteContentItem_Success(t *testing.T) {
 					LastUpdatedBy: &models.User{Email: "newuser@email.com"},
 				}, nil
 			},
-			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				updateETagCalled = true
+			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+				updateBundleCalled = true
+				updateETagGotEmail = "newuser@email.com"
 				updateBundleGotPayload = &models.Bundle{
 					ID:            "bundle-1",
 					ETag:          "etag-after-delete",
@@ -966,9 +967,8 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				}
 				return updateBundleGotPayload, nil
 			},
-			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
-				updateBundleCalled = true
-				updateETagGotEmail = "newuser@email.com"
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				updateETagCalled = true
 				updateBundleGotPayload = &models.Bundle{
 					ID:   "bundle-1",
 					ETag: "etag-after-delete",
@@ -984,6 +984,7 @@ func TestDeleteContentItem_Success(t *testing.T) {
 
 			Convey("Then it should return a 204 No Content status", func() {
 				So(w.Code, ShouldEqual, 204)
+				So(w.Header().Get("ETag"), ShouldEqual, "etag-after-delete")
 			})
 
 			Convey("And the response body should be empty", func() {
@@ -1359,6 +1360,9 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 					ID:   bundleID,
 					ETag: "etag-before-delete",
 				}, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{}, nil
 			},
 			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
 				return nil, apierrors.ErrInternalServer
