@@ -82,7 +82,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == 1 {
 					return false, nil
 				}
-				if datasetID == "dataset-2" && editionID == "edition-2" && versionID == 1 {
+				if datasetID == dataset2 && editionID == edition2 && versionID == 1 {
 					return false, nil
 				}
 				return true, nil
@@ -96,8 +96,8 @@ func TestPostBundleContents_Success(t *testing.T) {
 				}
 
 				if contentItem.BundleID == "bundle-2" &&
-					contentItem.Metadata.DatasetID == "dataset-2" &&
-					contentItem.Metadata.EditionID == "edition-2" &&
+					contentItem.Metadata.DatasetID == dataset2 &&
+					contentItem.Metadata.EditionID == edition2 &&
 					contentItem.Metadata.VersionID == 1 {
 					return nil
 				}

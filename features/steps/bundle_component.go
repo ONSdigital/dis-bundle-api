@@ -192,6 +192,7 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
+//nolint:gocyclo // This function requires high cyclomatic as the mocks need to handle multiple cases
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
