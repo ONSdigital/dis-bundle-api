@@ -25,6 +25,27 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "updated_at": "2025-01-02T07:00:00Z",
                 "managed_by": "WAGTAIL",
                 "e_tag": "original-etag"
+            },
+            {
+                "id": "bundle-2",
+                "bundle_type": "MANUAL",
+                "created_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "created_at": "2025-01-01T07:00:00Z",
+                "last_updated_by": {
+                    "email": "publisher@ons.gov.uk"
+                },
+                "preview_teams": [
+                    {
+                        "id": "890m231k-98df-11ec-b909-0242ac120002"
+                    }
+                ],
+                "state": "DRAFT",
+                "title": "bundle-2",
+                "updated_at": "2025-01-02T07:00:00Z",
+                "managed_by": "WAGTAIL",
+                "e_tag": "original-etag"
             }
         ]
         """
@@ -68,7 +89,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         ]
         """
         
-    Scenario: POST /bundles/{id}/contents successfully
+    Scenario: POST /bundles/{id}/contents successfully for SCHEDULED bundle
         Given I am an admin user
         When I POST "/bundles/bundle-1/contents"
             """
@@ -111,6 +132,52 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             """
         And the total number of events should be 1
         And the number of events with action "CREATE" and datatype "content_item" should be 1
+        And the release date for the dataset version with id "version-1" should be "2025-01-03T07:00:00.000Z"
+
+    Scenario: POST /bundles/{id}/contents successfully for MANUAL bundle
+        Given I am an admin user
+        When I POST "/bundles/bundle-2/contents"
+            """
+                {
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset1",
+                        "edition_id": "edition1",
+                        "version_id": 1,
+                        "title": "Test Dataset"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    }
+                }
+            """
+        Then the HTTP status code should be "201"
+        And the response header "Content-Type" should be "application/json"
+        And the response header "Cache-Control" should be "no-store"
+        And the response header "ETag" should not be empty
+        And the response header "Location" should contain "/bundles/bundle-2/contents/"
+        Then I should receive the following ContentItem JSON response:
+            """
+            {
+                "bundle_id": "bundle-2",
+                "content_type": "DATASET",
+                "metadata": {
+                    "dataset_id": "dataset1",
+                    "edition_id": "edition1",
+                    "version_id": 1,
+                    "title": "Test Dataset"
+                },
+                "id": "new-uuid",
+                "links": {
+                    "edit": "edit/link",
+                    "preview": "preview/link"
+                }
+            }
+            """
+        And the total number of events should be 1
+        And the number of events with action "CREATE" and datatype "content_item" should be 1
+        And the release date for the dataset version with id "version-1" should be ""
     
     Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type and missing edit link)
         Given I am an admin user

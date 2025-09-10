@@ -231,6 +231,20 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 
 			return fmt.Errorf("version %s not found for dataset %s edition %s", versionID, datasetID, editionID)
 		},
+		PutVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string, version datasetAPIModels.Version) (datasetAPIModels.Version, error) {
+			versionAsString, err := strconv.Atoi(versionID)
+			if err != nil {
+				return datasetAPIModels.Version{}, err
+			}
+			for _, versionInDatastore := range c.DatasetAPIVersions {
+				if versionInDatastore.DatasetID == datasetID && versionInDatastore.Edition == editionID && versionInDatastore.Version == versionAsString {
+					if version.ReleaseDate != "" {
+						versionInDatastore.ReleaseDate = version.ReleaseDate
+					}
+				}
+			}
+			return version, nil
+		},
 		GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
 			if datasetID == "dataset-id-does-not-exist" {
 				return datasetAPIModels.Dataset{}, errors.New("dataset not found")

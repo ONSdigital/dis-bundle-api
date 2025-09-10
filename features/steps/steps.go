@@ -52,6 +52,9 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	// Content Item assertions
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
 
+	// Dataset version assertions
+	ctx.Step(`^the release date for the dataset version with id "([^"]*)" should be "([^"]*)"$`, c.theReleaseDateForDatasetVersionShouldBe)
+
 	// Event assertions
 	ctx.Step(`the total number of events should be (\d+)`, c.theTotalNumberOfEventsShouldBe)
 	ctx.Step(`the number of events with action "([^"]*)" and datatype "([^"]*)" should be (\d+)`, c.theNumberOfEventsWithActionAndDatatypeShouldBe)
@@ -265,6 +268,18 @@ func (c *BundleComponent) iShouldReceiveTheFollowingContentItemJSONResponse(expe
 	}
 
 	return nil
+}
+
+func (c *BundleComponent) theReleaseDateForDatasetVersionShouldBe(versionID, expectedReleaseDate string) error {
+	for _, v := range c.DatasetAPIVersions {
+		if v.ID == versionID {
+			if v.ReleaseDate != expectedReleaseDate {
+				return fmt.Errorf("expected release date %q for version %q, got %q", expectedReleaseDate, versionID, v.ReleaseDate)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("version with id %q not found", versionID)
 }
 
 func (c *BundleComponent) theResponseHeaderShouldBePresent(headerName string) error {
