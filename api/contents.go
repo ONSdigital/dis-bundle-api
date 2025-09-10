@@ -201,6 +201,14 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if bundleUpdate.BundleType == models.BundleTypeScheduled {
+		err = api.stateMachineBundleAPI.UpdateDatasetVersionReleaseDate(ctx, bundleUpdate.ScheduledAt, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID, authEntityData.Headers)
+		if err != nil {
+			handleErr(ctx, w, r, err, logData, RouteNamePostBundleContents)
+			return
+		}
+	}
+
 	contentItemJSON, err := json.Marshal(contentItem)
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to marshal content item to JSON", err, logData)

@@ -35,7 +35,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 	t.Parallel()
 
 	Convey("Given a POST request to /bundles/{bundle-id}/contents with a valid JSON body", t, func() {
-		newContentItem := &models.ContentItem{
+		newContentItemForManualBundle := &models.ContentItem{
 			BundleID:    "bundle-1",
 			ContentType: models.ContentTypeDataset,
 			Metadata: models.Metadata{
@@ -49,17 +49,30 @@ func TestPostBundleContents_Success(t *testing.T) {
 				Preview: "/preview",
 			},
 		}
-		newContentItemJSON, err := json.Marshal(newContentItem)
+		newContentItemForManualBundleJSON, err := json.Marshal(newContentItemForManualBundle)
 		So(err, ShouldBeNil)
 
-		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-		r.Header.Set("Authorization", "test-auth-token")
-		w := httptest.NewRecorder()
+		newContentItemForScheduledBundle := &models.ContentItem{
+			BundleID:    "bundle-2",
+			ContentType: models.ContentTypeDataset,
+			Metadata: models.Metadata{
+				DatasetID: "dataset-2",
+				EditionID: "edition-2",
+				Title:     "Example Content Item",
+				VersionID: 1,
+			},
+			Links: models.Links{
+				Edit:    "/edit",
+				Preview: "/preview",
+			},
+		}
+		newContentItemForScheduledBundleJSON, err := json.Marshal(newContentItemForScheduledBundle)
+		So(err, ShouldBeNil)
 
 		mockedDatastore := &storetest.StorerMock{
 			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
 				//nolint:goconst //The strings aren't actually the same.
-				if bundleID == "bundle-1" {
+				if bundleID == "bundle-1" || bundleID == "bundle-2" {
 					return true, nil
 				}
 				return false, nil
@@ -67,6 +80,9 @@ func TestPostBundleContents_Success(t *testing.T) {
 			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
 				//nolint:goconst //The strings aren't actually the same.
 				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == 1 {
+					return false, nil
+				}
+				if datasetID == "dataset-2" && editionID == "edition-2" && versionID == 1 {
 					return false, nil
 				}
 				return true, nil
@@ -78,10 +94,18 @@ func TestPostBundleContents_Success(t *testing.T) {
 					contentItem.Metadata.VersionID == 1 {
 					return nil
 				}
+
+				if contentItem.BundleID == "bundle-2" &&
+					contentItem.Metadata.DatasetID == "dataset-2" &&
+					contentItem.Metadata.EditionID == "edition-2" &&
+					contentItem.Metadata.VersionID == 1 {
+					return nil
+				}
+
 				return errors.New("failed to create content item")
 			},
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.ContentItem.BundleID == "bundle-1" {
+				if event.ContentItem.BundleID == "bundle-1" || event.ContentItem.BundleID == "bundle-2" {
 					return nil
 				}
 				return errors.New("failed to create bundle event")
@@ -91,6 +115,14 @@ func TestPostBundleContents_Success(t *testing.T) {
 					return &models.Bundle{
 						ID:   bundleID,
 						ETag: "new-etag",
+					}, nil
+				}
+				if bundleID == "bundle-2" {
+					return &models.Bundle{
+						ID:          bundleID,
+						ETag:        "new-etag",
+						ScheduledAt: &today,
+						BundleType:  models.BundleTypeScheduled,
 					}, nil
 				}
 				return nil, errors.New("failed to update bundle ETag")
@@ -106,14 +138,29 @@ func TestPostBundleContents_Success(t *testing.T) {
 						Version:   1,
 					}, nil
 				}
+
+				if datasetID == "dataset-2" && editionID == "edition-2" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+					}, nil
+				}
 				return datasetAPIModels.Version{}, errors.New("version not found")
+			},
+			PutVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string, version datasetAPIModels.Version) (datasetAPIModels.Version, error) {
+				return version, nil
 			},
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
-		Convey("When postBundleContents is called", func() {
+		Convey("When postBundleContents is called with a MANUAL bundle", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemForManualBundleJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			var createdContentItem models.ContentItem
@@ -138,6 +185,48 @@ func TestPostBundleContents_Success(t *testing.T) {
 				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
 				So(w.Header().Get("ETag"), ShouldEqual, "new-etag")
 				So(w.Header().Get("Location"), ShouldEqual, "/bundles/bundle-1/contents/"+createdContentItem.ID)
+			})
+
+			Convey("And UpdateDatasetVersionReleaseDate should not be called", func() {
+				So(len(mockDatasetAPIClient.PutVersionCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When postBundleContents is called with a SCHEDULED bundle", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-2/contents", bytes.NewReader(newContentItemForScheduledBundleJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			var createdContentItem models.ContentItem
+			err := json.NewDecoder(w.Body).Decode(&createdContentItem)
+			So(err, ShouldBeNil)
+
+			Convey("Then it should return a 201 Created status and the created content item", func() {
+				So(w.Code, ShouldEqual, 201)
+
+				So(createdContentItem.ID, ShouldNotBeEmpty)
+				So(createdContentItem.BundleID, ShouldEqual, "bundle-2")
+				So(createdContentItem.ContentType.String(), ShouldEqual, "DATASET")
+				So(createdContentItem.Metadata.DatasetID, ShouldEqual, "dataset-2")
+				So(createdContentItem.Metadata.EditionID, ShouldEqual, "edition-2")
+				So(createdContentItem.Metadata.VersionID, ShouldEqual, 1)
+				So(createdContentItem.Links.Edit, ShouldEqual, "/edit")
+				So(createdContentItem.Links.Preview, ShouldEqual, "/preview")
+			})
+
+			Convey("And the correct headers should be set", func() {
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+				So(w.Header().Get("ETag"), ShouldEqual, "new-etag")
+				So(w.Header().Get("Location"), ShouldEqual, "/bundles/bundle-2/contents/"+createdContentItem.ID)
+			})
+
+			Convey("And UpdateDatasetVersionReleaseDate should have been called", func() {
+				So(len(mockDatasetAPIClient.PutVersionCalls()), ShouldEqual, 1)
+				putVersionCall := mockDatasetAPIClient.PutVersionCalls()[0]
+				So(putVersionCall.Version.ReleaseDate, ShouldEqual, today.UTC().Format("2006-01-02T15:04:05.000Z"))
 			})
 		})
 	})
@@ -874,6 +963,91 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
 				return datasetAPIModels.Version{}, nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
+
+		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+		r.Header.Set("Authorization", "test-auth-token")
+		w := httptest.NewRecorder()
+
+		bundleAPI.Router.ServeHTTP(w, r)
+
+		Convey("Then it should return a 500 Internal Server Error status code", func() {
+			So(w.Code, ShouldEqual, 500)
+		})
+
+		Convey("And the response body should contain an error message", func() {
+			var errResp models.ErrorList
+			err := json.NewDecoder(w.Body).Decode(&errResp)
+			So(err, ShouldBeNil)
+
+			codeInternalError := models.CodeInternalError
+			expectedErrResp := models.ErrorList{
+				Errors: []*models.Error{
+					{
+						Code:        &codeInternalError,
+						Description: apierrors.ErrorDescriptionInternalError,
+					},
+				},
+			}
+			So(errResp, ShouldResemble, expectedErrResp)
+		})
+	})
+}
+
+func TestPostBundleContents_UpdateDatasetVersionReleaseDate_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a POST request to /bundles/{bundle-id}/contents and updating the dataset version release date fails", t, func() {
+		newContentItem := &models.ContentItem{
+			BundleID:    "bundle-1",
+			ContentType: models.ContentTypeDataset,
+			Metadata: models.Metadata{
+				DatasetID: "dataset-1",
+				EditionID: "edition-1",
+				Title:     "Example Content Item",
+				VersionID: 1,
+			},
+			Links: models.Links{
+				Edit:    "/edit",
+				Preview: "/preview",
+			},
+		}
+		newContentItemJSON, err := json.Marshal(newContentItem)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+				return true, nil
+			},
+			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+				return false, nil
+			},
+			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
+				return nil
+			},
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:          bundleID,
+					ETag:        "new-etag",
+					ScheduledAt: &today,
+					BundleType:  models.BundleTypeScheduled,
+				}, nil
+			},
+		}
+
+		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+				return datasetAPIModels.Version{}, nil
+			},
+			PutVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string, version datasetAPIModels.Version) (datasetAPIModels.Version, error) {
+				return datasetAPIModels.Version{}, errors.New("failed to update dataset version release date")
 			},
 		}
 

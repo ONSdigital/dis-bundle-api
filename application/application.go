@@ -14,6 +14,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
@@ -607,6 +608,26 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 			continue
 		}
 	}
+	return nil
+}
+
+func (s *StateMachineBundleAPI) UpdateDatasetVersionReleaseDate(ctx context.Context, releaseDate *time.Time, datasetID, editionID string, versionID int, authHeaders datasetAPISDK.Headers) error {
+	versionUpdate := datasetAPIModels.Version{
+		Type:        "static",
+		ReleaseDate: releaseDate.UTC().Format("2006-01-02T15:04:05.000Z"),
+	}
+
+	_, err := s.DatasetAPIClient.PutVersion(ctx, authHeaders, datasetID, editionID, strconv.Itoa(versionID), versionUpdate)
+	if err != nil {
+		log.Error(ctx, "failed to update dataset version", err, log.Data{
+			"dataset_id":   datasetID,
+			"edition_id":   editionID,
+			"version_id":   versionID,
+			"release_date": releaseDate,
+		})
+		return err
+	}
+
 	return nil
 }
 

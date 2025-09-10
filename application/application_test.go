@@ -1839,3 +1839,43 @@ func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 		})
 	})
 }
+
+func TestUpdateDatasetVersionReleaseDate(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{}
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
+			PutVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string, version datasetAPIModels.Version) (datasetAPIModels.Version, error) {
+				if datasetID == "0" {
+					return datasetAPIModels.Version{}, errors.New("request failed")
+				}
+				return version, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+		}
+
+		Convey("When UpdateDatasetVersionReleaseDate is called and PutVersion is successful", func() {
+			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			err := stateMachine.UpdateDatasetVersionReleaseDate(ctx, &today, "1", "1", 1, authHeaders)
+
+			Convey("Then there should be no error", func() {
+				So(err, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdateDatasetVersionReleaseDate is called and PutVersion fails", func() {
+			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			err := stateMachine.UpdateDatasetVersionReleaseDate(ctx, &today, "0", "1", 1, authHeaders)
+
+			Convey("Then it should return an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "request failed")
+			})
+		})
+	})
+}
