@@ -31,6 +31,7 @@ var (
 	today = time.Now()
 )
 
+// nolint:gocognit // high cognitive complexity as mocks need to handle multiple scenarios
 func TestPostBundleContents_Success(t *testing.T) {
 	t.Parallel()
 
@@ -105,7 +106,10 @@ func TestPostBundleContents_Success(t *testing.T) {
 				return errors.New("failed to create content item")
 			},
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.ContentItem.BundleID == "bundle-1" || event.ContentItem.BundleID == "bundle-2" {
+				if event.ContentItem != nil && (event.ContentItem.BundleID == "bundle-1" || event.ContentItem.BundleID == "bundle-2") {
+					return nil
+				}
+				if event.Bundle != nil && (event.Bundle.ID == "bundle-1" || event.Bundle.ID == "bundle-2") {
 					return nil
 				}
 				return errors.New("failed to create bundle event")
@@ -881,6 +885,12 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
 				return errors.New("failed to create bundle event")
 			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:   bundleID,
+					ETag: "new-etag",
+				}, nil
+			},
 		}
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
@@ -892,31 +902,69 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
-		r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
-		r.Header.Set("Authorization", "test-auth-token")
-		w := httptest.NewRecorder()
+		Convey("When postBundleContents is called and CreateBundleEvent fails for the content item", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
 
-		bundleAPI.Router.ServeHTTP(w, r)
+			bundleAPI.Router.ServeHTTP(w, r)
 
-		Convey("Then it should return a 500 Internal Server Error status code", func() {
-			So(w.Code, ShouldEqual, 500)
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
 		})
 
-		Convey("And the response body should contain an error message", func() {
-			var errResp models.ErrorList
-			err := json.NewDecoder(w.Body).Decode(&errResp)
-			So(err, ShouldBeNil)
+		Convey("When postBundleContents is called and CreateBundleEvent fails for the bundle", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
 
-			codeInternalError := models.CodeInternalError
-			expectedErrResp := models.ErrorList{
-				Errors: []*models.Error{
-					{
-						Code:        &codeInternalError,
-						Description: apierrors.ErrorDescriptionInternalError,
-					},
-				},
+			mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
+				if event.ContentItem != nil {
+					return nil
+				}
+				return errors.New("failed to create bundle event")
 			}
-			So(errResp, ShouldResemble, expectedErrResp)
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
 		})
 	})
 }
@@ -1108,7 +1156,10 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				return errors.New("failed to delete content item")
 			},
 			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.ContentItem.BundleID == "bundle-1" && event.ContentItem.ID == cont1 {
+				if event.ContentItem != nil && event.ContentItem.BundleID == "bundle-1" && event.ContentItem.ID == cont1 {
+					return nil
+				}
+				if event.Bundle != nil && event.Bundle.ID == "bundle-1" {
 					return nil
 				}
 				return errors.New("failed to create bundle event")
@@ -1408,7 +1459,7 @@ func TestDeleteContentItem_ParseJWT_Failure(t *testing.T) {
 func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 	t.Parallel()
 
-	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id} and bundle event creation fails", t, func() {
+	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
 		r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
@@ -1445,7 +1496,39 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 
-		Convey("When deleteContentItem is called", func() {
+		Convey("When deleteContentItem is called and CreateBundleEvent fails for the content item", func() {
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+
+		Convey("When deleteContentItem is called and CreateBundleEvent fails for the bundle", func() {
+			mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
+				if event.ContentItem != nil {
+					return nil
+				}
+				return errors.New("failed to create bundle event")
+			}
+
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			Convey("Then it should return a 500 Internal Server Error status code", func() {
@@ -1492,62 +1575,8 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 					ETag: "etag-before-delete",
 				}, nil
 			},
-			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
-				return nil, apierrors.ErrInternalServer
-			},
-		}
-
-		bundleAPI := GetBundleAPIWithMocks(
-			store.Datastore{Backend: mockedDatastore},
-			&datasetAPISDKMock.ClienterMock{},
-			false,
-		)
-
-		Convey("When deleteContentItem is called and UpdateBundle fails", func() {
-			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
-			r.Header.Set("Authorization", "test-auth-token")
-			w := httptest.NewRecorder()
-			bundleAPI.Router.ServeHTTP(w, r)
-
-			Convey("Then it should return a 500 Internal Server Error status code", func() {
-				So(w.Code, ShouldEqual, 500)
-			})
-
-			Convey("And the response body should contain an error message", func() {
-				var errResp models.ErrorList
-				err := json.NewDecoder(w.Body).Decode(&errResp)
-				So(err, ShouldBeNil)
-
-				codeInternalError := models.CodeInternalError
-				expectedErrResp := models.ErrorList{
-					Errors: []*models.Error{
-						{
-							Code:        &codeInternalError,
-							Description: apierrors.ErrorDescriptionInternalError,
-						},
-					},
-				}
-				So(errResp, ShouldResemble, expectedErrResp)
-			})
-		})
-	})
-
-	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
-		mockedDatastore := &storetest.StorerMock{
-			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
-				return &models.ContentItem{
-					ID:       cont1,
-					BundleID: bundleID,
-				}, nil
-			},
-			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
-			},
-			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
-				return &models.Bundle{
-					ID:   bundleID,
-					ETag: "etag-before-delete",
-				}, nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				return nil, apierrors.ErrInternalServer

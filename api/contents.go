@@ -14,6 +14,7 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+//nolint:gocyclo // High complexity is a known issue and has been logged as tech debt
 func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request) {
 	defer dphttp.DrainBody(r)
 
@@ -189,7 +190,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	bundleUpdate, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserEmail())
+	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserEmail())
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to update bundle ETag", err, logData)
 		code := models.CodeInternalError
@@ -201,8 +202,54 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if bundleUpdate.BundleType == models.BundleTypeScheduled {
-		err = api.stateMachineBundleAPI.UpdateDatasetVersionReleaseDate(ctx, bundleUpdate.ScheduledAt, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID, authEntityData.Headers)
+	bundleEventObject, err := models.ConvertBundleToBundleEvent(updatedBundle)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to convert bundle to bundle event", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	bundleEvent := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    authEntityData.GetUserID(),
+			Email: authEntityData.GetUserEmail(),
+		},
+		Action:   models.ActionUpdate,
+		Resource: "/bundles/" + bundleID,
+		Bundle:   bundleEventObject,
+	}
+
+	err = models.ValidateEvent(bundleEvent)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: event validation failed", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, bundleEvent)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	if updatedBundle.BundleType == models.BundleTypeScheduled {
+		err = api.stateMachineBundleAPI.UpdateDatasetVersionReleaseDate(ctx, updatedBundle.ScheduledAt, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID, authEntityData.Headers)
 		if err != nil {
 			handleErr(ctx, w, r, err, logData, RouteNamePostBundleContents)
 			return
@@ -221,7 +268,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	dpresponse.SetETag(w, bundleUpdate.ETag)
+	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Location", location)
 	w.Header().Set("Content-Type", "application/json")
@@ -298,18 +345,6 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
-	if err != nil {
-		log.Error(ctx, "failed to update bundle ETag", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
 	event := &models.Event{
 		RequestedBy: &models.RequestedBy{
 			ID:    authEntityData.GetUserID(),
@@ -343,6 +378,65 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
+
+	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
+	if err != nil {
+		log.Error(ctx, "deleteContentItem endpoint: failed to update bundle ETag", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	bundleEventObject, err := models.ConvertBundleToBundleEvent(updatedBundle)
+	if err != nil {
+		log.Error(ctx, "deleteContentItem endpoint: failed to convert bundle to bundle event", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	bundleEvent := &models.Event{
+		RequestedBy: &models.RequestedBy{
+			ID:    authEntityData.GetUserID(),
+			Email: authEntityData.GetUserEmail(),
+		},
+		Action:   models.ActionUpdate,
+		Resource: "/bundles/" + bundleID,
+		Bundle:   bundleEventObject,
+	}
+
+	err = models.ValidateEvent(bundleEvent)
+	if err != nil {
+		log.Error(ctx, "deleteContentItem endpoint: event validation failed", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, bundleEvent)
+	if err != nil {
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event in database", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
 	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.WriteHeader(http.StatusNoContent)
 }

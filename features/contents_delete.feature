@@ -91,11 +91,12 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         Given I am an admin user
         When I DELETE "/bundles/bundle-1/contents/content-item-1"
         Then the HTTP status code should be "204"
-        And the record with id "content-item-1" should not exist in the "bundle_contents" collection
-        And the total number of events should be 1
-        And the number of events with action "DELETE" and datatype "content_item" should be 1
         And the response header "ETag" should not be empty
+        And the record with id "content-item-1" should not exist in the "bundle_contents" collection
         And bundle "bundle-1" should not have this etag "original-etag"
+        And the total number of events should be 2
+        And the number of events with action "DELETE" and datatype "content_item" should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
 
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} with non-existent bundle
         Given I am an admin user

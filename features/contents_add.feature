@@ -130,8 +130,9 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 }
             }
             """
-        And the total number of events should be 1
+        And the total number of events should be 2
         And the number of events with action "CREATE" and datatype "content_item" should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
         And the release date for the dataset version with id "version-1" should be "2025-01-03T07:00:00.000Z"
 
     Scenario: POST /bundles/{id}/contents successfully for MANUAL bundle
@@ -175,8 +176,9 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 }
             }
             """
-        And the total number of events should be 1
+        And the total number of events should be 2
         And the number of events with action "CREATE" and datatype "content_item" should be 1
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
         And the release date for the dataset version with id "version-1" should be ""
     
     Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type and missing edit link)
