@@ -6,8 +6,8 @@ github.com/ONSdigital/dp-authorisation/v2 v2.32.3 h1:Tx0uTo/P5oXyYTNqw5m+nKxe+7H
 github.com/ONSdigital/dp-authorisation/v2 v2.32.3/go.mod h1:uDDkQ/HeqeirqXBCVrvyGxbKSO/bKe80wW7V226sB+g=
 github.com/ONSdigital/dp-component-test v0.25.0 h1:mQTiZpYLZ57Ze3Hi66cIlAAmB2E+3DyiOE3NHJvhHBs=
 github.com/ONSdigital/dp-component-test v0.25.0/go.mod h1:3r4enpMNR3wkle1Kex6gpbEYCw3E9sFRYe6AkgT3WSY=
-github.com/ONSdigital/dp-dataset-api v1.82.1 h1:tjhrJbL5mAamMGAXlALt2eXJkJP0YEcvHEW1lLiSehw=
-github.com/ONSdigital/dp-dataset-api v1.82.1/go.mod h1:a+D0PzLwNhJKhEXuEPW9ij3XgL7D9tg2NSsT9NkOt+o=
+github.com/ONSdigital/dp-dataset-api v1.86.0 h1:m2LfXUUt9Nan81CvabGPSIup1yYsOoR8g82jRpCUC5Y=
+github.com/ONSdigital/dp-dataset-api v1.86.0/go.mod h1:r4oWAzFDJCaaCXo9BRQzY+MUe6utjisxXr9oLTq+/mw=
 github.com/ONSdigital/dp-healthcheck v1.6.4 h1:FhWOuVmob36dYq7AzCdbgyf0Vk58IFitSl8y8pWJ8ck=
 github.com/ONSdigital/dp-healthcheck v1.6.4/go.mod h1:j3UNbGT4ZJg1chrRkPLE6YUVYCg1su3AAQ8frcBrvgc=
 github.com/ONSdigital/dp-mocking v0.11.0 h1:laln6e2JD4vtsYbg0cTw9ur1Xf390AUYdd85cG2UNQw=
@@ -16,8 +16,8 @@ github.com/ONSdigital/dp-mongodb-in-memory v1.8.1 h1:yCz6BfjA0bvesA0JjyBIA6nsOzN
 github.com/ONSdigital/dp-mongodb-in-memory v1.8.1/go.mod h1:YyTE7QBdV+Fzz5vGnmcPI1nVGCkMcaqsO4TCUlRe6Pc=
 github.com/ONSdigital/dp-mongodb/v3 v3.8.0 h1:9mHKePAdg0BLelHtGG1cGRlY78c7kSDB62lEXR2Cor8=
 github.com/ONSdigital/dp-mongodb/v3 v3.8.0/go.mod h1:x/YvepJ5/s05iKxWJNhkqGsncV130Bo4G/AwLTwesh4=
-github.com/ONSdigital/dp-net/v3 v3.3.0 h1:NAH9z+nvbJxoK6OnDpOyJJ+52dqBhVtaugk5bqEDt0Y=
-github.com/ONSdigital/dp-net/v3 v3.3.0/go.mod h1:ur4LLCvd2xW2jpa785pElE6HB2bPvszZxdAjqv0XFGg=
+github.com/ONSdigital/dp-net/v3 v3.4.0 h1:15PsiBoo78Bwu7HAt1m63Rv4VlE5FPCL6UOFX9iAPic=
+github.com/ONSdigital/dp-net/v3 v3.4.0/go.mod h1:ur4LLCvd2xW2jpa785pElE6HB2bPvszZxdAjqv0XFGg=
 github.com/ONSdigital/dp-permissions-api v1.3.0 h1:8ikYTZwNg1K2Q81upLVpUhJRE287/nfZ6pcEskbWaWc=
 github.com/ONSdigital/dp-permissions-api v1.3.0/go.mod h1:3XiUNCUuhTevJBuatmnRh3Ab4hTd1sN7btTMcKxdVxc=
 github.com/ONSdigital/log.go/v2 v2.4.6 h1:GgJOFLQvGiZmVjsHDD91xgovSCtHf0UIdJmlRCzp/pE=
