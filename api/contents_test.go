@@ -105,14 +105,14 @@ func TestPostBundleContents_Success(t *testing.T) {
 
 				return errors.New("failed to create content item")
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				if event.ContentItem != nil && (event.ContentItem.BundleID == "bundle-1" || event.ContentItem.BundleID == "bundle-2") {
 					return nil
 				}
 				if event.Bundle != nil && (event.Bundle.ID == "bundle-1" || event.Bundle.ID == "bundle-2") {
 					return nil
 				}
-				return errors.New("failed to create bundle event")
+				return errors.New("failed to create event")
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				if bundleID == "bundle-1" {
@@ -851,10 +851,10 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 	})
 }
 
-func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
+func TestPostBundleContents_EventCreation_Failure(t *testing.T) {
 	t.Parallel()
 
-	Convey("Given a POST request to /bundles/{bundle-id}/contents and bundle event creation fails", t, func() {
+	Convey("Given a POST request to /bundles/{bundle-id}/contents", t, func() {
 		newContentItem := &models.ContentItem{
 			BundleID:    "bundle-1",
 			ContentType: models.ContentTypeDataset,
@@ -882,8 +882,8 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return errors.New("failed to create bundle event")
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return errors.New("failed to create event")
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				return &models.Bundle{
@@ -902,7 +902,7 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
 
-		Convey("When postBundleContents is called and CreateBundleEvent fails for the content item", func() {
+		Convey("When postBundleContents is called and CreateEvent fails for the content item", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
@@ -931,16 +931,16 @@ func TestPostBundleContents_BundleEventCreation_Failure(t *testing.T) {
 			})
 		})
 
-		Convey("When postBundleContents is called and CreateBundleEvent fails for the bundle", func() {
+		Convey("When postBundleContents is called and CreateEvent fails for the bundle", func() {
 			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
 			r.Header.Set("Authorization", "test-auth-token")
 			w := httptest.NewRecorder()
 
-			mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
+			mockedDatastore.CreateEventFunc = func(ctx context.Context, event *models.Event) error {
 				if event.ContentItem != nil {
 					return nil
 				}
-				return errors.New("failed to create bundle event")
+				return errors.New("failed to create event")
 			}
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -1000,7 +1000,7 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
@@ -1077,7 +1077,7 @@ func TestPostBundleContents_UpdateDatasetVersionReleaseDate_Failure(t *testing.T
 			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
@@ -1155,14 +1155,14 @@ func TestDeleteContentItem_Success(t *testing.T) {
 				}
 				return errors.New("failed to delete content item")
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				if event.ContentItem != nil && event.ContentItem.BundleID == "bundle-1" && event.ContentItem.ID == cont1 {
 					return nil
 				}
 				if event.Bundle != nil && event.Bundle.ID == "bundle-1" {
 					return nil
 				}
-				return errors.New("failed to create bundle event")
+				return errors.New("failed to create event")
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				return &models.Bundle{
@@ -1456,7 +1456,7 @@ func TestDeleteContentItem_ParseJWT_Failure(t *testing.T) {
 	})
 }
 
-func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
+func TestDeleteContentItem_CreateEvent_Failure(t *testing.T) {
 	t.Parallel()
 
 	Convey("Given a DELETE request to /bundles/{bundle-id}/contents/{content-id}", t, func() {
@@ -1480,8 +1480,8 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 				}
 				return errors.New("failed to delete content item")
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return errors.New("failed to create bundle event")
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return errors.New("failed to create event")
 			},
 			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 				return &models.Bundle{}, nil
@@ -1496,7 +1496,7 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
 
-		Convey("When deleteContentItem is called and CreateBundleEvent fails for the content item", func() {
+		Convey("When deleteContentItem is called and CreateEvent fails for the content item", func() {
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			Convey("Then it should return a 500 Internal Server Error status code", func() {
@@ -1521,12 +1521,12 @@ func TestDeleteContentItem_CreateBundleEvent_Failure(t *testing.T) {
 			})
 		})
 
-		Convey("When deleteContentItem is called and CreateBundleEvent fails for the bundle", func() {
-			mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
+		Convey("When deleteContentItem is called and CreateEvent fails for the bundle", func() {
+			mockedDatastore.CreateEventFunc = func(ctx context.Context, event *models.Event) error {
 				if event.ContentItem != nil {
 					return nil
 				}
-				return errors.New("failed to create bundle event")
+				return errors.New("failed to create event")
 			}
 
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -1575,7 +1575,7 @@ func TestDeleteContentItem_UpdateETag_Failure(t *testing.T) {
 					ETag: "etag-before-delete",
 				}, nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {

@@ -85,7 +85,7 @@ func TestPutBundle_Success(t *testing.T) {
 				}
 				return nil, errors.New("failed to update ETag")
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				if event.Action == models.ActionUpdate && event.Resource == "/bundles/bundle-1" {
 					return nil
 				}

@@ -154,33 +154,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	location := "/bundles/" + bundleID + "/contents/" + contentItem.ID
-
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    authEntityData.GetUserID(),
-			Email: authEntityData.GetUserEmail(),
-		},
-		Action:      models.ActionCreate,
-		Resource:    location,
-		ContentItem: contentItem,
-	}
-
-	err = models.ValidateEvent(event)
+	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionCreate, nil, contentItem)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: event validation failed", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logData)
+		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -202,43 +178,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	bundleEventObject, err := models.ConvertBundleToBundleEvent(updatedBundle)
+	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to convert bundle to bundle event", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	bundleEvent := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    authEntityData.GetUserID(),
-			Email: authEntityData.GetUserEmail(),
-		},
-		Action:   models.ActionUpdate,
-		Resource: "/bundles/" + bundleID,
-		Bundle:   bundleEventObject,
-	}
-
-	err = models.ValidateEvent(bundleEvent)
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: event validation failed", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, bundleEvent)
-	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to create event in database", err, logData)
+		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -270,7 +212,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 
 	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Location", location)
+	w.Header().Set("Location", "/bundles/"+bundleID+"/contents/"+contentItem.ID)
 	w.Header().Set("Content-Type", "application/json")
 
 	w.WriteHeader(http.StatusCreated)
@@ -345,31 +287,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    authEntityData.GetUserID(),
-			Email: authEntityData.GetUserEmail(),
-		},
-		Action:      models.ActionDelete,
-		Resource:    "/bundles/" + bundleID + "/contents/" + contentID,
-		ContentItem: contentItem,
-	}
-
-	err = models.ValidateEvent(event)
+	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, contentItem)
 	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: event validation failed", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, event)
-	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: failed to create event in database", err, logData)
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -391,43 +311,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	bundleEventObject, err := models.ConvertBundleToBundleEvent(updatedBundle)
+	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil)
 	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: failed to convert bundle to bundle event", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	bundleEvent := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    authEntityData.GetUserID(),
-			Email: authEntityData.GetUserEmail(),
-		},
-		Action:   models.ActionUpdate,
-		Resource: "/bundles/" + bundleID,
-		Bundle:   bundleEventObject,
-	}
-
-	err = models.ValidateEvent(bundleEvent)
-	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: event validation failed", err, logData)
-		code := models.CodeInternalError
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
-		return
-	}
-
-	err = api.stateMachineBundleAPI.CreateBundleEvent(ctx, bundleEvent)
-	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: failed to create event in database", err, logData)
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,

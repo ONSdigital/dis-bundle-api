@@ -32,19 +32,11 @@ const (
 	bundle123 = "bundle-123"
 )
 
-var fullyPopulatedBundle = models.Bundle{
-	ID:            "123",
-	BundleType:    models.BundleTypeManual,
-	CreatedBy:     &models.User{Email: "example@example.com"},
-	CreatedAt:     &today,
-	LastUpdatedBy: &models.User{Email: "example@example.com"},
-	PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
-	ScheduledAt:   &tomorrow,
-	State:         models.BundleStateDraft,
-	Title:         "Fully Populated Bundle",
-	UpdatedAt:     &today,
-	ManagedBy:     models.ManagedByWagtail,
-	ETag:          "f9226b8eb338ac139b1c39d2bb69f5abad8bea09",
+var authEntityData = &models.AuthEntityData{
+	EntityData: &permissionsSDK.EntityData{
+		UserID: "test-user-id",
+		Groups: []string{"group1", "group2"},
+	},
 }
 
 func TestListBundles(t *testing.T) {
@@ -354,138 +346,6 @@ func TestCheckContentItemExistsByDatasetEditionVersion(t *testing.T) {
 	})
 }
 
-func TestCreateEventFromBundle_Success(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
-		ctx := context.Background()
-
-		mockedDatastore := &storetest.StorerMock{
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return nil
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateEventFromBundle is called with a valid bundle", func() {
-			errorObject, err := stateMachine.CreateEventFromBundle(ctx, &fullyPopulatedBundle, "test@email.com", models.ActionCreate)
-
-			Convey("Then it should return no error", func() {
-				So(errorObject, ShouldBeNil)
-				So(err, ShouldBeNil)
-			})
-		})
-	})
-}
-
-func TestCreateEventFromBundle_ConvertBundleToBundleEvent_Failure(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
-		ctx := context.Background()
-
-		mockedDatastore := &storetest.StorerMock{
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return nil
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateEventFromBundle is called with a nil bundle", func() {
-			errorObject, err := stateMachine.CreateEventFromBundle(ctx, nil, "test@email.com", models.ActionCreate)
-
-			Convey("Then it should return an input bundle cannot be nil error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "input bundle cannot be nil")
-			})
-
-			Convey("And errorObject should be an internal server error", func() {
-				code := models.CodeInternalError
-				expectedErr := &models.Error{
-					Code:        &code,
-					Description: apierrors.ErrorDescriptionInternalError,
-				}
-				So(errorObject, ShouldResemble, expectedErr)
-			})
-		})
-	})
-}
-
-func TestCreateEventFromBundle_CreateBundleEvent_Failure(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
-		ctx := context.Background()
-
-		mockedDatastore := &storetest.StorerMock{
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return errors.New("failed to create bundle event")
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateEventFromBundle is called with a valid bundle", func() {
-			errorObject, err := stateMachine.CreateEventFromBundle(ctx, &fullyPopulatedBundle, "test@email.com", models.ActionCreate)
-
-			Convey("Then it should return an error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "failed to create bundle event")
-			})
-
-			Convey("And errorObject should be an internal server error", func() {
-				code := models.CodeInternalError
-				expectedErr := &models.Error{
-					Code:        &code,
-					Description: apierrors.ErrorDescriptionInternalError,
-				}
-				So(errorObject, ShouldResemble, expectedErr)
-			})
-		})
-	})
-}
-
-func TestCreateBundleEvent(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
-		ctx := context.Background()
-
-		expectedEvent := &models.Event{
-			CreatedAt: &today,
-		}
-
-		mockedDatastore := &storetest.StorerMock{
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.CreatedAt != nil {
-					return nil
-				}
-				return errors.New("failed to create event")
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When CreateBundleEvent is called with a valid event", func() {
-			err := stateMachine.CreateBundleEvent(ctx, expectedEvent)
-
-			Convey("Then it should return no error", func() {
-				So(err, ShouldBeNil)
-			})
-		})
-
-		Convey("When CreateBundleEvent is called with and has an error", func() {
-			err := stateMachine.CreateBundleEvent(ctx, &models.Event{})
-
-			Convey("Then it should return an error", func() {
-				So(err.Error(), ShouldEqual, "failed to create event")
-			})
-		})
-	})
-}
-
 func TestCreateBundle_Success(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
@@ -505,7 +365,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
 				return false, nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
@@ -518,7 +378,7 @@ func TestCreateBundle_Success(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it shouldn't return any errors", func() {
 				So(err, ShouldBeNil)
@@ -547,7 +407,7 @@ func TestCreateBundle_Failure_Transition(t *testing.T) {
 		stateMachine := &application.StateMachineBundleAPI{}
 
 		Convey("When CreateBundle is called and the bundle is not in state DRAFT", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return the expected error", func() {
 				So(err, ShouldNotBeNil)
@@ -595,7 +455,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitle(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called and a bundle with the same title already exists", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return an error indicating the bundle already exists", func() {
 				So(err, ShouldNotBeNil)
@@ -646,7 +506,7 @@ func TestCreateBundle_Failure_Backend_CheckBundleExistsByTitle(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called and the backend returns an error when checking for existing bundles", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return an error indicating the backend failure", func() {
 				So(err, ShouldNotBeNil)
@@ -694,7 +554,7 @@ func TestCreateBundle_Failure_CreateBundle(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called and the datastore fails to create the bundle", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return an error indicating the failure", func() {
 				So(err, ShouldNotBeNil)
@@ -717,7 +577,7 @@ func TestCreateBundle_Failure_CreateBundle(t *testing.T) {
 	})
 }
 
-func TestCreateBundle_Failure_CreateEventFromBundle(t *testing.T) {
+func TestCreateBundle_Failure_CreateEvent(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 		bundleToCreate := &models.Bundle{
@@ -739,7 +599,7 @@ func TestCreateBundle_Failure_CreateEventFromBundle(t *testing.T) {
 			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 				return bundleToCreate, nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return errors.New("failed to create event from bundle")
 			},
 		}
@@ -748,8 +608,8 @@ func TestCreateBundle_Failure_CreateEventFromBundle(t *testing.T) {
 			Datastore: store.Datastore{Backend: mockedDatastore},
 		}
 
-		Convey("When CreateBundle is called and the datastore fails to create an event from the bundle", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+		Convey("When CreateBundle is called and the datastore fails to create an event", func() {
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return an error indicating the failure", func() {
 				So(err, ShouldNotBeNil)
@@ -800,7 +660,7 @@ func TestCreateBundle_Failure_GetBundle(t *testing.T) {
 		}
 
 		Convey("When CreateBundle is called and the datastore fails to retrieve the created bundle", func() {
-			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate)
+			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
 
 			Convey("Then it should return an error indicating the failure", func() {
 				So(err, ShouldNotBeNil)
@@ -1151,7 +1011,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 			DeleteBundleFunc: func(ctx context.Context, id string) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 		}
@@ -1161,7 +1021,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with an existing bundle ID", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "example@email.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a status code of 204 and no error", func() {
 				So(err, ShouldBeNil)
@@ -1190,7 +1050,7 @@ func TestDeleteBundle_Failure_GetBundle(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with a non-existing bundle ID", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 404 Not Found error", func() {
 				So(statusCode, ShouldEqual, 404)
@@ -1210,7 +1070,7 @@ func TestDeleteBundle_Failure_GetBundle(t *testing.T) {
 		})
 
 		Convey("When DeleteBundle is called and the datastore returns an unexpected error", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "unexpected-error", "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, "unexpected-error", authEntityData)
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1249,7 +1109,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called with a bundle that is already published", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 409 Conflict error", func() {
 				So(statusCode, ShouldEqual, 409)
@@ -1291,7 +1151,7 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and listing bundle contents fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1339,7 +1199,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and deleting a content item fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1360,7 +1220,7 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 	})
 }
 
-func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
+func TestDeleteBundle_Failure_CreateEvent(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 
@@ -1379,8 +1239,8 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return errors.New("failed to create event from content item")
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return errors.New("failed to create event")
 			},
 		}
 
@@ -1388,8 +1248,8 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 			Datastore: store.Datastore{Backend: mockedDatastore},
 		}
 
-		Convey("When DeleteBundle is called and creating an event from content item fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+		Convey("When DeleteBundle is called and creating an event for the content item fails", func() {
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1397,7 +1257,37 @@ func TestDeleteBundle_Failure_CreateEventFromContentItem(t *testing.T) {
 
 			Convey("And the errorObject/error should indicate an internal server error", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "failed to create event from content item")
+				So(err.Error(), ShouldEqual, "failed to create event")
+
+				code := models.CodeInternalError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errObject, ShouldResemble, expectedErr)
+			})
+		})
+
+		Convey("When DeleteBundle is called and creating an event for the bundle fails", func() {
+			mockedDatastore.CreateEventFunc = func(ctx context.Context, event *models.Event) error {
+				if event.Bundle != nil {
+					return errors.New("failed to create event")
+				}
+				return nil
+			}
+			mockedDatastore.DeleteBundleFunc = func(ctx context.Context, id string) error {
+				return nil
+			}
+
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
+
+			Convey("Then it should return a 500 Internal Server Error", func() {
+				So(statusCode, ShouldEqual, 500)
+			})
+
+			Convey("And the errorObject/error should indicate an internal server error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "failed to create event")
 
 				code := models.CodeInternalError
 				expectedErr := &models.Error{
@@ -1437,7 +1327,7 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 		}
 
 		Convey("When DeleteBundle is called and deleting the bundle fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
 
 			Convey("Then it should return a 500 Internal Server Error", func() {
 				So(statusCode, ShouldEqual, 500)
@@ -1446,57 +1336,6 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 			Convey("And the errorObject/error should indicate an internal server error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "failed to delete bundle")
-
-				code := models.CodeInternalError
-				expectedErr := &models.Error{
-					Code:        &code,
-					Description: apierrors.ErrorDescriptionInternalError,
-				}
-				So(errObject, ShouldResemble, expectedErr)
-			})
-		})
-	})
-}
-
-func TestDeleteBundle_Failure_CreateEventFromBundle(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
-		ctx := context.Background()
-
-		mockedDatastore := &storetest.StorerMock{
-			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
-				return &models.Bundle{
-					ID:    bundle1,
-					State: models.BundleStateDraft,
-				}, nil
-			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
-				return []*models.ContentItem{}, nil
-			},
-			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
-				return nil
-			},
-			DeleteBundleFunc: func(ctx context.Context, id string) error {
-				return nil
-			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-				return errors.New("failed to create event from bundle")
-			},
-		}
-
-		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
-		}
-
-		Convey("When DeleteBundle is called and creating an event from the bundle fails", func() {
-			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, "email@example.com")
-
-			Convey("Then it should return a 500 Internal Server Error", func() {
-				So(statusCode, ShouldEqual, 500)
-			})
-
-			Convey("And the errorObject/error should indicate an internal server error", func() {
-				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "failed to create event from bundle")
 
 				code := models.CodeInternalError
 				expectedErr := &models.Error{
@@ -1548,7 +1387,7 @@ func TestPutBundle_Success(t *testing.T) {
 			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
 				return updatedBundle, nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 		}
@@ -1565,7 +1404,7 @@ func TestPutBundle_Success(t *testing.T) {
 				So(result, ShouldEqual, updatedBundle)
 				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 1)
 				So(len(mockedDatastore.UpdateBundleETagCalls()), ShouldEqual, 1)
-				So(len(mockedDatastore.CreateBundleEventCalls()), ShouldEqual, 1)
+				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 1)
 			})
 		})
 	})

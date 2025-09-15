@@ -173,16 +173,12 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 		return nil, err
 	}
 
-	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleResourceLocation(bundle), nil, bundle)
-	if err != nil {
+	if err = stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": updatedBundle.ID})
 		return nil, err
 	}
 
-	if err := stateMachineBundleAPI.CreateBundleEvent(ctx, event); err != nil {
-		return nil, err
-	}
-
-	return updatedBundle, err
+	return updatedBundle, nil
 }
 
 func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
@@ -194,13 +190,10 @@ func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *mod
 		return err
 	}
 
-	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), models.ActionUpdate, models.CreateBundleContentResourceLocation(contentItem), contentItem, nil)
-	if err != nil {
+	if err := stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
 		return err
 	}
 
-	if err := stateMachineBundleAPI.CreateBundleEvent(ctx, event); err != nil {
-		return err
-	}
 	return nil
 }

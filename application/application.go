@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,86 +82,14 @@ func (s *StateMachineBundleAPI) DeleteContentItem(ctx context.Context, contentIt
 	return s.Datastore.DeleteContentItem(ctx, contentItemID)
 }
 
-func (s *StateMachineBundleAPI) CreateEventFromBundle(ctx context.Context, bundle *models.Bundle, email string, action models.Action) (*models.Error, error) {
-	bundleEvent, err := models.ConvertBundleToBundleEvent(bundle)
+func (s *StateMachineBundleAPI) CreateEvent(ctx context.Context, authEntityData *models.AuthEntityData, action models.Action, bundle *models.Bundle, contentItem *models.ContentItem) error {
+	event, err := models.CreateEventModel(authEntityData.GetUserID(), authEntityData.GetUserEmail(), action, bundle, contentItem)
 	if err != nil {
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		return e, err
+		log.Error(ctx, "failed to create event model", err)
+		return err
 	}
 
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    email,
-			Email: email,
-		},
-		Action:   action,
-		Resource: "/bundles/" + bundle.ID,
-		Bundle:   bundleEvent,
-	}
-
-	err = models.ValidateEvent(event)
-	if err != nil {
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		return e, err
-	}
-
-	err = s.CreateBundleEvent(ctx, event)
-	if err != nil {
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		return e, err
-	}
-
-	return nil, nil
-}
-
-func (s *StateMachineBundleAPI) CreateEventFromContentItem(ctx context.Context, contentItem *models.ContentItem, email string, action models.Action) (*models.Error, error) {
-	event := &models.Event{
-		RequestedBy: &models.RequestedBy{
-			ID:    email,
-			Email: email,
-		},
-		Action:      action,
-		Resource:    "/bundles/" + contentItem.BundleID + "/contents/" + contentItem.ID,
-		ContentItem: contentItem,
-	}
-
-	err := models.ValidateEvent(event)
-	if err != nil {
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		return e, err
-	}
-
-	err = s.CreateBundleEvent(ctx, event)
-	if err != nil {
-		code := models.CodeInternalError
-		e := &models.Error{
-			Code:        &code,
-			Description: errs.ErrorDescriptionInternalError,
-		}
-		return e, err
-	}
-
-	return nil, nil
-}
-
-func (s *StateMachineBundleAPI) CreateBundleEvent(ctx context.Context, event *models.Event) error {
-	return s.Datastore.CreateBundleEvent(ctx, event)
+	return s.Datastore.CreateEvent(ctx, event)
 }
 
 func (s *StateMachineBundleAPI) UpdateBundle(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
@@ -250,7 +177,7 @@ func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Con
 	return nil
 }
 
-func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle) (int, *models.Bundle, *models.Error, error) {
+func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle, authEntityData *models.AuthEntityData) (int, *models.Bundle, *models.Error, error) {
 	err := s.StateMachine.Transition(ctx, s, nil, bundle)
 	if err != nil {
 		log.Error(ctx, "failed to transition bundle state", err)
@@ -308,16 +235,15 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 		return http.StatusInternalServerError, nil, e, err
 	}
 
-	errObject, err := s.CreateEventFromBundle(ctx, bundle, createdBundle.CreatedBy.Email, models.ActionCreate)
-	if err != nil {
-		log.Error(ctx, "failed to create event from bundle", err)
-		return http.StatusInternalServerError, nil, errObject, err
+	if err = s.CreateEvent(ctx, authEntityData, models.ActionCreate, createdBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": createdBundle.ID})
+		return http.StatusInternalServerError, nil, models.GetMatchingModelError(err), err
 	}
 
 	return http.StatusCreated, createdBundle, nil, nil
 }
 
-func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, email string) (int, *models.Error, error) {
+func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID string, authEntityData *models.AuthEntityData) (int, *models.Error, error) {
 	bundle, err := s.GetBundle(ctx, bundleID)
 	if err != nil {
 		if err == errs.ErrBundleNotFound {
@@ -371,9 +297,9 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 				return http.StatusInternalServerError, e, err
 			}
 
-			errObject, err := s.CreateEventFromContentItem(ctx, contentItem, email, models.ActionDelete)
-			if err != nil {
-				return http.StatusInternalServerError, errObject, err
+			if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, contentItem); err != nil {
+				log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID})
+				return http.StatusInternalServerError, models.GetMatchingModelError(err), err
 			}
 		}
 	}
@@ -388,9 +314,9 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID, emai
 		return http.StatusInternalServerError, e, err
 	}
 
-	errObject, err := s.CreateEventFromBundle(ctx, bundle, email, models.ActionDelete)
-	if err != nil {
-		return http.StatusInternalServerError, errObject, err
+	if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, bundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": bundleID})
+		return http.StatusInternalServerError, models.GetMatchingModelError(err), err
 	}
 
 	return http.StatusNoContent, nil, nil
@@ -495,14 +421,9 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		return nil, err
 	}
 
-	errObject, err := s.CreateEventFromBundle(ctx, updatedBundle, userID, models.ActionUpdate)
-	if err != nil {
-		log.Error(ctx, "failed to create event from bundle", err, logdata)
+	if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, logdata)
 		return nil, err
-	}
-	if errObject != nil {
-		log.Error(ctx, "error object returned from CreateEventFromBundle", nil, logdata)
-		return nil, errors.New("failed to create bundle event")
 	}
 
 	return updatedBundle, nil

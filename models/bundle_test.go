@@ -4,9 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"testing"
+	"time"
 
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	. "github.com/smartystreets/goconvey/convey"
+)
+
+var (
+	today    = time.Now()
+	tomorrow = today.Add(24 * time.Hour)
 )
 
 var fullyPopulatedBundle = Bundle{

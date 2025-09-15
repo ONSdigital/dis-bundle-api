@@ -484,7 +484,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 
 			return mockBundle, nil
 		},
-		CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+		CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 			createdEvents = append(createdEvents, event)
 			return nil
 		},
@@ -705,7 +705,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		return mockBundle, nil
 	}
 
-	createBundleEventsFunc := func(ctx context.Context, event *models.Event) error {
+	createEventFunc := func(ctx context.Context, event *models.Event) error {
 		createdEvents = append(createdEvents, event)
 		return nil
 	}
@@ -726,7 +726,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 	mockedDatastore := &storetest.StorerMock{
 		GetBundleContentsForBundleFunc: getBundleContentsFunc,
 		UpdateBundleFunc:               updateBundleFunc,
-		CreateBundleEventFunc:          createBundleEventsFunc,
+		CreateEventFunc:                createEventFunc,
 		UpdateContentItemStateFunc:     updateContentItemFunc,
 	}
 
@@ -834,7 +834,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		})
 	})
 
-	t.Run("When attempting a valid bundle transition state/But an error occurs creating the bundle event", func(t *testing.T) {
+	t.Run("When attempting a valid bundle transition state/But an error occurs creating the event", func(t *testing.T) {
 		mockedDatastore.GetBundleContentsForBundleFunc = getBundleContentsFunc
 		mockedDatastore.UpdateBundleFunc = updateBundleFunc
 
@@ -845,7 +845,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			mockVersions[index].State = strings.ToLower(fromState.String())
 		}
 
-		mockedDatastore.CreateBundleEventFunc = func(ctx context.Context, event *models.Event) error {
+		mockedDatastore.CreateEventFunc = func(ctx context.Context, event *models.Event) error {
 			// To avoid throwing the error when content items are updated
 			if event.Bundle != nil {
 				return createEventError

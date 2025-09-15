@@ -47,11 +47,11 @@ var _ store.MongoDB = &MongoDBMock{}
 //			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 //				panic("mock out the CreateBundle method")
 //			},
-//			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-//				panic("mock out the CreateBundleEvent method")
-//			},
 //			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
 //				panic("mock out the CreateContentItem method")
+//			},
+//			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+//				panic("mock out the CreateEvent method")
 //			},
 //			DeleteBundleFunc: func(ctx context.Context, id string) error {
 //				panic("mock out the DeleteBundle method")
@@ -126,11 +126,11 @@ type MongoDBMock struct {
 	// CreateBundleFunc mocks the CreateBundle method.
 	CreateBundleFunc func(ctx context.Context, bundle *models.Bundle) error
 
-	// CreateBundleEventFunc mocks the CreateBundleEvent method.
-	CreateBundleEventFunc func(ctx context.Context, event *models.Event) error
-
 	// CreateContentItemFunc mocks the CreateContentItem method.
 	CreateContentItemFunc func(ctx context.Context, contentItem *models.ContentItem) error
+
+	// CreateEventFunc mocks the CreateEvent method.
+	CreateEventFunc func(ctx context.Context, event *models.Event) error
 
 	// DeleteBundleFunc mocks the DeleteBundle method.
 	DeleteBundleFunc func(ctx context.Context, id string) error
@@ -236,19 +236,19 @@ type MongoDBMock struct {
 			// Bundle is the bundle argument value.
 			Bundle *models.Bundle
 		}
-		// CreateBundleEvent holds details about calls to the CreateBundleEvent method.
-		CreateBundleEvent []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Event is the event argument value.
-			Event *models.Event
-		}
 		// CreateContentItem holds details about calls to the CreateContentItem method.
 		CreateContentItem []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ContentItem is the contentItem argument value.
 			ContentItem *models.ContentItem
+		}
+		// CreateEvent holds details about calls to the CreateEvent method.
+		CreateEvent []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Event is the event argument value.
+			Event *models.Event
 		}
 		// DeleteBundle holds details about calls to the DeleteBundle method.
 		DeleteBundle []struct {
@@ -385,8 +385,8 @@ type MongoDBMock struct {
 	lockChecker                                       sync.RWMutex
 	lockClose                                         sync.RWMutex
 	lockCreateBundle                                  sync.RWMutex
-	lockCreateBundleEvent                             sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
+	lockCreateEvent                                   sync.RWMutex
 	lockDeleteBundle                                  sync.RWMutex
 	lockDeleteContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
@@ -699,42 +699,6 @@ func (mock *MongoDBMock) CreateBundleCalls() []struct {
 	return calls
 }
 
-// CreateBundleEvent calls CreateBundleEventFunc.
-func (mock *MongoDBMock) CreateBundleEvent(ctx context.Context, event *models.Event) error {
-	if mock.CreateBundleEventFunc == nil {
-		panic("MongoDBMock.CreateBundleEventFunc: method is nil but MongoDB.CreateBundleEvent was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Event *models.Event
-	}{
-		Ctx:   ctx,
-		Event: event,
-	}
-	mock.lockCreateBundleEvent.Lock()
-	mock.calls.CreateBundleEvent = append(mock.calls.CreateBundleEvent, callInfo)
-	mock.lockCreateBundleEvent.Unlock()
-	return mock.CreateBundleEventFunc(ctx, event)
-}
-
-// CreateBundleEventCalls gets all the calls that were made to CreateBundleEvent.
-// Check the length with:
-//
-//	len(mockedMongoDB.CreateBundleEventCalls())
-func (mock *MongoDBMock) CreateBundleEventCalls() []struct {
-	Ctx   context.Context
-	Event *models.Event
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Event *models.Event
-	}
-	mock.lockCreateBundleEvent.RLock()
-	calls = mock.calls.CreateBundleEvent
-	mock.lockCreateBundleEvent.RUnlock()
-	return calls
-}
-
 // CreateContentItem calls CreateContentItemFunc.
 func (mock *MongoDBMock) CreateContentItem(ctx context.Context, contentItem *models.ContentItem) error {
 	if mock.CreateContentItemFunc == nil {
@@ -768,6 +732,42 @@ func (mock *MongoDBMock) CreateContentItemCalls() []struct {
 	mock.lockCreateContentItem.RLock()
 	calls = mock.calls.CreateContentItem
 	mock.lockCreateContentItem.RUnlock()
+	return calls
+}
+
+// CreateEvent calls CreateEventFunc.
+func (mock *MongoDBMock) CreateEvent(ctx context.Context, event *models.Event) error {
+	if mock.CreateEventFunc == nil {
+		panic("MongoDBMock.CreateEventFunc: method is nil but MongoDB.CreateEvent was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Event *models.Event
+	}{
+		Ctx:   ctx,
+		Event: event,
+	}
+	mock.lockCreateEvent.Lock()
+	mock.calls.CreateEvent = append(mock.calls.CreateEvent, callInfo)
+	mock.lockCreateEvent.Unlock()
+	return mock.CreateEventFunc(ctx, event)
+}
+
+// CreateEventCalls gets all the calls that were made to CreateEvent.
+// Check the length with:
+//
+//	len(mockedMongoDB.CreateEventCalls())
+func (mock *MongoDBMock) CreateEventCalls() []struct {
+	Ctx   context.Context
+	Event *models.Event
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Event *models.Event
+	}
+	mock.lockCreateEvent.RLock()
+	calls = mock.calls.CreateEvent
+	mock.lockCreateEvent.RUnlock()
 	return calls
 }
 

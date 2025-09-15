@@ -282,7 +282,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	statusCode, createdBundle, errObject, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle)
+	statusCode, createdBundle, errObject, err := api.stateMachineBundleAPI.CreateBundle(ctx, bundle, authEntityData)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to create bundle", err)
 		utils.HandleBundleAPIErr(w, r, statusCode, errObject)
@@ -323,7 +323,7 @@ func (api *BundleAPI) deleteBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, authEntityData.GetUserEmail())
+	statusCode, errObject, err := api.stateMachineBundleAPI.DeleteBundle(ctx, bundleID, authEntityData)
 	if err != nil {
 		log.Error(ctx, "deleteBundle endpoint: failed to delete bundle", err, logData)
 		utils.HandleBundleAPIErr(w, r, statusCode, errObject)

@@ -1,13 +1,8 @@
 package models
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"time"
-
-	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 )
 
 // Event represents details of a specific change event forming part of the change and audit log for a bundle
@@ -17,22 +12,7 @@ type Event struct {
 	Action      Action       `bson:"action"                 json:"action"`
 	Resource    string       `bson:"resource"               json:"resource"`
 	ContentItem *ContentItem `bson:"content_item,omitempty" json:"content_item,omitempty"`
-	Bundle      *EventBundle `bson:"bundle,omitempty"       json:"bundle,omitempty"`
-}
-
-// EventBundle represents the Bundle response body when retrieving an Event
-type EventBundle struct {
-	ID            string        `bson:"id"                       json:"id"`
-	BundleType    BundleType    `bson:"bundle_type"               json:"bundle_type"`
-	CreatedBy     *User         `bson:"created_by,omitempty"      json:"created_by,omitempty"`
-	CreatedAt     *time.Time    `bson:"created_at,omitempty"      json:"created_at,omitempty"`
-	LastUpdatedBy *User         `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
-	PreviewTeams  []PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
-	ScheduledAt   *time.Time    `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
-	State         BundleState   `bson:"state"                     json:"state"`
-	Title         string        `bson:"title"                     json:"title"`
-	UpdatedAt     *time.Time    `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
-	ManagedBy     ManagedBy     `bson:"managed_by"                json:"managed_by"`
+	Bundle      *Bundle      `bson:"bundle,omitempty"       json:"bundle,omitempty"`
 }
 
 // RequestedBy represents the user who made the request
@@ -47,53 +27,6 @@ type EventsList struct {
 	Items *[]Event `bson:"items,omitempty" json:"items,omitempty"`
 }
 
-// CreateEvent creates an Event from a JSON request body
-func CreateEvent(reader io.Reader) (*Event, error) {
-	b, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, errs.ErrUnableToReadMessage
-	}
-
-	var event Event
-	err = json.Unmarshal(b, &event)
-	if err != nil {
-		return nil, errs.ErrUnableToParseJSON
-	}
-
-	return &event, nil
-}
-
-// ValidateEvent validates that an Event has all required fields and values
-func ValidateEvent(event *Event) error {
-	missingFields, invalidFields := []string{}, []string{}
-
-	if event.RequestedBy != nil && event.RequestedBy.ID == "" {
-		missingFields = append(missingFields, "requested_by.id")
-	}
-
-	if event.Action == "" {
-		missingFields = append(missingFields, "action")
-	}
-
-	if event.Action != "" && !event.Action.IsValid() {
-		invalidFields = append(invalidFields, "action")
-	}
-
-	if event.Resource == "" {
-		missingFields = append(missingFields, "resource")
-	}
-
-	if len(missingFields) > 0 {
-		return fmt.Errorf("missing mandatory fields: %v", missingFields)
-	}
-
-	if len(invalidFields) > 0 {
-		return fmt.Errorf("invalid fields: %v", invalidFields)
-	}
-
-	return nil
-}
-
 // Action enum type representing the action taken by a user
 type Action string
 
@@ -105,103 +38,28 @@ const (
 	ActionDelete Action = "DELETE"
 )
 
-// String returns the string value of the Action
-func (a Action) String() string {
-	return string(a)
-}
-
-// IsValid validates that the Action is a valid enum value
-func (a Action) IsValid() bool {
-	switch a {
-	case ActionCreate, ActionRead, ActionUpdate, ActionDelete:
-		return true
-	default:
-		return false
-	}
-}
-
-func CreateEventBundle(bundle *Bundle) (*EventBundle, error) {
-	if bundle == nil {
-		return nil, errors.New("bundle is nil")
+// CreateEventModel creates an Event model for either a Bundle or a ContentItem
+func CreateEventModel(id, email string, action Action, bundle *Bundle, contentItem *ContentItem) (*Event, error) {
+	if (bundle == nil && contentItem == nil) || (bundle != nil && contentItem != nil) {
+		return nil, errors.New("only one of bundle or contentItem must be provided")
 	}
 
-	return &EventBundle{
-		ID:            bundle.ID,
-		BundleType:    bundle.BundleType,
-		CreatedBy:     bundle.CreatedBy,
-		CreatedAt:     bundle.CreatedAt,
-		LastUpdatedBy: bundle.LastUpdatedBy,
-		PreviewTeams:  bundle.PreviewTeams,
-		ScheduledAt:   bundle.ScheduledAt,
-		State:         bundle.State,
-		Title:         bundle.Title,
-		UpdatedAt:     bundle.UpdatedAt,
-		ManagedBy:     bundle.ManagedBy,
-	}, nil
-}
-
-// CreateEventModel constructs an instance of an Event using the supplied values
-func CreateEventModel(userID, email string, action Action, resource string, contentItem *ContentItem, bundle *Bundle) (*Event, error) {
-	var eventBundle *EventBundle = nil
+	// CreatedAt will be set within Mongo.CreateEvent
+	event := &Event{
+		RequestedBy: &RequestedBy{
+			ID:    id,
+			Email: email,
+		},
+		Action: action,
+	}
 
 	if bundle != nil {
-		mappedBundle, createEventBundleErr := CreateEventBundle(bundle)
-		if createEventBundleErr != nil {
-			return nil, errs.ErrInternalServer
-		}
-		eventBundle = mappedBundle
-	}
-
-	event := &Event{
-		RequestedBy: createReqestedBy(userID, email),
-		Action:      action,
-		Resource:    resource,
-		ContentItem: contentItem,
-		Bundle:      eventBundle,
-	}
-
-	validationErr := ValidateEvent(event)
-
-	if validationErr != nil {
-		return nil, errs.ErrInternalServer
+		event.Resource = "/bundles/" + bundle.ID
+		event.Bundle = bundle
+	} else {
+		event.Resource = "/bundles/" + contentItem.BundleID + "/contents/" + contentItem.ID
+		event.ContentItem = contentItem
 	}
 
 	return event, nil
-}
-
-// createRequestedBy extracts the EntityData from the middleware and creates a RequestedBy object with the extracted data
-func createReqestedBy(userID, email string) *RequestedBy {
-	return &RequestedBy{
-		ID:    userID,
-		Email: email,
-	}
-}
-
-// createBundleResourceLocation creates a resource location for the provided bundle
-func CreateBundleResourceLocation(bundle *Bundle) string {
-	return fmt.Sprintf("/bundle/%s", bundle.ID)
-}
-
-// createBundleContentResourceLocation creates a resource location for the provided bundle
-func CreateBundleContentResourceLocation(content *ContentItem) string {
-	return fmt.Sprintf("/bundle/%s/content/%s", content.BundleID, content.ID)
-}
-
-func ConvertBundleToBundleEvent(bundle *Bundle) (*EventBundle, error) {
-	if bundle == nil {
-		return nil, errors.New("input bundle cannot be nil")
-	}
-	return &EventBundle{
-		ID:            bundle.ID,
-		BundleType:    bundle.BundleType,
-		CreatedBy:     bundle.CreatedBy,
-		CreatedAt:     bundle.CreatedAt,
-		LastUpdatedBy: bundle.LastUpdatedBy,
-		PreviewTeams:  bundle.PreviewTeams,
-		ScheduledAt:   bundle.ScheduledAt,
-		State:         bundle.State,
-		Title:         bundle.Title,
-		UpdatedAt:     bundle.UpdatedAt,
-		ManagedBy:     bundle.ManagedBy,
-	}, nil
 }

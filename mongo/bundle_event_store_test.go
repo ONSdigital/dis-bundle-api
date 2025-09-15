@@ -10,9 +10,7 @@ import (
 )
 
 var (
-	today     = time.Now()
-	yesterday = today.Add(-24 * time.Hour)
-	tomorrow  = today.Add(24 * time.Hour)
+	today = time.Now()
 
 	bundleEvent = &models.Event{
 		CreatedAt: &today,
@@ -33,34 +31,10 @@ var (
 				VersionID: 1,
 			},
 		},
-		Bundle: &models.EventBundle{
-			ID:         "bundle123",
-			BundleType: models.BundleTypeManual,
-			CreatedBy: &models.User{
-				Email: "user123@ons.gov.uk",
-			},
-			CreatedAt: &yesterday,
-			LastUpdatedBy: &models.User{
-				Email: "user123@ons.gov.uk",
-			},
-			PreviewTeams: []models.PreviewTeam{
-				{
-					ID: "team1",
-				},
-				{
-					ID: "team2",
-				},
-			},
-			ScheduledAt: &tomorrow,
-			State:       models.BundleStateDraft,
-			Title:       "Test Bundle",
-			UpdatedAt:   &today,
-			ManagedBy:   models.ManagedByDataAdmin,
-		},
 	}
 )
 
-func TestCreateBundleEvent_Success(t *testing.T) {
+func TestCreateEvent_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
@@ -70,17 +44,17 @@ func TestCreateBundleEvent_Success(t *testing.T) {
 		err = setupTestDataForEvents(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When CreateBundleEvent is called with a new bundle event", func() {
-			err := mongodb.CreateBundleEvent(ctx, bundleEvent)
+		Convey("When CreateEvent is called with a new event", func() {
+			err := mongodb.CreateEvent(ctx, bundleEvent)
 
-			Convey("Then it should create the bundle event successfully without error", func() {
+			Convey("Then it should create the event successfully without error", func() {
 				So(err, ShouldBeNil)
 			})
 		})
 	})
 }
 
-func TestCreateBundleEvent_Failure(t *testing.T) {
+func TestCreateEvent_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
@@ -90,9 +64,9 @@ func TestCreateBundleEvent_Failure(t *testing.T) {
 		err = setupTestDataForEvents(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When CreateBundleEvent is called and the connection fails", func() {
+		Convey("When CreateEvent is called and the connection fails", func() {
 			mongodb.Connection.Close(ctx)
-			err := mongodb.CreateBundleEvent(ctx, bundleEvent)
+			err := mongodb.CreateEvent(ctx, bundleEvent)
 
 			Convey("Then it should return an error", func() {
 				So(err, ShouldNotBeNil)
@@ -107,7 +81,7 @@ func setupTestDataForEvents(ctx context.Context, mongo *Mongo) error {
 	}
 
 	approved := models.StateApproved
-	bundleEvents := []*models.Event{
+	events := []*models.Event{
 		{
 			RequestedBy: &models.RequestedBy{ID: "user1", Email: "user1@ons.gov.uk"},
 			Action:      models.ActionCreate,
@@ -152,8 +126,8 @@ func setupTestDataForEvents(ctx context.Context, mongo *Mongo) error {
 		},
 	}
 
-	for _, event := range bundleEvents {
-		if err := mongo.CreateBundleEvent(ctx, event); err != nil {
+	for _, event := range events {
+		if err := mongo.CreateEvent(ctx, event); err != nil {
 			return err
 		}
 	}

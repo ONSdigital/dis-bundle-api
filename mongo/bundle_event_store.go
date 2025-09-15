@@ -11,8 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// CreateBundleEvent inserts a new bundle event
-func (m *Mongo) CreateBundleEvent(ctx context.Context, event *models.Event) error {
+// CreateEvent inserts a new event into the bundle events collection
+func (m *Mongo) CreateEvent(ctx context.Context, event *models.Event) error {
 	now := time.Now()
 	event.CreatedAt = &now
 

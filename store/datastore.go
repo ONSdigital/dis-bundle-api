@@ -42,7 +42,7 @@ type dataMongoDB interface {
 	UpdateContentItemState(ctx context.Context, contentItemID, state string) error
 
 	// Events
-	CreateBundleEvent(ctx context.Context, event *models.Event) error
+	CreateEvent(ctx context.Context, event *models.Event) error
 	CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error)
 	GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
 	UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error
@@ -115,8 +115,8 @@ func (ds *Datastore) DeleteContentItem(ctx context.Context, contentItemID string
 	return ds.Backend.DeleteContentItem(ctx, contentItemID)
 }
 
-func (ds *Datastore) CreateBundleEvent(ctx context.Context, event *models.Event) error {
-	return ds.Backend.CreateBundleEvent(ctx, event)
+func (ds *Datastore) CreateEvent(ctx context.Context, event *models.Event) error {
+	return ds.Backend.CreateEvent(ctx, event)
 }
 
 func (ds *Datastore) CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error) {

@@ -739,7 +739,7 @@ func createMockStore(data *testData) *storetest.StorerMock {
 			}
 			return nil, apierrors.ErrBundleNotFound
 		},
-		CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+		CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 			*data.events = append(*data.events, event)
 			return nil
 		},
@@ -865,8 +865,8 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 					So(responseBundle.State.String(), ShouldEqual, tc.toState.String())
 				})
 
-				Convey("And a bundle event should be created", func() {
-					So(len(mockStore.CreateBundleEventCalls()), ShouldEqual, 1+additionalEventCalls)
+				Convey("And an event should be created", func() {
+					So(len(mockStore.CreateEventCalls()), ShouldEqual, 1+additionalEventCalls)
 				})
 
 				Convey("And only matching content items should be updated", func() {
@@ -917,7 +917,7 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 					}
 				})
 
-				Convey("And bundle events should have been created", func() {
+				Convey("And events should have been created", func() {
 					So(len(*data.events), ShouldEqual, 1+additionalEventCalls)
 
 					for index := range *data.events {
@@ -986,7 +986,7 @@ func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
 					So(errResp, ShouldResemble, expectedErrResp)
 				})
 
-				Convey("And no bundle events should have been created", func() {
+				Convey("And no events should have been created", func() {
 					So(len(*data.events), ShouldEqual, 0)
 				})
 			})
@@ -1036,7 +1036,7 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 			So(errResp, ShouldResemble, expectedErrorResponse)
 		})
 
-		Convey("And no bundle events should have been created", func() {
+		Convey("And no events should have been created", func() {
 			So(len(*data.events), ShouldEqual, 0)
 		})
 	})
@@ -1151,7 +1151,7 @@ func TestCreateBundle_Success(t *testing.T) {
 					inputBundle.UpdatedAt = &now
 					return &inputBundle, nil
 				},
-				CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+				CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 					return nil
 				},
 			}
@@ -1618,7 +1618,7 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 	})
 }
 
-func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
+func TestCreateBundle_Failure_CreateEventReturnsAnError(t *testing.T) {
 	Convey("Given a valid payload", t, func() {
 		inputBundle := *validBundle
 		inputBundleJSON, err := json.Marshal(inputBundle)
@@ -1627,7 +1627,7 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 		createdBundle := *validBundle
 		createdBundle.CreatedBy = &models.User{Email: "example@example.com"}
 
-		Convey("When a POST request is made to /bundles endpoint with the payload and CreateBundleEvent returns an error", func() {
+		Convey("When a POST request is made to /bundles endpoint with the payload and CreateEvent returns an error", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
 			r.Header.Set("Authorization", "Bearer test-auth-token")
 			w := httptest.NewRecorder()
@@ -1639,8 +1639,8 @@ func TestCreateBundle_Failure_CreateBundleEventReturnsAnError(t *testing.T) {
 				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 					return nil
 				},
-				CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
-					return errors.New("failed to create bundle event")
+				CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+					return errors.New("failed to create event")
 				},
 				GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
 					return &createdBundle, nil
@@ -1869,7 +1869,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 			DeleteBundleFunc: func(ctx context.Context, id string) error {
 				return nil
 			},
-			CreateBundleEventFunc: func(ctx context.Context, event *models.Event) error {
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 		}
