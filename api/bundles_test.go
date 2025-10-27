@@ -39,7 +39,7 @@ var (
 	scheduledTime = time.Date(2125, 6, 5, 7, 0, 0, 0, time.UTC)
 	validBundle   = &models.Bundle{
 		BundleType: models.BundleTypeScheduled,
-		PreviewTeams: []models.PreviewTeam{
+		PreviewTeams: &[]models.PreviewTeam{
 			{ID: "team1"},
 			{ID: "team2"},
 		},
@@ -48,9 +48,20 @@ var (
 		Title:       "Scheduled Bundle 1",
 		ManagedBy:   models.ManagedByWagtail,
 	}
+	validBundleNoPreviewTeam = &models.Bundle{
+		BundleType:  models.BundleTypeScheduled,
+		ScheduledAt: &scheduledTime,
+		State:       models.BundleStateDraft,
+		Title:       "Scheduled Bundle 2",
+		ManagedBy:   models.ManagedByWagtail,
+	}
 )
 
 const MockAuthTokenValue = "test-auth-token"
+
+const (
+	someetag = "some-etag"
+)
 
 var MockAuthBearerHeaderValue = fmt.Sprintf("Bearer %s", MockAuthTokenValue)
 
@@ -200,7 +211,7 @@ func TestGetBundles_Success(t *testing.T) {
 				CreatedBy:     &models.User{Email: "creator@example.com"},
 				CreatedAt:     &now,
 				LastUpdatedBy: &models.User{Email: "updater@example.com"},
-				PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+				PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 				ScheduledAt:   &oneDayLater,
 				State:         models.BundleStatePublished,
 				Title:         "Scheduled Bundle 1",
@@ -213,7 +224,7 @@ func TestGetBundles_Success(t *testing.T) {
 				CreatedBy:     &models.User{Email: "creator2@example.com"},
 				CreatedAt:     &now,
 				LastUpdatedBy: &models.User{Email: "updater2@example.com"},
-				PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
+				PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
 				ScheduledAt:   &twoDaysLater,
 				State:         models.BundleStateDraft,
 				Title:         "Manual Bundle 2",
@@ -436,7 +447,7 @@ func TestGetBundle_Success(t *testing.T) {
 		LastUpdatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
-		PreviewTeams: []models.PreviewTeam{
+		PreviewTeams: &[]models.PreviewTeam{
 			{
 				ID: "c78d457e-98de-11ec-b909-0242ac120002",
 			},
@@ -458,7 +469,7 @@ func TestGetBundle_Success(t *testing.T) {
 		LastUpdatedBy: &models.User{
 			Email: "publisher@ons.gov.uk",
 		},
-		PreviewTeams: []models.PreviewTeam{
+		PreviewTeams: &[]models.PreviewTeam{
 			{
 				ID: "c78d457e-98de-11ec-b909-0242ac120003",
 			},
@@ -507,8 +518,8 @@ func TestGetBundle_Success(t *testing.T) {
 				So(response.State, ShouldEqual, validBundle.State)
 
 				So(response.PreviewTeams, ShouldNotBeNil)
-				So(len(response.PreviewTeams), ShouldEqual, 1)
-				So((response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
+				So(len(*response.PreviewTeams), ShouldEqual, 1)
+				So((*response.PreviewTeams)[0].ID, ShouldEqual, "c78d457e-98de-11ec-b909-0242ac120002")
 			})
 		})
 		Convey("When the bundle-id is valid but without ETag", func() {
@@ -1143,8 +1154,9 @@ func TestCreateBundle_Success(t *testing.T) {
 					return nil
 				},
 				GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+					//nolint:goconst //The strings aren't actually the same.
 					inputBundle.ID = "bundle1"
-					inputBundle.ETag = "some-etag"
+					inputBundle.ETag = someetag
 					inputBundle.CreatedBy = &models.User{Email: "example@example.com"}
 					inputBundle.LastUpdatedBy = &models.User{Email: "example@example.com"}
 					now := time.Now()
@@ -1174,6 +1186,67 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(createdBundle.Title, ShouldEqual, validBundle.Title)
 				So(createdBundle.UpdatedAt, ShouldNotBeNil)
 				So(createdBundle.ManagedBy, ShouldEqual, validBundle.ManagedBy)
+			})
+			Convey("And the correct headers should be set", func() {
+				So(w.Header().Get("Location"), ShouldEqual, "/bundles/bundle1")
+				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
+			})
+		})
+	})
+}
+
+func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
+	Convey("Given a valid payload", t, func() {
+		inputBundle := *validBundleNoPreviewTeam
+		inputBundleJSON, err := json.Marshal(inputBundle)
+		So(err, ShouldBeNil)
+
+		Convey("When a POST request is made to /bundles endpoint with the payload", func() {
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			mockedDatastore := &storetest.StorerMock{
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
+				},
+				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+					return nil
+				},
+				GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+					inputBundle.ID = "bundle1"
+					inputBundle.ETag = "some-etag"
+					inputBundle.CreatedBy = &models.User{Email: "example@example.com"}
+					inputBundle.LastUpdatedBy = &models.User{Email: "example@example.com"}
+					now := time.Now()
+					inputBundle.UpdatedAt = &now
+					return &inputBundle, nil
+				},
+				CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+					return nil
+				},
+			}
+			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then the response should be 201 Created with the created bundle", func() {
+				So(w.Code, ShouldEqual, http.StatusCreated)
+				var createdBundle models.Bundle
+				err := json.Unmarshal(w.Body.Bytes(), &createdBundle)
+				So(err, ShouldBeNil)
+				So(createdBundle.ID, ShouldEqual, "bundle1")
+				So(createdBundle.BundleType, ShouldEqual, validBundleNoPreviewTeam.BundleType)
+				So(createdBundle.CreatedBy.Email, ShouldEqual, "example@example.com")
+				So(createdBundle.LastUpdatedBy.Email, ShouldEqual, "example@example.com")
+				So(createdBundle.PreviewTeams, ShouldBeNil)
+				So(createdBundle.ScheduledAt, ShouldEqual, validBundleNoPreviewTeam.ScheduledAt)
+				So(createdBundle.State, ShouldEqual, validBundleNoPreviewTeam.State)
+				So(createdBundle.Title, ShouldEqual, validBundleNoPreviewTeam.Title)
+				So(createdBundle.UpdatedAt, ShouldNotBeNil)
+				So(createdBundle.ManagedBy, ShouldEqual, validBundleNoPreviewTeam.ManagedBy)
 			})
 			Convey("And the correct headers should be set", func() {
 				So(w.Header().Get("Location"), ShouldEqual, "/bundles/bundle1")
@@ -1338,13 +1411,6 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source: &models.Source{
 								Field: "/bundle_type",
-							},
-						},
-						{
-							Code:        &codeMissingParameters,
-							Description: apierrors.ErrorDescriptionMissingParameters,
-							Source: &models.Source{
-								Field: "/preview_teams",
 							},
 						},
 						{

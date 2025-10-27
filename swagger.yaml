@@ -524,7 +524,6 @@ definitions:
     type: object
     required:
       - bundle_type
-      - preview_teams
       - state
       - title
       - managed_by

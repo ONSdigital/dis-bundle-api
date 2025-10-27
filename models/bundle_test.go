@@ -21,7 +21,7 @@ var fullyPopulatedBundle = Bundle{
 	CreatedBy:     &User{Email: "example@example.com"},
 	CreatedAt:     &today,
 	LastUpdatedBy: &User{Email: "example@example.com"},
-	PreviewTeams:  []PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	PreviewTeams:  &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 	ScheduledAt:   &tomorrow,
 	State:         BundleStateDraft,
 	Title:         "Fully Populated Bundle",
@@ -33,7 +33,7 @@ var fullyPopulatedBundle = Bundle{
 var minimallyPopulatedBundle = Bundle{
 	ID:           "456",
 	BundleType:   BundleTypeManual,
-	PreviewTeams: []PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+	PreviewTeams: &[]PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 	State:        BundleStateDraft,
 	Title:        "Minimally Populated Bundle",
 	ManagedBy:    ManagedByWagtail,
@@ -127,7 +127,7 @@ func TestCleanBundle_Success(t *testing.T) {
 			BundleType:    BundleType(" MANUAL "),
 			CreatedBy:     &User{Email: " test@example.com "},
 			LastUpdatedBy: &User{Email: " test@example.com "},
-			PreviewTeams:  []PreviewTeam{{ID: " team1 "}, {ID: " team2 "}},
+			PreviewTeams:  &[]PreviewTeam{{ID: " team1 "}, {ID: " team2 "}},
 			State:         BundleState(" DRAFT "),
 			Title:         " Bundle Title ",
 			ManagedBy:     ManagedBy(" WAGTAIL "),
@@ -141,8 +141,9 @@ func TestCleanBundle_Success(t *testing.T) {
 				So(bundle.BundleType, ShouldEqual, BundleTypeManual)
 				So(bundle.CreatedBy.Email, ShouldEqual, "test@example.com")
 				So(bundle.LastUpdatedBy.Email, ShouldEqual, "test@example.com")
-				So(bundle.PreviewTeams[0].ID, ShouldEqual, "team1")
-				So(bundle.PreviewTeams[1].ID, ShouldEqual, "team2")
+
+				So((*bundle.PreviewTeams)[0].ID, ShouldEqual, " team1 ")
+				So((*bundle.PreviewTeams)[1].ID, ShouldEqual, " team2 ")
 				So(bundle.State, ShouldEqual, BundleStateDraft)
 				So(bundle.Title, ShouldEqual, "Bundle Title")
 				So(bundle.ManagedBy, ShouldEqual, ManagedByWagtail)
@@ -179,10 +180,9 @@ func TestValidateBundle_Failure(t *testing.T) {
 				So(err[1].Source.Field, ShouldEqual, "/bundle_type")
 				So(err[2].Source.Field, ShouldEqual, "/created_by/email")
 				So(err[3].Source.Field, ShouldEqual, "/last_updated_by/email")
-				So(err[4].Source.Field, ShouldEqual, "/preview_teams")
-				So(err[5].Source.Field, ShouldEqual, "/state")
-				So(err[6].Source.Field, ShouldEqual, "/title")
-				So(err[7].Source.Field, ShouldEqual, "/managed_by")
+				So(err[4].Source.Field, ShouldEqual, "/state")
+				So(err[5].Source.Field, ShouldEqual, "/title")
+				So(err[6].Source.Field, ShouldEqual, "/managed_by")
 			})
 		})
 	})
@@ -211,7 +211,7 @@ func TestValidateBundle_Failure_MissingPreviewTeamsID(t *testing.T) {
 		bundle := Bundle{
 			ID:           "789",
 			BundleType:   BundleTypeManual,
-			PreviewTeams: []PreviewTeam{{ID: ""}},
+			PreviewTeams: &[]PreviewTeam{{ID: ""}},
 			Title:        "Bundle with Missing Preview Teams ID",
 			ManagedBy:    ManagedByWagtail,
 		}

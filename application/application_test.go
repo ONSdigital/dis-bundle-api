@@ -864,7 +864,7 @@ func TestGetBundleContents(t *testing.T) {
 					CreatedBy:     &models.User{Email: "creator@example.com"},
 					CreatedAt:     &t,
 					LastUpdatedBy: &models.User{Email: "updater@example.com"},
-					PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+					PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 					State:         state,
 					UpdatedAt:     &t,
 				}, nil

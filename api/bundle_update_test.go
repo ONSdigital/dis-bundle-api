@@ -20,11 +20,10 @@ import (
 )
 
 const (
-	bundle1  = "bundle-1"
-	dataset1 = "dataset-1"
-	title1   = "title1"
-	newEtag  = "new-etag"
-	content1 = "content1"
+	bundle1   = "bundle-1"
+	title1    = "title1"
+	newEtag   = "new-etag"
+	urlString = "/bundles/bundle-1"
 )
 
 func TestPutBundle_Success(t *testing.T) {
@@ -42,7 +41,7 @@ func TestPutBundle_Success(t *testing.T) {
 			CreatedBy:    &models.User{Email: "creator@example.com"},
 			UpdatedAt:    &now,
 			ManagedBy:    models.ManagedByDataAdmin,
-			PreviewTeams: []models.PreviewTeam{{ID: "team-1"}},
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
 
 		updateRequest := &models.Bundle{
@@ -50,7 +49,7 @@ func TestPutBundle_Success(t *testing.T) {
 			BundleType:   models.BundleTypeManual,
 			State:        models.BundleStateDraft,
 			ManagedBy:    models.ManagedByDataAdmin,
-			PreviewTeams: []models.PreviewTeam{{ID: "team-1"}},
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
 
 		updateRequestJSON, err := json.Marshal(updateRequest)
@@ -86,7 +85,7 @@ func TestPutBundle_Success(t *testing.T) {
 				return nil, errors.New("failed to update ETag")
 			},
 			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
-				if event.Action == models.ActionUpdate && event.Resource == "/bundles/bundle-1" {
+				if event.Action == models.ActionUpdate && event.Resource == urlString {
 					return nil
 				}
 				return errors.New("failed to create event")
@@ -118,6 +117,101 @@ func TestPutBundle_Success(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(response.ID, ShouldEqual, bundle1)
 				So(response.Title, ShouldEqual, title1)
+			})
+		})
+	})
+}
+
+func TestPutBundleNoPreviewTeam_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a valid PUT request to /bundles/{bundle-id}", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:         bundle1,
+			Title:      "Original Title",
+			BundleType: models.BundleTypeManual,
+			ETag:       "original-etag",
+			State:      models.BundleStateDraft,
+			CreatedAt:  &now,
+			CreatedBy:  &models.User{Email: "creator@example.com"},
+			UpdatedAt:  &now,
+			ManagedBy:  models.ManagedByDataAdmin,
+		}
+
+		updateRequest := &models.Bundle{
+			Title:      title1,
+			BundleType: models.BundleTypeManual,
+			State:      models.BundleStateDraft,
+			ManagedBy:  models.ManagedByDataAdmin,
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				if id == bundle1 {
+					return existingBundle, nil
+				}
+				return nil, apierrors.ErrBundleNotFound
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				if title == title1 && excludeID == bundle1 {
+					return false, nil
+				}
+				return false, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				if bundleID == bundle1 {
+					bundle.ID = bundleID
+					return bundle, nil
+				}
+				return nil, errors.New("failed to update bundle")
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				if bundleID == bundle1 {
+					updatedBundle := *existingBundle
+					updatedBundle.Title = title1
+					updatedBundle.ETag = newEtag
+					return &updatedBundle, nil
+				}
+				return nil, errors.New("failed to update ETag")
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				if event.Action == models.ActionUpdate && event.Resource == urlString {
+					return nil
+				}
+				return errors.New("failed to create event")
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+
+		Convey("When putBundle is called with valid data", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK with updated bundle", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+				So(w.Header().Get("ETag"), ShouldEqual, newEtag)
+
+				var response models.Bundle
+				err := json.NewDecoder(w.Body).Decode(&response)
+				So(err, ShouldBeNil)
+				So(response.ID, ShouldEqual, bundle1)
+				So(response.Title, ShouldEqual, title1)
+				So(response.PreviewTeams, ShouldBeNil)
 			})
 		})
 	})
@@ -292,7 +386,7 @@ func TestPutBundle_BundleNotFound_Failure(t *testing.T) {
 			BundleType:   models.BundleTypeManual,
 			State:        models.BundleStateDraft,
 			ManagedBy:    models.ManagedByDataAdmin,
-			PreviewTeams: []models.PreviewTeam{{ID: "team-1"}},
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
 
 		updateRequestJSON, err := json.Marshal(updateRequest)
@@ -346,7 +440,7 @@ func TestPutBundle_AuthenticationFailure(t *testing.T) {
 			BundleType:   models.BundleTypeManual,
 			State:        models.BundleStateDraft,
 			ManagedBy:    models.ManagedByDataAdmin,
-			PreviewTeams: []models.PreviewTeam{{ID: "team-1"}},
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
 
 		updateRequestJSON, err := json.Marshal(updateRequest)
@@ -445,7 +539,6 @@ func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
 				So(errorFields, ShouldContain, "/bundle_type")
 				So(errorFields, ShouldContain, "/title")
 				So(errorFields, ShouldContain, "/managed_by")
-				So(errorFields, ShouldContain, "/preview_teams")
 			})
 		})
 	})

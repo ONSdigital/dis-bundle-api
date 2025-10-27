@@ -12,18 +12,18 @@ import (
 
 // Bundle represents the response body when retrieving a bundle
 type Bundle struct {
-	ID            string        `bson:"id"                        json:"id"`
-	BundleType    BundleType    `bson:"bundle_type"               json:"bundle_type"`
-	CreatedBy     *User         `bson:"created_by,omitempty"      json:"created_by,omitempty"`
-	CreatedAt     *time.Time    `bson:"created_at,omitempty"      json:"created_at,omitempty"`
-	LastUpdatedBy *User         `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
-	PreviewTeams  []PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
-	ScheduledAt   *time.Time    `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
-	State         BundleState   `bson:"state"                     json:"state"`
-	Title         string        `bson:"title"                     json:"title"`
-	UpdatedAt     *time.Time    `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
-	ManagedBy     ManagedBy     `bson:"managed_by"                json:"managed_by"`
-	ETag          string        `bson:"e_tag"                     json:"-"`
+	ID            string         `bson:"id"                        json:"id"`
+	BundleType    BundleType     `bson:"bundle_type"               json:"bundle_type"`
+	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
+	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
+	LastUpdatedBy *User          `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
+	PreviewTeams  *[]PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
+	ScheduledAt   *time.Time     `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
+	State         BundleState    `bson:"state"                     json:"state"`
+	Title         string         `bson:"title"                     json:"title"`
+	UpdatedAt     *time.Time     `bson:"updated_at,omitempty"      json:"updated_at,omitempty"`
+	ManagedBy     ManagedBy      `bson:"managed_by"                json:"managed_by"`
+	ETag          string         `bson:"e_tag"                     json:"-"`
 }
 
 // Bundles represents a list of bundles
@@ -95,9 +95,9 @@ func CleanBundle(bundle *Bundle) {
 		bundle.LastUpdatedBy.Email = strings.TrimSpace(bundle.LastUpdatedBy.Email)
 	}
 
-	if len(bundle.PreviewTeams) > 0 {
-		for i := range bundle.PreviewTeams {
-			bundle.PreviewTeams[i].ID = strings.TrimSpace(bundle.PreviewTeams[i].ID)
+	if bundle.PreviewTeams != nil {
+		for _, preview := range *bundle.PreviewTeams {
+			preview.ID = strings.TrimSpace(preview.ID)
 		}
 	}
 
@@ -165,16 +165,8 @@ func ValidateBundle(bundle *Bundle) []*Error {
 		})
 	}
 
-	if len(bundle.PreviewTeams) == 0 {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-			Code:        &codeMissingParameters,
-			Description: errs.ErrorDescriptionMissingParameters,
-			Source: &Source{
-				Field: "/preview_teams",
-			},
-		})
-	} else {
-		for _, team := range bundle.PreviewTeams {
+	if bundle.PreviewTeams != nil {
+		for _, team := range *bundle.PreviewTeams {
 			if team.ID == "" {
 				invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 					Code:        &codeMissingParameters,

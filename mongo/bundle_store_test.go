@@ -27,7 +27,7 @@ func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, e
 			CreatedBy:     &models.User{Email: "user1@ons.gov.uk"},
 			CreatedAt:     &now,
 			LastUpdatedBy: &models.User{Email: "user1@ons.gov.uk"},
-			PreviewTeams:  []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 			ScheduledAt:   &oneDayFromNow,
 			State:         models.BundleStateDraft,
 			Title:         "Scheduled Bundle 1",
@@ -40,7 +40,7 @@ func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, e
 			CreatedBy:     &models.User{Email: "user2@ons.gov.uk"},
 			CreatedAt:     &now,
 			LastUpdatedBy: &models.User{Email: "user2@ons.gov.uk"},
-			PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
 			ScheduledAt:   &twoDaysFromNow,
 			State:         models.BundleStateDraft,
 			Title:         "Manual Bundle 2",
@@ -53,7 +53,7 @@ func setupBundleTestData(ctx context.Context, mongo *Mongo) ([]*models.Bundle, e
 			CreatedBy:     &models.User{Email: "user2@ons.gov.uk"},
 			CreatedAt:     &now,
 			LastUpdatedBy: &models.User{Email: "user2@ons.gov.uk"},
-			PreviewTeams:  []models.PreviewTeam{{ID: "team3"}},
+			PreviewTeams:  &[]models.PreviewTeam{{ID: "team3"}},
 			ScheduledAt:   nil,
 			State:         models.BundleStateApproved,
 			Title:         "Manual Bundle 3",
@@ -292,7 +292,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			newBundle := &models.Bundle{
 				ID:           "NewBundle",
 				BundleType:   models.BundleTypeManual,
-				PreviewTeams: []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
+				PreviewTeams: &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}},
 				Title:        "New Bundle",
 				ManagedBy:    models.ManagedByWagtail,
 				ETag:         "some-etag",
@@ -306,7 +306,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(returnedBundle.ID, ShouldEqual, "NewBundle")
 				So(returnedBundle.BundleType, ShouldEqual, models.BundleTypeManual)
-				So(returnedBundle.PreviewTeams, ShouldResemble, []models.PreviewTeam{{ID: "team1"}, {ID: "team2"}})
+				So(returnedBundle.PreviewTeams, ShouldResemble, &[]models.PreviewTeam{{ID: "team1"}, {ID: "team2"}})
 				So(returnedBundle.Title, ShouldEqual, "New Bundle")
 				So(returnedBundle.ManagedBy, ShouldEqual, models.ManagedByWagtail)
 				So(returnedBundle.ETag, ShouldEqual, "some-etag")

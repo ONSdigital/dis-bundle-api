@@ -56,6 +56,26 @@ Feature: Create bundle - POST /Bundles
         And the response header "Location" should not be empty
         And the total number of events should be 1
         And the number of events with action "CREATE" and datatype "bundle" should be 1
+    
+    Scenario: POST /bundles successfully with no preview team
+        Given I am an admin user
+        When I POST "/bundles"
+            """
+                {
+                    "bundle_type": "SCHEDULED",
+                    "scheduled_at": "2125-07-05T07:00:00.000Z",
+                    "state": "DRAFT",
+                    "title": "Title of the Bundle",
+                    "managed_by": "WAGTAIL"
+                }
+            """
+        Then the HTTP status code should be "201"
+        And the response header "Content-Type" should be "application/json"
+        And the response header "Cache-Control" should be "no-store"
+        And the response header "ETag" should not be empty
+        And the response header "Location" should not be empty
+        And the total number of events should be 1
+        And the number of events with action "CREATE" and datatype "bundle" should be 1
 
     Scenario: POST /bundles invalid body (missing double quotes)
         Given I am an admin user
@@ -243,13 +263,6 @@ Feature: Create bundle - POST /Bundles
                             "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
                             "source": {
                                 "field": "/bundle_type"
-                            }
-                        },
-                        {
-                            "code": "MissingParameters",
-                            "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
-                            "source": {
-                                "field": "/preview_teams"
                             }
                         },
                         {
