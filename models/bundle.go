@@ -17,7 +17,7 @@ type Bundle struct {
 	CreatedBy     *User          `bson:"created_by,omitempty"      json:"created_by,omitempty"`
 	CreatedAt     *time.Time     `bson:"created_at,omitempty"      json:"created_at,omitempty"`
 	LastUpdatedBy *User          `bson:"last_updated_by,omitempty" json:"last_updated_by,omitempty"`
-	PreviewTeams  *[]PreviewTeam `bson:"preview_teams"             json:"preview_teams"`
+	PreviewTeams  *[]PreviewTeam `bson:"preview_teams,omitempty"   json:"preview_teams,omitempty"`
 	ScheduledAt   *time.Time     `bson:"scheduled_at,omitempty"    json:"scheduled_at,omitempty"`
 	State         BundleState    `bson:"state"                     json:"state"`
 	Title         string         `bson:"title"                     json:"title"`

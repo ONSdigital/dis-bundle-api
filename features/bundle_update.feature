@@ -144,7 +144,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                     "email": "janedoe@example.com"
                 },
                 "managed_by": "DATA-ADMIN",
-                "preview_teams": null,
                 "state": "DRAFT",
                 "title": "Updated Bundle Title",
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
