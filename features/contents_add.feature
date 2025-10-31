@@ -373,7 +373,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "errors": [
                     {
                         "code": "Conflict",
-                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
+                        "description": "This edition/version of a series already exists in another bundle."
                     }
                 ]
             }

@@ -668,7 +668,7 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: apierrors.ErrorDescriptionConflict,
+							Description: apierrors.ErrorDescriptionVersionAlreadyExists,
 						},
 					},
 				}

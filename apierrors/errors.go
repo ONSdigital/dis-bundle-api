@@ -28,6 +28,9 @@ const (
 	// Bundle Error Descriptions
 	ErrorDescriptionBundleTitleAlreadyExist = "A bundle with the same title already exists."
 
+	// Bundle Contents Error Descriptions
+	ErrorDescriptionVersionAlreadyExists = "This edition/version of a series already exists in another bundle."
+
 	// State Error Descriptions
 	ErrorDescriptionInvalidStateTransition      = "Unable to process request due to invalid state transition."
 	ErrorDescriptionStateNotAllowedToTransition = "state not allowed to transition."

@@ -136,7 +136,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		code := models.CodeConflict
 		errInfo := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionConflict,
+			Description: apierrors.ErrorDescriptionVersionAlreadyExists,
 		}
 		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
 		return
