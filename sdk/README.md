@@ -4,6 +4,14 @@
 
 This API contains a client with functions for interacting with the Bundle API from other applications. It provides methods to retrieve and update bundle information.
 
+### Available methods
+
+| Method | Description |
+|--------|-------------|
+| [GetBundles](#getbundles) | Retrieves a paginated list of bundles, optionally filtered by scheduled date |
+| [GetBundle](#getbundle) | Retrieves a single bundle by ID |
+| [PutBundleState](#putbundlestate) | Updates the state of a bundle (DRAFT, IN_REVIEW, APPROVED, PUBLISHED) |
+
 ## Example Use of the Client
 
 ```go
