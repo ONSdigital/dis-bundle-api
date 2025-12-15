@@ -435,8 +435,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 			UserID: mockUserID,
 		},
 		Headers: datasetAPISDK.Headers{
-			ServiceToken:    mockServiceToken,
-			UserAccessToken: mockServiceToken,
+			AccessToken: mockServiceToken,
 		},
 	}
 
@@ -655,8 +654,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			UserID: mockUserID,
 		},
 		Headers: datasetAPISDK.Headers{
-			ServiceToken:    mockServiceToken,
-			UserAccessToken: mockServiceToken,
+			AccessToken: mockServiceToken,
 		},
 	}
 

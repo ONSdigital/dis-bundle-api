@@ -500,7 +500,7 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 	}
 
 	for _, contentItem := range contentItems {
-		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", contentItem.Metadata.DatasetID)
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, contentItem.Metadata.DatasetID)
 		if err != nil {
 			log.Error(ctx, "dataset api client call failed", err, log.Data{
 				"content_item_id": contentItem.ID,

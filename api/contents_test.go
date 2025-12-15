@@ -1827,7 +1827,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		}
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID string, DatasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, DatasetID string) (datasetAPIModels.Dataset, error) {
 				dataset := datasetAPIModels.Dataset{
 					ID:    "dataset-10",
 					Title: "Test Title",
@@ -2007,7 +2007,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 
 		// Mock dataset API client to return not found error
 		mockedDatasetAPI := &datasetAPISDKMock.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID string, DatasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, DatasetID string) (datasetAPIModels.Dataset, error) {
 				dataset := datasetAPIModels.Dataset{}
 				return dataset, errors.New("Dataset not found")
 			},

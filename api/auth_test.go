@@ -52,8 +52,7 @@ func TestGetAuthEntityData_Success(t *testing.T) {
 			})
 
 			Convey("And it should contain the correct Headers", func() {
-				So(authEntityData.Headers.ServiceToken, ShouldBeEmpty)
-				So(authEntityData.Headers.UserAccessToken, ShouldEqual, BearerTokenValue)
+				So(authEntityData.Headers.AccessToken, ShouldEqual, BearerTokenValue)
 			})
 		})
 

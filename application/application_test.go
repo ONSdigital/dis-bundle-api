@@ -905,7 +905,7 @@ func TestGetBundleContents(t *testing.T) {
 				}}, 1, nil
 			}
 
-			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{
 					ID:          datasetID,
 					Title:       "Dataset Title",
@@ -944,7 +944,7 @@ func TestGetBundleContents(t *testing.T) {
 				}}, 1, nil
 			}
 
-			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			mockDatasetAPI.GetDatasetFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{}, errors.New("dataset fetch failed")
 			}
 
@@ -1375,8 +1375,7 @@ func TestPutBundle_Success(t *testing.T) {
 				UserID: userEmail,
 			},
 			Headers: datasetAPISDK.Headers{
-				ServiceToken:    "test-token",
-				UserAccessToken: "test-token",
+				AccessToken: "test-token",
 			},
 		}
 
@@ -1578,7 +1577,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 		}
 
 		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{
 					ID:    datasetID,
 					Title: "New Dataset Title",
@@ -1593,7 +1592,7 @@ func TestUpdateContentItemsWithDatasetInfo_Success(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{AccessToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should update content items successfully", func() {
@@ -1623,7 +1622,7 @@ func TestUpdateContentItemsWithDatasetInfo_NoContentItems(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{AccessToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should complete without error", func() {
@@ -1656,7 +1655,7 @@ func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 		}
 
 		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
-			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+			GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
 				return datasetAPIModels.Dataset{}, errors.New("dataset API failure")
 			},
 		}
@@ -1667,7 +1666,7 @@ func TestUpdateContentItemsWithDatasetInfo_DatasetAPIFailure(t *testing.T) {
 		}
 
 		Convey("When UpdateContentItemsWithDatasetInfo is called", func() {
-			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{AccessToken: "test-token"}
 			err := stateMachine.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authHeaders)
 
 			Convey("Then it should complete with error and log the failure", func() {
@@ -1699,7 +1698,7 @@ func TestUpdateDatasetVersionReleaseDate(t *testing.T) {
 		}
 
 		Convey("When UpdateDatasetVersionReleaseDate is called and PutVersion is successful", func() {
-			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{AccessToken: "test-token"}
 			err := stateMachine.UpdateDatasetVersionReleaseDate(ctx, &today, "1", "1", 1, authHeaders)
 
 			Convey("Then there should be no error", func() {
@@ -1708,7 +1707,7 @@ func TestUpdateDatasetVersionReleaseDate(t *testing.T) {
 		})
 
 		Convey("When UpdateDatasetVersionReleaseDate is called and PutVersion fails", func() {
-			authHeaders := datasetAPISDK.Headers{ServiceToken: "test-token"}
+			authHeaders := datasetAPISDK.Headers{AccessToken: "test-token"}
 			err := stateMachine.UpdateDatasetVersionReleaseDate(ctx, &today, "0", "1", 1, authHeaders)
 
 			Convey("Then it should return an error", func() {

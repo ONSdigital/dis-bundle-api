@@ -8,7 +8,7 @@ import (
 )
 
 func (s *StateMachineBundleAPI) GetDataset(ctx context.Context, authHeaders datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
-	return s.DatasetAPIClient.GetDataset(ctx, authHeaders, "", datasetID)
+	return s.DatasetAPIClient.GetDataset(ctx, authHeaders, datasetID)
 }
 
 func (s *StateMachineBundleAPI) GetVersion(ctx context.Context, authHeaders datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {

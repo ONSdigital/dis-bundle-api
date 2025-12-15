@@ -12,23 +12,14 @@ type AuthEntityData struct {
 }
 
 func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string, isServiceAuth bool) *AuthEntityData {
-	// Need to set one value for either service token or florence token
-	// Setting them both results in the florence token being checked first which doesn't work for service auth
-	var headers datasetAPISDK.Headers
-	if isServiceAuth {
-		headers = datasetAPISDK.Headers{
-			ServiceToken: serviceToken,
-		}
-	} else {
-		headers = datasetAPISDK.Headers{
-			UserAccessToken: serviceToken,
-		}
+	headers := datasetAPISDK.Headers{
+		AccessToken: serviceToken,
 	}
 
 	return &AuthEntityData{
-		EntityData:    entityData,
-		IsServiceAuth: isServiceAuth,
-		Headers:       headers,
+		EntityData: entityData,
+		//	IsServiceAuth: isServiceAuth,
+		Headers: headers,
 	}
 }
 

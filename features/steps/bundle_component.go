@@ -246,7 +246,7 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 			}
 			return version, nil
 		},
-		GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, collectionID, datasetID string) (datasetAPIModels.Dataset, error) {
+		GetDatasetFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID string) (datasetAPIModels.Dataset, error) {
 			if datasetID == "dataset-id-does-not-exist" {
 				return datasetAPIModels.Dataset{}, errors.New("dataset not found")
 			}
