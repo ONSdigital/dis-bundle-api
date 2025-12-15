@@ -18,8 +18,7 @@ func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken
 
 	return &AuthEntityData{
 		EntityData: entityData,
-		//	IsServiceAuth: isServiceAuth,
-		Headers: headers,
+		Headers:    headers,
 	}
 }
 
