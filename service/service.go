@@ -172,7 +172,6 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 }
 
 // CreateMiddleware creates an Alice middleware chain of handlers
-// to forward collectionID from cookie from header
 func (svc *Service) createMiddleware() alice.Chain {
 	// healthcheck
 	healthcheckHandler := healthcheckMiddleware(svc.HealthCheck.Handler, "/health")
