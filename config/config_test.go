@@ -34,7 +34,6 @@ func TestSpec(t *testing.T) {
 				So(cfg.DefaultLimit, ShouldEqual, 20)
 				So(cfg.DefaultOffset, ShouldEqual, 0)
 				So(cfg.EnablePermissionsAuth, ShouldBeFalse)
-				So(cfg.SlackEnabled, ShouldBeFalse)
 				So(cfg.ZebedeeURL, ShouldEqual, "http://localhost:8082")
 				So(cfg.ZebedeeClientTimeout, ShouldEqual, 30*time.Second)
 
@@ -56,6 +55,7 @@ func TestSpec(t *testing.T) {
 
 				So(cfg.AuthConfig, ShouldResemble, authorisation.NewDefaultConfig())
 
+				So(cfg.DataBundlePublicationServiceSlackAPIToken, ShouldEqual, "test-data-bundle-publication-service-slack-api-token")
 				So(cfg.SlackConfig, ShouldResemble, &slack.SlackConfig{})
 			})
 		})

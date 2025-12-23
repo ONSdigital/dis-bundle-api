@@ -31,12 +31,12 @@ type Config struct {
 	DefaultLimit               int           `envconfig:"DEFAULT_LIMIT"`
 	DefaultOffset              int           `envconfig:"DEFAULT_OFFSET"`
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
-	SlackEnabled               bool          `envconfig:"SLACK_ENABLED"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	ZebedeeClientTimeout       time.Duration `envconfig:"ZEBEDEE_CLIENT_TIMEOUT"`
 	MongoConfig
-	AuthConfig  *authorisation.Config
-	SlackConfig *slack.SlackConfig
+	AuthConfig                                *authorisation.Config
+	DataBundlePublicationServiceSlackAPIToken string `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_API_TOKEN"`
+	SlackConfig                               *slack.SlackConfig
 }
 
 var cfg *Config
@@ -86,7 +86,8 @@ func Get() (*Config, error) {
 				},
 			},
 		},
-		AuthConfig:  authorisation.NewDefaultConfig(),
+		AuthConfig: authorisation.NewDefaultConfig(),
+		DataBundlePublicationServiceSlackAPIToken: "test-data-bundle-publication-service-slack-api-token",
 		SlackConfig: &slack.SlackConfig{},
 	}
 
