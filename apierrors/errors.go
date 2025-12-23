@@ -97,6 +97,9 @@ var (
 	ErrScheduledAtSet      = errors.New("scheduled_at should not be set for manual bundles")
 	ErrScheduledAtInPast   = errors.New("scheduled_at cannot be in the past")
 
+	// Role errors
+	ErrInvalidRole = errors.New("invalid role provided")
+
 	// Other errors
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 )
