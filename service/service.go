@@ -14,6 +14,7 @@ import (
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
@@ -27,7 +28,8 @@ type Service struct {
 	Router                *mux.Router
 	API                   *api.BundleAPI
 	datasetAPIClient      datasetAPISDK.Clienter
-	slackNotifier         slack.Notifier
+	permissionsAPIClient  permissionsAPISDK.Clienter
+	DataBundleSlackClient slack.Clienter
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
@@ -119,11 +121,28 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 		return err
 	}
 
-	// Get Datastore
-	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
-
 	// Create Zebedee client
 	svc.ZebedeeClient = health.NewClientWithClienter("Zebedee", cfg.ZebedeeURL, dphttp.ClientWithTimeout(dphttp.NewClient(), cfg.ZebedeeClientTimeout))
+
+	// Get Dataset API Client
+	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+
+	// Get Permissions API Client
+	svc.permissionsAPIClient = svc.ServiceList.GetPermissionsAPIClient(cfg.AuthConfig.PermissionsAPIURL)
+
+	// Get Data Bundle Slack Client
+	svc.DataBundleSlackClient, err = svc.ServiceList.GetDataBundleSlackClient(cfg.SlackConfig, cfg.DataBundlePublicationServiceSlackAPIToken)
+	if err != nil {
+		log.Fatal(ctx, "could not instantiate data bundle slack client", err)
+		return err
+	}
+
+	// Get Authorisation Middleware
+	authorisation, err := svc.ServiceList.GetAuthorisationMiddleware(ctx, cfg.AuthConfig)
+	if err != nil {
+		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
+		return err
+	}
 
 	// Get HealthCheck
 	svc.HealthCheck, err = svc.ServiceList.GetHealthCheck(svc.Config, buildTime, gitCommit, version)
@@ -132,30 +151,22 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 		return err
 	}
 
-	if err := svc.registerCheckers(ctx); err != nil {
-		return errors.Wrap(err, "unable to register checkers")
-	}
 	// Get HTTP Server and create middleware
 	r := mux.NewRouter()
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
-	// Get Dataset API Client
-	svc.datasetAPIClient = svc.ServiceList.GetDatasetAPIClient(cfg.DatasetAPIURL)
+	// Register Health Checkers
+	if err := svc.registerCheckers(ctx); err != nil {
+		return errors.Wrap(err, "unable to register checkers")
+	}
 
-	// Get Slack Notifier
-	svc.slackNotifier = svc.ServiceList.GetSlackNotifier(cfg.SlackConfig)
+	// Get Datastore
+	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
 
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.slackNotifier)
-
-	// Get Permissions
-	authorisation, err := svc.ServiceList.Init.DoGetAuthorisationMiddleware(ctx, cfg.AuthConfig)
-	if err != nil {
-		log.Fatal(ctx, "could not instantiate authorisation middleware", err)
-		return err
-	}
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.DataBundleSlackClient)
 
 	// Setup API
 	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, authorisation, svc.ZebedeeClient.Client)
@@ -247,15 +258,23 @@ func (svc *Service) Close(ctx context.Context) error {
 
 func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 	hasErrors := false
-	// TODO: add other health checks here, as per dp-upload-service
+
 	if err = svc.HealthCheck.AddCheck("Mongo DB", svc.mongoDB.Checker); err != nil {
 		hasErrors = true
 		log.Error(ctx, "error adding check for mongo db", err)
 	}
+
 	if err = svc.HealthCheck.AddCheck("Zebedee", svc.ZebedeeClient.Checker); err != nil {
 		hasErrors = true
 		log.Error(ctx, "error adding check for zebedee", err)
 	}
+
+	if err = svc.HealthCheck.AddCheck("Dataset API Client", svc.datasetAPIClient.Checker); err != nil {
+		hasErrors = true
+		log.Error(ctx, "error adding check for dataset api client", err)
+	}
+
+	// TODO: Add Permissions API Client checker when available in dp-permissions-api sdk
 
 	if hasErrors {
 		return errors.New("Error(s) registering checkers for healthcheck")

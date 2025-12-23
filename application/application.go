@@ -15,22 +15,25 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
 type StateMachineBundleAPI struct {
-	Datastore        store.Datastore
-	StateMachine     *StateMachine
-	DatasetAPIClient datasetAPISDK.Clienter
-	SlackNotifier    slack.Notifier
+	Datastore             store.Datastore
+	StateMachine          *StateMachine
+	DatasetAPIClient      datasetAPISDK.Clienter
+	PermissionsAPIClient  permissionsAPISDK.Clienter
+	DataBundleSlackClient slack.Clienter
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, slackNotifier slack.Notifier) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
-		Datastore:        datastore,
-		StateMachine:     stateMachine,
-		DatasetAPIClient: datasetAPIClient,
-		SlackNotifier:    slackNotifier,
+		Datastore:             datastore,
+		StateMachine:          stateMachine,
+		DatasetAPIClient:      datasetAPIClient,
+		PermissionsAPIClient:  permissionsAPIClient,
+		DataBundleSlackClient: dataBundleSlackClient,
 	}
 }
 
@@ -143,7 +146,10 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 	if err != nil {
 		// send slack notification only when there is an error going from approved to published
 		if bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String() {
-			_ = s.SlackNotifier.SendError(ctx, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+			err := s.DataBundleSlackClient.SendError(ctx, s.DataBundleSlackClient.Channels().AlarmChannel, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+			if err != nil {
+				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+			}
 		}
 		return nil, err
 	}
@@ -373,7 +379,7 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 
 	for _, contentItem := range contentResults {
 		datasetID := contentItem.Metadata.DatasetID
-		dataset, err := s.GetDataset(ctx, authHeaders, datasetID)
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, datasetID)
 
 		if err != nil {
 			log.Error(ctx, "failed to fetch dataset", err, log.Data{"dataset_id": datasetID})
