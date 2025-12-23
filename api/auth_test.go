@@ -10,6 +10,7 @@ import (
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	"github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -39,7 +40,7 @@ func TestGetAuthEntityData_Success(t *testing.T) {
 
 	dataStore := &store.Datastore{}
 
-	api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, false)
+	api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, &mockAuthMiddleware, false)
 
 	Convey("When GetAuthEntityData is called with a valid Authorization header", t, func() {
 		authEntityData, err := api.GetAuthEntityData(&r)
@@ -81,7 +82,7 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 			r.Header.Set("Authorization", BearerToken)
 			dataStore := &store.Datastore{}
 
-			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
+			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
 
 			entityData, err := api.GetAuthEntityData(&r)
 
@@ -101,7 +102,7 @@ func TestGetAuthEntityData_Failure(t *testing.T) {
 
 			dataStore := &store.Datastore{}
 
-			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
+			api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, &mockAuthMiddleware, true)
 
 			entityData, err := api.GetAuthEntityData(&r)
 

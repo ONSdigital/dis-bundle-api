@@ -71,7 +71,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = api.stateMachineBundleAPI.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
+	_, err = api.stateMachineBundleAPI.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "dataset not found"):

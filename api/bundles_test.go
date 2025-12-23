@@ -30,7 +30,10 @@ import (
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
 	dprequest "github.com/ONSdigital/dp-net/v3/request"
-	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
+
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -65,13 +68,13 @@ const (
 
 var MockAuthBearerHeaderValue = fmt.Sprintf("Bearer %s", MockAuthTokenValue)
 
-type ParseFuncHandler = func(token string) (*permissionsSDK.EntityData, error)
+type ParseFuncHandler = func(token string) (*permissionsAPISDK.EntityData, error)
 
 func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *authorisationMock.MiddlewareMock {
 	if parseFunc == nil {
-		parseFunc = func(token string) (*permissionsSDK.EntityData, error) {
+		parseFunc = func(token string) (*permissionsAPISDK.EntityData, error) {
 			if token == MockAuthTokenValue {
-				return &permissionsSDK.EntityData{
+				return &permissionsAPISDK.EntityData{
 					UserID: "User123",
 				}, nil
 			}
@@ -100,14 +103,14 @@ func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *author
 	}
 }
 
-func GetBundleAPIWithMocks(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, validateAuth bool) *BundleAPI {
+func GetBundleAPIWithMocks(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, validateAuth bool) *BundleAPI {
 	authMiddleware := newAuthMiddlwareMock(validateAuth, nil)
-	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, authMiddleware, false)
+	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, permissionsAPIClient, authMiddleware, false)
 }
 
-func GetBundleAPIWithMocksWhereAuthFails(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, validateAuth bool) *BundleAPI {
+func GetBundleAPIWithMocksWhereAuthFails(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, validateAuth bool) *BundleAPI {
 	authMiddleware := newAuthMiddlwareMock(validateAuth, nil)
-	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, authMiddleware, true)
+	return GetBundleAPIWithMocksWithAuthMiddleware(datastore, datasetAPIClient, permissionsAPIClient, authMiddleware, true)
 }
 
 // valid identity response for testing
@@ -135,7 +138,7 @@ func createHTTPClientMock(retCode int, retBody interface{}) *dphttp.ClienterMock
 	}
 }
 
-func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, authMiddleware *authorisationMock.MiddlewareMock, serviceAuthFails bool) *BundleAPI {
+func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, authMiddleware *authorisationMock.MiddlewareMock, serviceAuthFails bool) *BundleAPI {
 	ctx := context.Background()
 	cfg := &config.Config{
 		DefaultMaxLimit: 100,
@@ -174,9 +177,10 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
 
 	stateMachineBundleAPI := &application.StateMachineBundleAPI{
-		Datastore:        datastore,
-		StateMachine:     stateMachine,
-		DatasetAPIClient: datasetAPIClient,
+		Datastore:            datastore,
+		StateMachine:         stateMachine,
+		DatasetAPIClient:     datasetAPIClient,
+		PermissionsAPIClient: permissionsAPIClient,
 	}
 
 	var cliMock *dphttp.ClienterMock
@@ -260,8 +264,9 @@ func TestGetBundles_Success(t *testing.T) {
 						return defaultBundles, len(defaultBundles), nil
 					},
 				}
-				mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+				mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 				successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
 
@@ -283,7 +288,7 @@ func TestGetBundles_Success(t *testing.T) {
 				expectedBundles := []*models.Bundle{
 					defaultBundles[0],
 				}
-				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 				successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
 
@@ -305,8 +310,9 @@ func TestGetBundles_Success(t *testing.T) {
 					return customBundles, len(customBundles), nil
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			successResp, err := bundleAPI.getBundles(w, r, 1, 1)
 			Convey("Then custom paginated values should be returned with no error", func() {
@@ -322,9 +328,10 @@ func TestGetBundles_Success(t *testing.T) {
 			mockedDatastore := &storetest.StorerMock{
 				ListBundlesFunc: bundleFilterFunc,
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			Convey("Then it returns a 404 error", func() {
 				url := fmt.Sprintf("http://localhost:29800/bundles?%s=%s", filters.PublishDate, paramValue)
@@ -353,8 +360,9 @@ func TestGetBundles_Failure(t *testing.T) {
 					return nil, 0, errors.New("database failure")
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			successResp, errResp := bundleAPI.getBundles(w, r, 10, 0)
 			Convey("Then the status code should be 500", func() {
 				So(successResp, ShouldBeNil)
@@ -374,8 +382,9 @@ func TestGetBundles_Failure(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 500", func() {
@@ -393,8 +402,9 @@ func TestGetBundles_Failure(t *testing.T) {
 					return nil, 0, nil
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 			Convey("Then the status code should be 400", func() {
@@ -486,8 +496,9 @@ func TestGetBundle_Success(t *testing.T) {
 					return validBundle, nil
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
 			Convey("Then the response should have status 200, ETag and Cache-Control headers", func() {
@@ -532,8 +543,9 @@ func TestGetBundle_Success(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
 			Convey("Then the response should have status 200, ETag and Cache-Control headers", func() {
@@ -560,8 +572,9 @@ func TestGetBundle_Failure(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
 			Convey("Then the response should be 404 with structured NotFound error", func() {
@@ -593,8 +606,9 @@ func TestGetBundle_Failure(t *testing.T) {
 					return nil, errors.New("unexpected failure")
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(rec, req)
 
 			Convey("Then the response should be 500 with structured InternalError", func() {
@@ -757,7 +771,7 @@ func createMockStore(data *testData) *storetest.StorerMock {
 	}
 }
 
-func createMockAPIClient(data *testData) *datasetAPISDKMock.ClienterMock {
+func createMockDatasetAPIClient(data *testData) *datasetAPISDKMock.ClienterMock {
 	return &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
 			for _, version := range data.versions {
@@ -851,8 +865,9 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 			Convey(tc.name, t, func() {
 				data := setupTestData(tc.fromState, tc.contentItemState, tc.versionState)
 				mockStore := createMockStore(data)
-				mockAPIClient := createMockAPIClient(data)
-				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)
+				mockDatasetAPIClient := createMockDatasetAPIClient(data)
+				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, true)
 
 				req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, tc.toState, nil, true)
 				rec := httptest.NewRecorder()
@@ -899,7 +914,7 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				expectedVersionState := strings.ToLower(tc.toState.String())
 
 				Convey("And only matching versions should be updated", func() {
-					calls := mockAPIClient.PutVersionStateCalls()
+					calls := mockDatasetAPIClient.PutVersionStateCalls()
 
 					// TODO: remove if condition and keep else block once we know if approved or published versions can be added to bundles
 					if strings.EqualFold(tc.toState.String(), tc.versionState) {
@@ -968,8 +983,9 @@ func TestPutBundleState_InvalidStateTransitions(t *testing.T) {
 			Convey(tc.name, t, func() {
 				data := setupTestData(tc.fromState, tc.contentItemState, tc.versionState)
 				mockStore := createMockStore(data)
-				mockAPIClient := createMockAPIClient(data)
-				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)
+				mockDatasetAPIClient := createMockDatasetAPIClient(data)
+				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, true)
 
 				req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, tc.toState, nil, true)
 				rec := httptest.NewRecorder()
@@ -1018,13 +1034,14 @@ func TestPutBundleState_InternalErrors(t *testing.T) {
 	Convey(generateTestCaseName(PutBundleStateRoute, "PUT", "When the auth middleware's Parse method has an error"), t, func() {
 		data := setupTestData(fromState, nil, "")
 		mockStore := createMockStore(data)
-		mockAPIClient := createMockAPIClient(data)
-		parseFunc := func(token string) (*permissionsSDK.EntityData, error) {
+		mockDatasetAPIClient := createMockDatasetAPIClient(data)
+		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+		parseFunc := func(token string) (*permissionsAPISDK.EntityData, error) {
 			return nil, errors.New("Parse func error")
 		}
 
 		mockAuthMiddleware := newAuthMiddlwareMock(true, parseFunc)
-		bundleAPI := GetBundleAPIWithMocksWithAuthMiddleware(store.Datastore{Backend: mockStore}, mockAPIClient, mockAuthMiddleware, true)
+		bundleAPI := GetBundleAPIWithMocksWithAuthMiddleware(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, mockAuthMiddleware, true)
 
 		req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, models.BundleStatePublished, nil, true)
 		rec := httptest.NewRecorder()
@@ -1057,8 +1074,9 @@ func TestPutBundleState_BadRequests(t *testing.T) {
 	t.Parallel()
 	data := setupTestData(models.BundleStateApproved, nil, "")
 	mockStore := createMockStore(data)
-	mockAPIClient := createMockAPIClient(data)
-	bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockAPIClient, true)
+	mockDatasetAPIClient := createMockDatasetAPIClient(data)
+	mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+	bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, true)
 
 	UpdateStateRequestBodyValid := models.UpdateStateRequest{State: models.BundleStateApproved}
 	UpdateStateRequestBodyMissingStateField := models.UpdateStateRequest{}
@@ -1167,8 +1185,13 @@ func TestCreateBundle_Success(t *testing.T) {
 					return nil
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+					return nil, nil
+				},
+			}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			Convey("Then the response should be 201 Created with the created bundle", func() {
@@ -1192,6 +1215,9 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
 				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
 				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
+			})
+			Convey("And a policy should be created for each preview team", func() {
+				So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, len(*validBundle.PreviewTeams))
 			})
 		})
 	})
@@ -1228,8 +1254,13 @@ func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
 					return nil
 				},
 			}
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+					return nil, nil
+				},
+			}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(w, r)
 
 			Convey("Then the response should be 201 Created with the created bundle", func() {
@@ -1254,6 +1285,9 @@ func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
 				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
 				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
 			})
+			Convey("And no policy should be created since no preview teams were provided", func() {
+				So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, 0)
+			})
 		})
 	})
 }
@@ -1269,8 +1303,9 @@ func TestCreateBundle_Failure_FailedToParseBody(t *testing.T) {
 
 			mockedDatastore := &storetest.StorerMock{}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1310,8 +1345,9 @@ func TestCreateBundle_Failure_InvalidScheduledAt(t *testing.T) {
 
 			mockedDatastore := &storetest.StorerMock{}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1353,8 +1389,9 @@ func TestCreateBundle_Failure_ReaderReturnError(t *testing.T) {
 
 		mockedDatastore := &storetest.StorerMock{}
 
-		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 		bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1389,8 +1426,9 @@ func TestCreateBundle_Failure_ValidationError(t *testing.T) {
 
 			mockedDatastore := &storetest.StorerMock{}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1456,8 +1494,9 @@ func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 
 			mockedDatastore := &storetest.StorerMock{}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1491,8 +1530,9 @@ func TestCreateBundle_Failure_AuthTokenIsMissing(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		mockedDatastore := &storetest.StorerMock{}
-		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and the auth token is missing", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
@@ -1572,8 +1612,9 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 			},
 		}
 
-		mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 		Convey("When a POST request is made to /bundles endpoint with the payload and GetBundleByTitle fails", func() {
 			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleNonExistentTitleJSON))
@@ -1633,6 +1674,63 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
+
+		Convey("When a POST request is made to /bundles but the policies fail to create", func() {
+			r := createRequestWithAuth(http.MethodPost, "/bundles", bytes.NewReader(inputBundleJSON))
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			mockedDatastore := &storetest.StorerMock{
+				CheckBundleExistsByTitleFunc: func(ctx context.Context, title string) (bool, error) {
+					return false, nil
+				},
+				CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
+					return nil
+				},
+				GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+					//nolint:goconst //The strings aren't actually the same.
+					inputBundle.ID = "bundle1"
+					inputBundle.ETag = someetag
+					inputBundle.CreatedBy = &models.User{Email: "example@example.com"}
+					inputBundle.LastUpdatedBy = &models.User{Email: "example@example.com"}
+					now := time.Now()
+					inputBundle.UpdatedAt = &now
+					return &inputBundle, nil
+				},
+				CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+					return nil
+				},
+			}
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("failed to create policy")
+				},
+			}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then the response should be 500 internal server error", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+			})
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				code := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &code,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
 	})
 }
 
@@ -1656,8 +1754,9 @@ func TestCreateBundle_Failure_CreateBundleReturnsAnError(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1713,8 +1812,9 @@ func TestCreateBundle_Failure_CreateEventReturnsAnError(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1762,8 +1862,9 @@ func TestCreateBundle_Failure_ScheduledAtNotSet(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1814,8 +1915,9 @@ func TestCreateBundle_Failure_ScheduledAtSetForManualBundles(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1867,8 +1969,9 @@ func TestCreateBundle_Failure_ScheduledAtIsInThePast(t *testing.T) {
 				},
 			}
 
-			mockAPIClient := &datasetAPISDKMock.ClienterMock{}
-			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockAPIClient, false)
+			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1940,7 +2043,7 @@ func TestDeleteBundle_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, nil, false)
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		Convey("Then the response should be 204 No Content", func() {
@@ -1957,7 +2060,7 @@ func TestDeleteBundle_Failure_UnableToParseToken(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		mockedDatastore := &storetest.StorerMock{}
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, nil, false)
 
 		Convey("When the request is made", func() {
 			bundleAPI.Router.ServeHTTP(w, r)
@@ -2004,7 +2107,7 @@ func TestDeleteBundle_Failure_BundleNonExistent(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, nil, false)
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		Convey("Then the response should be 400 Not Found", func() {
