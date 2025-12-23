@@ -2,9 +2,27 @@ package slack
 
 // SlackConfig holds configuration for sending Slack notifications
 type SlackConfig struct {
-	APIToken string `envconfig:"SLACK_API_TOKEN"`
-	Username string `envconfig:"SLACK_USERNAME"`
-	Channel  string `envconfig:"SLACK_CHANNEL"`
-	Emoji    string `envconfig:"SLACK_EMOJI"`
-	Enabled  bool   `envconfig:"SLACK_ENABLED"`
+	Channels Channels
+	Enabled  bool `envconfig:"SLACK_ENABLED"`
+}
+
+// Channels holds the Slack channel names for different notification levels
+type Channels struct {
+	InfoChannel    string `envconfig:"SLACK_INFO_CHANNEL"`
+	WarningChannel string `envconfig:"SLACK_WARNING_CHANNEL"`
+	AlarmChannel   string `envconfig:"SLACK_ALARM_CHANNEL"`
+}
+
+// validateSlackConfig checks that all required fields are set in the SlackConfig
+func validateSlackConfig(cfg *SlackConfig) error {
+	if cfg.Channels.InfoChannel == "" {
+		return errMissingInfoChannel
+	}
+	if cfg.Channels.WarningChannel == "" {
+		return errMissingWarningChannel
+	}
+	if cfg.Channels.AlarmChannel == "" {
+		return errMissingAlarmChannel
+	}
+	return nil
 }
