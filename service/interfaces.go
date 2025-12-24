@@ -7,10 +7,10 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 )
 
 //go:generate moq -out mock/initialiser.go -pkg mock . Initialiser
@@ -19,13 +19,13 @@ import (
 
 // Initialiser defines the methods to initialise external services
 type Initialiser interface {
-	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
-	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
 	DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter
-	DoGetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier
-	DoGetHealthClient(name, url string) *health.Client
+	DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAPISDK.Clienter
+	DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error)
 	DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error)
+	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
+	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer
 }
 
 // HTTPServer defines the required methods from the HTTP server

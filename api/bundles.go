@@ -289,6 +289,18 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = api.stateMachineBundleAPI.CreateBundlePolicies(ctx, createdBundle.PreviewTeams, models.RoleDatasetsPreviewer)
+	if err != nil {
+		log.Error(ctx, "createBundle: failed to create bundle policies", err)
+		code := models.CodeInternalError
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, e)
+		return
+	}
+
 	b, err := json.Marshal(createdBundle)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to marshal created bundle", err)

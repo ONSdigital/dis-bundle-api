@@ -15,6 +15,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -95,7 +96,7 @@ func TestPutBundle_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with valid data", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -189,7 +190,7 @@ func TestPutBundleNoPreviewTeam_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with valid data", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -231,7 +232,7 @@ func TestPutBundle_MissingIfMatchHeader_Failure(t *testing.T) {
 		updateRequestJSON, err := json.Marshal(updateRequest)
 		So(err, ShouldBeNil)
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -292,7 +293,7 @@ func TestPutBundle_ETagMismatch_Failure(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with wrong ETag", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -344,7 +345,7 @@ func TestPutBundle_MalformedJSON_Failure(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with invalid JSON", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader([]byte("invalid json")))
@@ -398,7 +399,7 @@ func TestPutBundle_BundleNotFound_Failure(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-missing", bytes.NewReader(updateRequestJSON))
@@ -446,7 +447,7 @@ func TestPutBundle_AuthenticationFailure(t *testing.T) {
 		updateRequestJSON, err := json.Marshal(updateRequest)
 		So(err, ShouldBeNil)
 
-		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocksWhereAuthFails(store.Datastore{Backend: &storetest.StorerMock{}}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called with invalid JWT", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -509,7 +510,7 @@ func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, false)
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When putBundle is called", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))

@@ -14,7 +14,9 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
+	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
 	"github.com/cucumber/godog"
+	"github.com/google/go-cmp/cmp"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -62,6 +64,9 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	// State assertions
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
 	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
+
+	// Policy assertions (permissions API)
+	ctx.Step(`the following policies should have been created:$`, c.theFollowingPoliciesShouldHaveBeenCreated)
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -510,6 +515,23 @@ func (c *BundleComponent) theNumberOfEventsWithActionAndDatatypeShouldBe(action,
 	if count != expectedCount {
 		return fmt.Errorf("expected %d events with action '%s' and type '%s', but found %d", expectedCount, action, datatype, count)
 	}
+	return nil
+}
+
+func (c *BundleComponent) theFollowingPoliciesShouldHaveBeenCreated(policiesJSON *godog.DocString) error {
+	var expectedPolicies []*permissionsAPIModels.Policy
+	if err := json.Unmarshal([]byte(policiesJSON.Content), &expectedPolicies); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	if len(expectedPolicies) != len(c.permissionsAPIPolicies) {
+		return fmt.Errorf("expected %d policies to have been created, but found %d", len(expectedPolicies), len(c.permissionsAPIPolicies))
+	}
+
+	if diff := cmp.Diff(expectedPolicies, c.permissionsAPIPolicies); diff != "" {
+		return fmt.Errorf("policies do not match expected:\n%s", diff)
+	}
+
 	return nil
 }
 

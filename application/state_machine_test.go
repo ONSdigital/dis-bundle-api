@@ -14,10 +14,11 @@ import (
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
-	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 
 	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -139,9 +140,10 @@ func TestTransition_success(t *testing.T) {
 	}
 
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-	mockSlackNotifier := &slackMock.NotifierMock{}
+	mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+	mockSlackClient := &slackMock.ClienterMock{}
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 
 	Convey("When transitioning from 'DRAFT' to 'IN_REVIEW'", t, func() {
 		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateDraft, bundleUpdateWithStateInReview)
@@ -215,10 +217,11 @@ func TestTransition_failure(t *testing.T) {
 
 	mockedDatastore := &storetest.StorerMock{}
 	mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-	mockSlackNotifier := &slackMock.NotifierMock{}
+	mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+	mockSlackClient := &slackMock.ClienterMock{}
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockSlackNotifier)
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 
 	Convey("When transitioning from a state that is not in the transition list", t, func() {
 		err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateUnknown, bundleUpdateWithStateInReview)
@@ -431,7 +434,7 @@ func TestTransitionBundle_Success(t *testing.T) {
 		},
 	}
 	mockAuthEntityData := models.AuthEntityData{
-		EntityData: &permissionsSDK.EntityData{
+		EntityData: &permissionsAPISDK.EntityData{
 			UserID: mockUserID,
 		},
 		Headers: datasetAPISDK.Headers{
@@ -522,10 +525,11 @@ func TestTransitionBundle_Success(t *testing.T) {
 			return nil
 		},
 	}
-	mockSlackNotifier := &slackMock.NotifierMock{}
+	mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+	mockSlackClient := &slackMock.ClienterMock{}
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockSlackNotifier)
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 	bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 
 	Convey("When TransitionBundle is called with a valid transition and valid bundle", t, func() {
@@ -650,7 +654,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 	}
 
 	mockAuthEntityData := models.AuthEntityData{
-		EntityData: &permissionsSDK.EntityData{
+		EntityData: &permissionsAPISDK.EntityData{
 			UserID: mockUserID,
 		},
 		Headers: datasetAPISDK.Headers{
@@ -749,7 +753,8 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			return nil
 		},
 	}
-	mockSlackNotifier := &slackMock.NotifierMock{}
+	mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+	mockSlackClient := &slackMock.ClienterMock{}
 
 	t.Run("When attempting a valid bundle transition state/But an error is returned attempting to get content items", func(t *testing.T) {
 		dbError := errors.New("database error")
@@ -758,7 +763,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockSlackNotifier)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("the error should be returned", func() {
@@ -783,7 +788,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockSlackNotifier)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, mockBundle, &targetState, &mockAuthEntityData)
 		Convey("Then", t, func() {
 			Convey("Then a not found error should be returned", func() {
@@ -810,7 +815,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockSlackNotifier)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 
 		bundleInstance := *mockBundle
 
@@ -852,7 +857,7 @@ func TestTransitionBundle_Failure(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockSlackNotifier)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
 
 		bundleInstance := *mockBundle
 		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthEntityData)

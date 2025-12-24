@@ -18,6 +18,8 @@ import (
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 
@@ -30,16 +32,26 @@ var (
 	testBuildTime = "BuildTime"
 	testGitCommit = "GitCommit"
 	testVersion   = "Version"
-	errServer     = errors.New("HTTP Server error")
 )
 
 var (
-	errHealthcheck = errors.New("healthCheck error")
-	errMongo       = errors.New("MongoDB error")
+	errMongo                 = errors.New("MongoDB error")
+	errDataBundleSlackClient = errors.New("Data Bundle Slack Client error")
+	errAuthMiddleware        = errors.New("Authorisation Middleware error")
+	errHealthcheck           = errors.New("healthCheck error")
+	errServer                = errors.New("HTTP Server error")
 )
 
 var funcDoGetMongoDBErr = func(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error) {
 	return nil, errMongo
+}
+
+func funcDoGetDataBundleSlackClientErr(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+	return nil, errDataBundleSlackClient
+}
+
+var funcDoGetAuthMiddlewareErr = func(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+	return nil, errAuthMiddleware
 }
 
 var funcDoGetHealthcheckErr = func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
@@ -81,31 +93,35 @@ func TestRun(t *testing.T) {
 			},
 		}
 
-		funcDoGetAuthOk := func(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
-			return authorisationMiddleware, nil
-		}
-
 		funcDoGetMongoDBOk := func(context.Context, config.MongoConfig) (store.MongoDB, error) {
 			return &storeMock.MongoDBMock{}, nil
-		}
-
-		funcDoGetHealthcheckOk := func(*config.Config, string, string, string) (service.HealthChecker, error) {
-			return hcMock, nil
 		}
 
 		funcDoGetDatasetAPIClientOk := func(datasetAPIURL string) datasetAPISDK.Clienter {
 			return &datasetAPISDKMock.ClienterMock{}
 		}
 
-		funcDoGetSlackNotifierOk := func(slackConfig *slack.SlackConfig) slack.Notifier {
-			return &slackMock.NotifierMock{}
+		funcDoGetPermissionsAPIClientOk := func(permissionsAPIURL string) permissionsAPISDK.Clienter {
+			return &permissionsAPISDKMock.ClienterMock{}
 		}
 
-		funcDoGetHTTPServer := func(string, http.Handler) service.HTTPServer {
+		funcDoGetDataBundleSlackClientOk := func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+			return &slackMock.ClienterMock{}, nil
+		}
+
+		funcDoGetAuthMiddlewareOk := func(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error) {
+			return authorisationMiddleware, nil
+		}
+
+		funcDoGetHealthcheckOk := func(*config.Config, string, string, string) (service.HealthChecker, error) {
+			return hcMock, nil
+		}
+
+		funcDoGetHTTPServerOk := func(string, http.Handler) service.HTTPServer {
 			return serverMock
 		}
 
-		funcDoGetFailingHTTPSerer := func(string, http.Handler) service.HTTPServer {
+		funcDoGetFailingHTTPServer := func(string, http.Handler) service.HTTPServer {
 			return failingServerMock
 		}
 
@@ -121,14 +137,70 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errMongo)
 				So(svcList.MongoDB, ShouldBeFalse)
+				So(svcList.DatasetAPIClient, ShouldBeFalse)
+				So(svcList.PermissionsAPIClient, ShouldBeFalse)
+				So(svcList.DataBundleSlackClient, ShouldBeFalse)
+				So(svcList.AuthorisationMiddleware, ShouldBeFalse)
+				So(svcList.HealthCheck, ShouldBeFalse)
+			})
+		})
+
+		Convey("Given that initialising DataBundleSlackClient returns an error", func() {
+			initMock := &serviceMock.InitialiserMock{
+				DoGetMongoDBFunc:               funcDoGetMongoDBOk,
+				DoGetDatasetAPIClientFunc:      funcDoGetDatasetAPIClientOk,
+				DoGetPermissionsAPIClientFunc:  funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc: funcDoGetDataBundleSlackClientErr,
+			}
+			svcErrors := make(chan error, 1)
+			svcList := service.NewServiceList(initMock)
+			svc := service.New(cfg, svcList)
+			err := svc.Run(ctx, testBuildTime, testGitCommit, testVersion, svcErrors)
+
+			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
+				So(err, ShouldResemble, errDataBundleSlackClient)
+				So(svcList.MongoDB, ShouldBeTrue)
+				So(svcList.DatasetAPIClient, ShouldBeTrue)
+				So(svcList.PermissionsAPIClient, ShouldBeTrue)
+				So(svcList.DataBundleSlackClient, ShouldBeFalse)
+				So(svcList.AuthorisationMiddleware, ShouldBeFalse)
+				So(svcList.HealthCheck, ShouldBeFalse)
+			})
+		})
+
+		Convey("Given that initialising Authorisation Middleware returns an error", func() {
+			initMock := &serviceMock.InitialiserMock{
+				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
+				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
+				DoGetPermissionsAPIClientFunc:    funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc:   funcDoGetDataBundleSlackClientOk,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthMiddlewareErr,
+			}
+
+			svcErrors := make(chan error, 1)
+			svcList := service.NewServiceList(initMock)
+			svc := service.New(cfg, svcList)
+			err := svc.Run(ctx, testBuildTime, testGitCommit, testVersion, svcErrors)
+
+			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
+				So(err, ShouldResemble, errAuthMiddleware)
+				So(svcList.MongoDB, ShouldBeTrue)
+				So(svcList.DatasetAPIClient, ShouldBeTrue)
+				So(svcList.PermissionsAPIClient, ShouldBeTrue)
+				So(svcList.DataBundleSlackClient, ShouldBeTrue)
+				So(svcList.AuthorisationMiddleware, ShouldBeFalse)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
 
 		Convey("Given that initialising Healthcheck returns an error", func() {
 			initMock := &serviceMock.InitialiserMock{
-				DoGetMongoDBFunc:     funcDoGetMongoDBOk,
-				DoGetHealthCheckFunc: funcDoGetHealthcheckErr,
+				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
+				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
+				DoGetPermissionsAPIClientFunc:    funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc:   funcDoGetDataBundleSlackClientOk,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthMiddlewareOk,
+				DoGetHealthCheckFunc:             funcDoGetHealthcheckErr,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -138,6 +210,10 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run fails with the same error and the flag is not set. No further initialisations are attempted", func() {
 				So(err, ShouldResemble, errHealthcheck)
 				So(svcList.MongoDB, ShouldBeTrue)
+				So(svcList.DatasetAPIClient, ShouldBeTrue)
+				So(svcList.PermissionsAPIClient, ShouldBeTrue)
+				So(svcList.DataBundleSlackClient, ShouldBeTrue)
+				So(svcList.AuthorisationMiddleware, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeFalse)
 			})
 		})
@@ -145,11 +221,12 @@ func TestRun(t *testing.T) {
 		Convey("Given that all dependencies are successfully initialised", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
-				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
 				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
-				DoGetHTTPServerFunc:              funcDoGetHTTPServer,
-				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
-				DoGetSlackNotifierFunc:           funcDoGetSlackNotifierOk,
+				DoGetPermissionsAPIClientFunc:    funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc:   funcDoGetDataBundleSlackClientOk,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthMiddlewareOk,
+				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:              funcDoGetHTTPServerOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -160,13 +237,18 @@ func TestRun(t *testing.T) {
 			Convey("Then service Run succeeds and all the flags are set", func() {
 				So(err, ShouldBeNil)
 				So(svcList.MongoDB, ShouldBeTrue)
+				So(svcList.DatasetAPIClient, ShouldBeTrue)
+				So(svcList.PermissionsAPIClient, ShouldBeTrue)
+				So(svcList.DataBundleSlackClient, ShouldBeTrue)
+				So(svcList.AuthorisationMiddleware, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
 			})
 
-			Convey("The checkers are registered and the healthcheck and http server started", func() {
-				So(len(hcMock.AddCheckCalls()), ShouldEqual, 2)
+			Convey("And the checkers are registered and the healthcheck and http server started", func() {
+				So(len(hcMock.AddCheckCalls()), ShouldEqual, 3)
 				So(hcMock.AddCheckCalls()[0].Name, ShouldResemble, "Mongo DB")
 				So(hcMock.AddCheckCalls()[1].Name, ShouldResemble, "Zebedee")
+				So(hcMock.AddCheckCalls()[2].Name, ShouldResemble, "Dataset API Client")
 				So(len(initMock.DoGetHTTPServerCalls()), ShouldEqual, 1)
 				So(initMock.DoGetHTTPServerCalls()[0].BindAddr, ShouldEqual, ":29800")
 				So(len(hcMock.StartCalls()), ShouldEqual, 1)
@@ -176,17 +258,22 @@ func TestRun(t *testing.T) {
 		})
 
 		Convey("Given that Checkers cannot be registered", func() {
-			errAddheckFail := errors.New("Error(s) registering checkers for healthcheck")
+			errAddCheckFail := errors.New("Error(s) registering checkers for healthcheck")
 			hcMockAddFail := &serviceMock.HealthCheckerMock{
-				AddCheckFunc: func(string, healthcheck.Checker) error { return errAddheckFail },
+				AddCheckFunc: func(string, healthcheck.Checker) error { return errAddCheckFail },
 				StartFunc:    func(context.Context) {},
 			}
 
 			initMock := &serviceMock.InitialiserMock{
-				DoGetMongoDBFunc: funcDoGetMongoDBOk,
+				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
+				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
+				DoGetPermissionsAPIClientFunc:    funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc:   funcDoGetDataBundleSlackClientOk,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthMiddlewareOk,
 				DoGetHealthCheckFunc: func(*config.Config, string, string, string) (service.HealthChecker, error) {
 					return hcMockAddFail, nil
 				},
+				DoGetHTTPServerFunc: funcDoGetHTTPServerOk,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)
@@ -195,23 +282,25 @@ func TestRun(t *testing.T) {
 
 			Convey("Then service Run fails, but all checks try to register", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddheckFail.Error()))
+				So(err.Error(), ShouldResemble, fmt.Sprintf("unable to register checkers: %s", errAddCheckFail.Error()))
 				So(svcList.MongoDB, ShouldBeTrue)
 				So(svcList.HealthCheck, ShouldBeTrue)
-				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 2)
+				So(len(hcMockAddFail.AddCheckCalls()), ShouldEqual, 3)
 				So(hcMockAddFail.AddCheckCalls()[0].Name, ShouldResemble, "Mongo DB")
 				So(hcMockAddFail.AddCheckCalls()[1].Name, ShouldResemble, "Zebedee")
+				So(hcMockAddFail.AddCheckCalls()[2].Name, ShouldResemble, "Dataset API Client")
 			})
 		})
 
 		Convey("Given that all dependencies are successfully initialised but the http server fails", func() {
 			initMock := &serviceMock.InitialiserMock{
 				DoGetMongoDBFunc:                 funcDoGetMongoDBOk,
-				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
 				DoGetDatasetAPIClientFunc:        funcDoGetDatasetAPIClientOk,
-				DoGetHTTPServerFunc:              funcDoGetFailingHTTPSerer,
-				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthOk,
-				DoGetSlackNotifierFunc:           funcDoGetSlackNotifierOk,
+				DoGetPermissionsAPIClientFunc:    funcDoGetPermissionsAPIClientOk,
+				DoGetDataBundleSlackClientFunc:   funcDoGetDataBundleSlackClientOk,
+				DoGetAuthorisationMiddlewareFunc: funcDoGetAuthMiddlewareOk,
+				DoGetHealthCheckFunc:             funcDoGetHealthcheckOk,
+				DoGetHTTPServerFunc:              funcDoGetFailingHTTPServer,
 			}
 			svcErrors := make(chan error, 1)
 			svcList := service.NewServiceList(initMock)

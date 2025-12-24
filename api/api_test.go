@@ -6,6 +6,7 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -13,7 +14,7 @@ import (
 func TestSetup(t *testing.T) {
 	Convey("Given an API instance", t, func() {
 		dataStore := &store.Datastore{}
-		api := GetBundleAPIWithMocks(*dataStore, &datasetAPISDKMock.ClienterMock{}, false)
+		api := GetBundleAPIWithMocks(*dataStore, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
 
 		Convey("When created the following routes should have been added", func() {
 			So(hasRoute(api.Router, "/bundles", "GET"), ShouldBeTrue)

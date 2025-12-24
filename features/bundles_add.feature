@@ -56,6 +56,25 @@ Feature: Create bundle - POST /Bundles
         And the response header "Location" should not be empty
         And the total number of events should be 1
         And the number of events with action "CREATE" and datatype "bundle" should be 1
+        And the following policies should have been created:
+            """
+            [
+                {
+                    "id": "team1",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team1"
+                    ]
+                },
+                {
+                    "id": "team2",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team2"
+                    ]
+                }
+            ]
+            """
     
     Scenario: POST /bundles successfully with no preview team
         Given I am an admin user

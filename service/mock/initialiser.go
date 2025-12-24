@@ -9,9 +9,9 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/service"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"net/http"
 	"sync"
 )
@@ -29,6 +29,9 @@ var _ service.Initialiser = &InitialiserMock{}
 //			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
 //				panic("mock out the DoGetAuthorisationMiddleware method")
 //			},
+//			DoGetDataBundleSlackClientFunc: func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+//				panic("mock out the DoGetDataBundleSlackClient method")
+//			},
 //			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) datasetAPISDK.Clienter {
 //				panic("mock out the DoGetDatasetAPIClient method")
 //			},
@@ -38,14 +41,11 @@ var _ service.Initialiser = &InitialiserMock{}
 //			DoGetHealthCheckFunc: func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error) {
 //				panic("mock out the DoGetHealthCheck method")
 //			},
-//			DoGetHealthClientFunc: func(name string, url string) *health.Client {
-//				panic("mock out the DoGetHealthClient method")
-//			},
 //			DoGetMongoDBFunc: func(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error) {
 //				panic("mock out the DoGetMongoDB method")
 //			},
-//			DoGetSlackNotifierFunc: func(slackConfig *slack.SlackConfig) slack.Notifier {
-//				panic("mock out the DoGetSlackNotifier method")
+//			DoGetPermissionsAPIClientFunc: func(permissionsAPIURL string) permissionsAPISDK.Clienter {
+//				panic("mock out the DoGetPermissionsAPIClient method")
 //			},
 //		}
 //
@@ -57,6 +57,9 @@ type InitialiserMock struct {
 	// DoGetAuthorisationMiddlewareFunc mocks the DoGetAuthorisationMiddleware method.
 	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error)
 
+	// DoGetDataBundleSlackClientFunc mocks the DoGetDataBundleSlackClient method.
+	DoGetDataBundleSlackClientFunc func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error)
+
 	// DoGetDatasetAPIClientFunc mocks the DoGetDatasetAPIClient method.
 	DoGetDatasetAPIClientFunc func(datasetAPIURL string) datasetAPISDK.Clienter
 
@@ -66,14 +69,11 @@ type InitialiserMock struct {
 	// DoGetHealthCheckFunc mocks the DoGetHealthCheck method.
 	DoGetHealthCheckFunc func(cfg *config.Config, buildTime string, gitCommit string, version string) (service.HealthChecker, error)
 
-	// DoGetHealthClientFunc mocks the DoGetHealthClient method.
-	DoGetHealthClientFunc func(name string, url string) *health.Client
-
 	// DoGetMongoDBFunc mocks the DoGetMongoDB method.
 	DoGetMongoDBFunc func(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
 
-	// DoGetSlackNotifierFunc mocks the DoGetSlackNotifier method.
-	DoGetSlackNotifierFunc func(slackConfig *slack.SlackConfig) slack.Notifier
+	// DoGetPermissionsAPIClientFunc mocks the DoGetPermissionsAPIClient method.
+	DoGetPermissionsAPIClientFunc func(permissionsAPIURL string) permissionsAPISDK.Clienter
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -83,6 +83,13 @@ type InitialiserMock struct {
 			Ctx context.Context
 			// AuthorisationConfig is the authorisationConfig argument value.
 			AuthorisationConfig *auth.Config
+		}
+		// DoGetDataBundleSlackClient holds details about calls to the DoGetDataBundleSlackClient method.
+		DoGetDataBundleSlackClient []struct {
+			// SlackConfig is the slackConfig argument value.
+			SlackConfig *slack.SlackConfig
+			// ApiToken is the apiToken argument value.
+			ApiToken string
 		}
 		// DoGetDatasetAPIClient holds details about calls to the DoGetDatasetAPIClient method.
 		DoGetDatasetAPIClient []struct {
@@ -107,13 +114,6 @@ type InitialiserMock struct {
 			// Version is the version argument value.
 			Version string
 		}
-		// DoGetHealthClient holds details about calls to the DoGetHealthClient method.
-		DoGetHealthClient []struct {
-			// Name is the name argument value.
-			Name string
-			// URL is the url argument value.
-			URL string
-		}
 		// DoGetMongoDB holds details about calls to the DoGetMongoDB method.
 		DoGetMongoDB []struct {
 			// Ctx is the ctx argument value.
@@ -121,19 +121,19 @@ type InitialiserMock struct {
 			// Cfg is the cfg argument value.
 			Cfg config.MongoConfig
 		}
-		// DoGetSlackNotifier holds details about calls to the DoGetSlackNotifier method.
-		DoGetSlackNotifier []struct {
-			// SlackConfig is the slackConfig argument value.
-			SlackConfig *slack.SlackConfig
+		// DoGetPermissionsAPIClient holds details about calls to the DoGetPermissionsAPIClient method.
+		DoGetPermissionsAPIClient []struct {
+			// PermissionsAPIURL is the permissionsAPIURL argument value.
+			PermissionsAPIURL string
 		}
 	}
 	lockDoGetAuthorisationMiddleware sync.RWMutex
+	lockDoGetDataBundleSlackClient   sync.RWMutex
 	lockDoGetDatasetAPIClient        sync.RWMutex
 	lockDoGetHTTPServer              sync.RWMutex
 	lockDoGetHealthCheck             sync.RWMutex
-	lockDoGetHealthClient            sync.RWMutex
 	lockDoGetMongoDB                 sync.RWMutex
-	lockDoGetSlackNotifier           sync.RWMutex
+	lockDoGetPermissionsAPIClient    sync.RWMutex
 }
 
 // DoGetAuthorisationMiddleware calls DoGetAuthorisationMiddlewareFunc.
@@ -169,6 +169,42 @@ func (mock *InitialiserMock) DoGetAuthorisationMiddlewareCalls() []struct {
 	mock.lockDoGetAuthorisationMiddleware.RLock()
 	calls = mock.calls.DoGetAuthorisationMiddleware
 	mock.lockDoGetAuthorisationMiddleware.RUnlock()
+	return calls
+}
+
+// DoGetDataBundleSlackClient calls DoGetDataBundleSlackClientFunc.
+func (mock *InitialiserMock) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+	if mock.DoGetDataBundleSlackClientFunc == nil {
+		panic("InitialiserMock.DoGetDataBundleSlackClientFunc: method is nil but Initialiser.DoGetDataBundleSlackClient was just called")
+	}
+	callInfo := struct {
+		SlackConfig *slack.SlackConfig
+		ApiToken    string
+	}{
+		SlackConfig: slackConfig,
+		ApiToken:    apiToken,
+	}
+	mock.lockDoGetDataBundleSlackClient.Lock()
+	mock.calls.DoGetDataBundleSlackClient = append(mock.calls.DoGetDataBundleSlackClient, callInfo)
+	mock.lockDoGetDataBundleSlackClient.Unlock()
+	return mock.DoGetDataBundleSlackClientFunc(slackConfig, apiToken)
+}
+
+// DoGetDataBundleSlackClientCalls gets all the calls that were made to DoGetDataBundleSlackClient.
+// Check the length with:
+//
+//	len(mockedInitialiser.DoGetDataBundleSlackClientCalls())
+func (mock *InitialiserMock) DoGetDataBundleSlackClientCalls() []struct {
+	SlackConfig *slack.SlackConfig
+	ApiToken    string
+} {
+	var calls []struct {
+		SlackConfig *slack.SlackConfig
+		ApiToken    string
+	}
+	mock.lockDoGetDataBundleSlackClient.RLock()
+	calls = mock.calls.DoGetDataBundleSlackClient
+	mock.lockDoGetDataBundleSlackClient.RUnlock()
 	return calls
 }
 
@@ -284,42 +320,6 @@ func (mock *InitialiserMock) DoGetHealthCheckCalls() []struct {
 	return calls
 }
 
-// DoGetHealthClient calls DoGetHealthClientFunc.
-func (mock *InitialiserMock) DoGetHealthClient(name string, url string) *health.Client {
-	if mock.DoGetHealthClientFunc == nil {
-		panic("InitialiserMock.DoGetHealthClientFunc: method is nil but Initialiser.DoGetHealthClient was just called")
-	}
-	callInfo := struct {
-		Name string
-		URL  string
-	}{
-		Name: name,
-		URL:  url,
-	}
-	mock.lockDoGetHealthClient.Lock()
-	mock.calls.DoGetHealthClient = append(mock.calls.DoGetHealthClient, callInfo)
-	mock.lockDoGetHealthClient.Unlock()
-	return mock.DoGetHealthClientFunc(name, url)
-}
-
-// DoGetHealthClientCalls gets all the calls that were made to DoGetHealthClient.
-// Check the length with:
-//
-//	len(mockedInitialiser.DoGetHealthClientCalls())
-func (mock *InitialiserMock) DoGetHealthClientCalls() []struct {
-	Name string
-	URL  string
-} {
-	var calls []struct {
-		Name string
-		URL  string
-	}
-	mock.lockDoGetHealthClient.RLock()
-	calls = mock.calls.DoGetHealthClient
-	mock.lockDoGetHealthClient.RUnlock()
-	return calls
-}
-
 // DoGetMongoDB calls DoGetMongoDBFunc.
 func (mock *InitialiserMock) DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error) {
 	if mock.DoGetMongoDBFunc == nil {
@@ -356,34 +356,34 @@ func (mock *InitialiserMock) DoGetMongoDBCalls() []struct {
 	return calls
 }
 
-// DoGetSlackNotifier calls DoGetSlackNotifierFunc.
-func (mock *InitialiserMock) DoGetSlackNotifier(slackConfig *slack.SlackConfig) slack.Notifier {
-	if mock.DoGetSlackNotifierFunc == nil {
-		panic("InitialiserMock.DoGetSlackNotifierFunc: method is nil but Initialiser.DoGetSlackNotifier was just called")
+// DoGetPermissionsAPIClient calls DoGetPermissionsAPIClientFunc.
+func (mock *InitialiserMock) DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAPISDK.Clienter {
+	if mock.DoGetPermissionsAPIClientFunc == nil {
+		panic("InitialiserMock.DoGetPermissionsAPIClientFunc: method is nil but Initialiser.DoGetPermissionsAPIClient was just called")
 	}
 	callInfo := struct {
-		SlackConfig *slack.SlackConfig
+		PermissionsAPIURL string
 	}{
-		SlackConfig: slackConfig,
+		PermissionsAPIURL: permissionsAPIURL,
 	}
-	mock.lockDoGetSlackNotifier.Lock()
-	mock.calls.DoGetSlackNotifier = append(mock.calls.DoGetSlackNotifier, callInfo)
-	mock.lockDoGetSlackNotifier.Unlock()
-	return mock.DoGetSlackNotifierFunc(slackConfig)
+	mock.lockDoGetPermissionsAPIClient.Lock()
+	mock.calls.DoGetPermissionsAPIClient = append(mock.calls.DoGetPermissionsAPIClient, callInfo)
+	mock.lockDoGetPermissionsAPIClient.Unlock()
+	return mock.DoGetPermissionsAPIClientFunc(permissionsAPIURL)
 }
 
-// DoGetSlackNotifierCalls gets all the calls that were made to DoGetSlackNotifier.
+// DoGetPermissionsAPIClientCalls gets all the calls that were made to DoGetPermissionsAPIClient.
 // Check the length with:
 //
-//	len(mockedInitialiser.DoGetSlackNotifierCalls())
-func (mock *InitialiserMock) DoGetSlackNotifierCalls() []struct {
-	SlackConfig *slack.SlackConfig
+//	len(mockedInitialiser.DoGetPermissionsAPIClientCalls())
+func (mock *InitialiserMock) DoGetPermissionsAPIClientCalls() []struct {
+	PermissionsAPIURL string
 } {
 	var calls []struct {
-		SlackConfig *slack.SlackConfig
+		PermissionsAPIURL string
 	}
-	mock.lockDoGetSlackNotifier.RLock()
-	calls = mock.calls.DoGetSlackNotifier
-	mock.lockDoGetSlackNotifier.RUnlock()
+	mock.lockDoGetPermissionsAPIClient.RLock()
+	calls = mock.calls.DoGetPermissionsAPIClient
+	mock.lockDoGetPermissionsAPIClient.RUnlock()
 	return calls
 }
