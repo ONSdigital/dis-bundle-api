@@ -146,7 +146,7 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 	if err != nil {
 		// send slack notification only when there is an error going from approved to published
 		if bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String() {
-			err := s.DataBundleSlackClient.SendError(ctx, s.DataBundleSlackClient.Channels().AlarmChannel, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+			err := s.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
 			if err != nil {
 				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
 			}

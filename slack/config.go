@@ -14,7 +14,10 @@ type Channels struct {
 }
 
 // validateSlackConfig checks that all required fields are set in the SlackConfig
-func validateSlackConfig(cfg *SlackConfig) error {
+func validateSlackConfig(cfg *SlackConfig, apiToken string) error {
+	if apiToken == "" {
+		return errMissingAPIToken
+	}
 	if cfg.Channels.InfoChannel == "" {
 		return errMissingInfoChannel
 	}
