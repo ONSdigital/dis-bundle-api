@@ -29,7 +29,7 @@ type Service struct {
 	API                   *api.BundleAPI
 	datasetAPIClient      datasetAPISDK.Clienter
 	permissionsAPIClient  permissionsAPISDK.Clienter
-	DataBundleSlackClient slack.Clienter
+	dataBundleSlackClient slack.Clienter
 	ServiceList           *ExternalServiceList
 	HealthCheck           HealthChecker
 	mongoDB               store.MongoDB
@@ -131,7 +131,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	svc.permissionsAPIClient = svc.ServiceList.GetPermissionsAPIClient(cfg.AuthConfig.PermissionsAPIURL)
 
 	// Get Data Bundle Slack Client
-	svc.DataBundleSlackClient, err = svc.ServiceList.GetDataBundleSlackClient(cfg.SlackConfig, cfg.DataBundlePublicationServiceSlackAPIToken)
+	svc.dataBundleSlackClient, err = svc.ServiceList.GetDataBundleSlackClient(cfg.SlackConfig, cfg.DataBundlePublicationServiceSlackAPIToken)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate data bundle slack client", err)
 		return err
@@ -166,7 +166,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.DataBundleSlackClient)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.dataBundleSlackClient)
 
 	// Setup API
 	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, authorisation, svc.ZebedeeClient.Client)

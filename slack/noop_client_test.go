@@ -13,8 +13,8 @@ func TestNoopClient_SendError(t *testing.T) {
 	Convey("Given a NoopClient", t, func() {
 		client := &slack.NoopClient{}
 
-		Convey("When SendError is called", func() {
-			err := client.SendError(context.Background(), "Test Channel", "Test Summary", errors.New("Test Error"), nil)
+		Convey("When SendAlarm is called", func() {
+			err := client.SendAlarm(context.Background(), "Test Summary", errors.New("Test Error"), nil)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -23,17 +23,29 @@ func TestNoopClient_SendError(t *testing.T) {
 	})
 }
 
-func TestNoopClient_Channels(t *testing.T) {
+func TestNoopClient_SendWarning(t *testing.T) {
 	Convey("Given a NoopClient", t, func() {
 		client := &slack.NoopClient{}
 
-		Convey("When Channels is called", func() {
-			channels := client.Channels()
+		Convey("When SendWarning is called", func() {
+			err := client.SendWarning(context.Background(), "Test Summary", nil)
 
-			Convey("Then empty channels are returned", func() {
-				So(channels.InfoChannel, ShouldBeEmpty)
-				So(channels.WarningChannel, ShouldBeEmpty)
-				So(channels.AlarmChannel, ShouldBeEmpty)
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestNoopClient_SendInfo(t *testing.T) {
+	Convey("Given a NoopClient", t, func() {
+		client := &slack.NoopClient{}
+
+		Convey("When SendInfo is called", func() {
+			err := client.SendInfo(context.Background(), "Test Summary", nil)
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
 			})
 		})
 	})

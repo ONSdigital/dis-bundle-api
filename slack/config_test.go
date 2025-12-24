@@ -10,19 +10,29 @@ func TestValidateSlackConfig(t *testing.T) {
 	Convey("Given a SlackConfig", t, func() {
 		test := []struct {
 			name      string
-			config    SlackConfig
+			apiToken  string
+			config    *SlackConfig
 			expectErr error
 		}{
 			{
-				name: "missing an InfoChannel",
-				config: SlackConfig{
+				name:      "missing API token",
+				apiToken:  "",
+				config:    &SlackConfig{},
+				expectErr: errMissingAPIToken,
+			},
+			{
+				name:     "missing an InfoChannel",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
 					Channels: Channels{},
 				},
+
 				expectErr: errMissingInfoChannel,
 			},
 			{
-				name: "missing a WarningChannel",
-				config: SlackConfig{
+				name:     "missing a WarningChannel",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
 					Channels: Channels{
 						InfoChannel: "info-channel",
 					},
@@ -30,8 +40,9 @@ func TestValidateSlackConfig(t *testing.T) {
 				expectErr: errMissingWarningChannel,
 			},
 			{
-				name: "missing an AlarmChannel",
-				config: SlackConfig{
+				name:     "missing an AlarmChannel",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
 					Channels: Channels{
 						InfoChannel:    "info-channel",
 						WarningChannel: "warning-channel",
@@ -40,8 +51,9 @@ func TestValidateSlackConfig(t *testing.T) {
 				expectErr: errMissingAlarmChannel,
 			},
 			{
-				name: "a valid config",
-				config: SlackConfig{
+				name:     "a valid config",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
 					Channels: Channels{
 						InfoChannel:    "info-channel",
 						WarningChannel: "warning-channel",
@@ -54,7 +66,7 @@ func TestValidateSlackConfig(t *testing.T) {
 
 		for _, tc := range test {
 			Convey("When the config is "+tc.name, func() {
-				err := validateSlackConfig(&tc.config)
+				err := validateSlackConfig(tc.config, tc.apiToken)
 				So(err, ShouldEqual, tc.expectErr)
 			})
 		}
