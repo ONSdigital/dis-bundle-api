@@ -7,10 +7,11 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 
 	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 )
 
 // CreateBundlePolicies creates a new policy for each preview team with the provided role
-func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, previewTeams *[]models.PreviewTeam, role models.Role) error {
+func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, authToken string, previewTeams *[]models.PreviewTeam, role models.Role) error {
 	if previewTeams == nil || len(*previewTeams) == 0 {
 		return nil
 	}
@@ -27,7 +28,7 @@ func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, previe
 			Role: role.String(),
 		}
 
-		_, err := s.PermissionsAPIClient.PostPolicy(ctx, policyInfo)
+		_, err := s.PermissionsAPIClient.PostPolicyWithID(ctx, permissionsAPISDK.Headers{Authorization: authToken}, team.ID, policyInfo)
 		if err != nil {
 			return err
 		}

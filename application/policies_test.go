@@ -8,6 +8,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -72,7 +73,7 @@ func TestCreateBundlePolicies(t *testing.T) {
 		for _, tc := range cases {
 			Convey("When CreateBundlePolicies is called with: "+tc.name, func() {
 				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-					PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+					PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
 						return nil, nil
 					},
 				}
@@ -82,17 +83,17 @@ func TestCreateBundlePolicies(t *testing.T) {
 				}
 
 				Convey("Then the expected error and number of calls are returned", func() {
-					err := stateMachineBundleAPI.CreateBundlePolicies(ctx, tc.previewTeams, tc.role)
+					err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", tc.previewTeams, tc.role)
 					So(err, ShouldEqual, tc.expectedErr)
-					So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, tc.expectedCalls)
+					So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, tc.expectedCalls)
 				})
 			})
 		}
 
-		Convey("When PostPolicy returns an error", func() {
+		Convey("When PostPolicyWithID returns an error", func() {
 			errExpectedFailure := errors.New("expected failure")
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
 					return nil, errExpectedFailure
 				},
 			}
@@ -106,9 +107,9 @@ func TestCreateBundlePolicies(t *testing.T) {
 			}
 
 			Convey("Then the error is returned", func() {
-				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, previewTeams, models.RoleDatasetsPreviewer)
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", previewTeams, models.RoleDatasetsPreviewer)
 				So(err, ShouldEqual, errExpectedFailure)
-				So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 1)
 			})
 		})
 	})

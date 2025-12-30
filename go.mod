@@ -14,7 +14,7 @@ require (
 	github.com/ONSdigital/dp-mongodb-in-memory v1.8.1
 	github.com/ONSdigital/dp-mongodb/v3 v3.8.0
 	github.com/ONSdigital/dp-net/v3 v3.9.0
-	github.com/ONSdigital/dp-permissions-api v1.8.0
+	github.com/ONSdigital/dp-permissions-api v1.9.0
 	github.com/ONSdigital/log.go/v2 v2.5.0
 	github.com/cucumber/godog v0.15.1
 	github.com/gofrs/uuid v4.4.0+incompatible

@@ -1187,7 +1187,7 @@ func TestCreateBundle_Success(t *testing.T) {
 			}
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
 					return nil, nil
 				},
 			}
@@ -1217,7 +1217,7 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
 			})
 			Convey("And a policy should be created for each preview team", func() {
-				So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, len(*validBundle.PreviewTeams))
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, len(*validBundle.PreviewTeams))
 			})
 		})
 	})
@@ -1256,7 +1256,7 @@ func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
 			}
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
 					return nil, nil
 				},
 			}
@@ -1286,7 +1286,7 @@ func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
 				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
 			})
 			Convey("And no policy should be created since no preview teams were provided", func() {
-				So(len(mockPermissionsAPIClient.PostPolicyCalls()), ShouldEqual, 0)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 0)
 			})
 		})
 	})
@@ -1704,7 +1704,7 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyFunc: func(ctx context.Context, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
 					return nil, errors.New("failed to create policy")
 				},
 			}

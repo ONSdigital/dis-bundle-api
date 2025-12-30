@@ -289,7 +289,7 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = api.stateMachineBundleAPI.CreateBundlePolicies(ctx, createdBundle.PreviewTeams, models.RoleDatasetsPreviewer)
+	err = api.stateMachineBundleAPI.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, createdBundle.PreviewTeams, models.RoleDatasetsPreviewer)
 	if err != nil {
 		log.Error(ctx, "createBundle: failed to create bundle policies", err)
 		code := models.CodeInternalError
