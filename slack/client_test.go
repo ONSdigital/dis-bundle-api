@@ -18,7 +18,6 @@ var (
 			WarningChannel: "warning-channel",
 			AlarmChannel:   "alarm-channel",
 		},
-		Enabled: true,
 	}
 	validAPIToken      = "valid-api-token"
 	postMessageAPIPath = "/api/chat.postMessage"
@@ -38,11 +37,11 @@ func getMockHTTPServer(expectedPath string) *httptest.Server {
 }
 
 func TestNew(t *testing.T) {
-	Convey("Given a SlackConfig with Enabled set to true", t, func() {
+	Convey("Given a SlackConfig, apiToken and enabled set to true", t, func() {
 		config := validSlackConfig
 
 		Convey("When New is called", func() {
-			client, err := New(config, validAPIToken)
+			client, err := New(config, validAPIToken, true)
 			So(err, ShouldBeNil)
 
 			Convey("Then a Client is returned", func() {
@@ -52,13 +51,11 @@ func TestNew(t *testing.T) {
 		})
 	})
 
-	Convey("Given a SlackConfig with Enabled set to false", t, func() {
-		config := &SlackConfig{
-			Enabled: false,
-		}
+	Convey("Given a SlackConfig, apiToken and enabled set to false", t, func() {
+		config := &SlackConfig{}
 
 		Convey("When New is called", func() {
-			client, err := New(config, validAPIToken)
+			client, err := New(config, validAPIToken, false)
 			So(err, ShouldBeNil)
 
 			Convey("Then a NoopClient is returned", func() {
@@ -68,11 +65,11 @@ func TestNew(t *testing.T) {
 		})
 	})
 
-	Convey("Given a nil SlackConfig", t, func() {
+	Convey("Given a nil SlackConfig, apiToken and enabled set to true", t, func() {
 		var config *SlackConfig = nil
 
 		Convey("When New is called", func() {
-			_, err := New(config, validAPIToken)
+			_, err := New(config, validAPIToken, true)
 
 			Convey("Then an error is returned", func() {
 				So(err, ShouldEqual, errNilSlackConfig)
@@ -80,9 +77,8 @@ func TestNew(t *testing.T) {
 		})
 	})
 
-	Convey("Given a SlackConfig with invalid configuration", t, func() {
+	Convey("Given an invalid SlackConfig, apiToken and enabled set to true", t, func() {
 		config := &SlackConfig{
-			Enabled: true,
 			Channels: Channels{
 				InfoChannel:    "",
 				WarningChannel: "warning-channel",
@@ -91,7 +87,7 @@ func TestNew(t *testing.T) {
 		}
 
 		Convey("When New is called", func() {
-			_, err := New(config, validAPIToken)
+			_, err := New(config, validAPIToken, true)
 
 			Convey("Then an error is returned", func() {
 				So(err.Error(), ShouldEqual, "slack info channel is missing")

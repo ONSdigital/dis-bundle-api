@@ -15,23 +15,23 @@ type Client struct {
 
 // New returns a new Client if Slack notifications are enabled.
 // If not enabled, it returns a NoopClient
-func New(slackConfig *SlackConfig, apiToken string) (Clienter, error) {
+func New(slackConfig *SlackConfig, apiToken string, enabled bool) (Clienter, error) {
+	if !enabled {
+		return &NoopClient{}, nil
+	}
+
 	if slackConfig == nil {
 		return nil, errNilSlackConfig
 	}
 
-	if slackConfig.Enabled {
-		if err := validateSlackConfig(slackConfig, apiToken); err != nil {
-			return nil, err
-		}
-		client := slack.New(apiToken)
-
-		return &Client{
-			client:   client,
-			channels: slackConfig.Channels,
-		}, nil
+	if err := validateSlackConfig(slackConfig, apiToken); err != nil {
+		return nil, err
 	}
-	return &NoopClient{}, nil
+
+	return &Client{
+		client:   slack.New(apiToken),
+		channels: slackConfig.Channels,
+	}, nil
 }
 
 // SendAlarm sends an error notification to the configured Slack alarm channel.

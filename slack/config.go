@@ -3,7 +3,6 @@ package slack
 // SlackConfig holds configuration for sending Slack notifications
 type SlackConfig struct {
 	Channels Channels
-	Enabled  bool `envconfig:"SLACK_ENABLED"`
 }
 
 // Channels holds the Slack channel names for different notification levels
