@@ -86,8 +86,8 @@ func (e *Init) DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAP
 }
 
 // GetDataBundleSlackClient creates a new Slack Client and sets the DataBundleSlackClient flag to true
-func (e *ExternalServiceList) GetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
-	client, err := e.Init.DoGetDataBundleSlackClient(slackConfig, apiToken)
+func (e *ExternalServiceList) GetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
+	client, err := e.Init.DoGetDataBundleSlackClient(slackConfig, apiToken, enabled)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +96,9 @@ func (e *ExternalServiceList) GetDataBundleSlackClient(slackConfig *slack.SlackC
 }
 
 // DoGetDataBundleSlackClient creates a new Slack Client
-func (e *Init) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
-	return slack.New(slackConfig, apiToken)
+// If enabled is false, a no-op slack client is returned
+func (e *Init) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
+	return slack.New(slackConfig, apiToken, enabled)
 }
 
 // GetAuthorisationMiddleware creates authorisation middleware for the given config and sets the AuthorisationMiddleware flag to true
@@ -115,7 +116,7 @@ func (e *Init) DoGetAuthorisationMiddleware(ctx context.Context, authorisationCo
 	return authorisation.NewFeatureFlaggedMiddleware(ctx, authorisationConfig, nil)
 }
 
-// GetHealthCheck creates a healthcheck with versionInfo and sets teh HealthCheck flag to true
+// GetHealthCheck creates a healthcheck with versionInfo and sets the HealthCheck flag to true
 func (e *ExternalServiceList) GetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error) {
 	hc, err := e.Init.DoGetHealthCheck(cfg, buildTime, gitCommit, version)
 	if err != nil {

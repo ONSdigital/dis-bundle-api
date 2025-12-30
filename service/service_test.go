@@ -46,7 +46,7 @@ var funcDoGetMongoDBErr = func(ctx context.Context, cfg config.MongoConfig) (sto
 	return nil, errMongo
 }
 
-func funcDoGetDataBundleSlackClientErr(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+func funcDoGetDataBundleSlackClientErr(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
 	return nil, errDataBundleSlackClient
 }
 
@@ -105,7 +105,7 @@ func TestRun(t *testing.T) {
 			return &permissionsAPISDKMock.ClienterMock{}
 		}
 
-		funcDoGetDataBundleSlackClientOk := func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+		funcDoGetDataBundleSlackClientOk := func(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
 			return &slackMock.ClienterMock{}, nil
 		}
 

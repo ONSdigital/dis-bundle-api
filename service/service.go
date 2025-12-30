@@ -131,7 +131,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	svc.permissionsAPIClient = svc.ServiceList.GetPermissionsAPIClient(cfg.AuthConfig.PermissionsAPIURL)
 
 	// Get Data Bundle Slack Client
-	svc.dataBundleSlackClient, err = svc.ServiceList.GetDataBundleSlackClient(cfg.SlackConfig, cfg.DataBundlePublicationServiceSlackAPIToken)
+	svc.dataBundleSlackClient, err = svc.ServiceList.GetDataBundleSlackClient(cfg.SlackConfig, cfg.DataBundlePublicationServiceSlackAPIToken, cfg.DataBundlePublicationServiceSlackEnabled)
 	if err != nil {
 		log.Fatal(ctx, "could not instantiate data bundle slack client", err)
 		return err

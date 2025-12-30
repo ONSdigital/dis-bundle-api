@@ -22,7 +22,7 @@ type Initialiser interface {
 	DoGetMongoDB(ctx context.Context, cfg config.MongoConfig) (store.MongoDB, error)
 	DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter
 	DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAPISDK.Clienter
-	DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error)
+	DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error)
 	DoGetAuthorisationMiddleware(ctx context.Context, authorisationConfig *authorisation.Config) (authorisation.Middleware, error)
 	DoGetHealthCheck(cfg *config.Config, buildTime, gitCommit, version string) (HealthChecker, error)
 	DoGetHTTPServer(bindAddr string, router http.Handler) HTTPServer

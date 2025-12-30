@@ -35,6 +35,7 @@ type Config struct {
 	ZebedeeClientTimeout       time.Duration `envconfig:"ZEBEDEE_CLIENT_TIMEOUT"`
 	MongoConfig
 	AuthConfig                                *authorisation.Config
+	DataBundlePublicationServiceSlackEnabled  bool   `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_ENABLED"`
 	DataBundlePublicationServiceSlackAPIToken string `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_API_TOKEN"`
 	SlackConfig                               *slack.SlackConfig
 }
@@ -86,9 +87,10 @@ func Get() (*Config, error) {
 				},
 			},
 		},
-		AuthConfig: authorisation.NewDefaultConfig(),
+		AuthConfig:                                authorisation.NewDefaultConfig(),
+		DataBundlePublicationServiceSlackEnabled:  false,
 		DataBundlePublicationServiceSlackAPIToken: "test-data-bundle-publication-service-slack-api-token",
-		SlackConfig: &slack.SlackConfig{},
+		SlackConfig:                               &slack.SlackConfig{},
 	}
 
 	return cfg, envconfig.Process("", cfg)

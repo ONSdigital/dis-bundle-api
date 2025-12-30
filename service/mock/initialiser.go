@@ -29,7 +29,7 @@ var _ service.Initialiser = &InitialiserMock{}
 //			DoGetAuthorisationMiddlewareFunc: func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error) {
 //				panic("mock out the DoGetAuthorisationMiddleware method")
 //			},
-//			DoGetDataBundleSlackClientFunc: func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+//			DoGetDataBundleSlackClientFunc: func(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
 //				panic("mock out the DoGetDataBundleSlackClient method")
 //			},
 //			DoGetDatasetAPIClientFunc: func(datasetAPIURL string) datasetAPISDK.Clienter {
@@ -58,7 +58,7 @@ type InitialiserMock struct {
 	DoGetAuthorisationMiddlewareFunc func(ctx context.Context, authorisationConfig *auth.Config) (auth.Middleware, error)
 
 	// DoGetDataBundleSlackClientFunc mocks the DoGetDataBundleSlackClient method.
-	DoGetDataBundleSlackClientFunc func(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error)
+	DoGetDataBundleSlackClientFunc func(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error)
 
 	// DoGetDatasetAPIClientFunc mocks the DoGetDatasetAPIClient method.
 	DoGetDatasetAPIClientFunc func(datasetAPIURL string) datasetAPISDK.Clienter
@@ -90,6 +90,8 @@ type InitialiserMock struct {
 			SlackConfig *slack.SlackConfig
 			// ApiToken is the apiToken argument value.
 			ApiToken string
+			// Enabled is the enabled argument value.
+			Enabled bool
 		}
 		// DoGetDatasetAPIClient holds details about calls to the DoGetDatasetAPIClient method.
 		DoGetDatasetAPIClient []struct {
@@ -173,21 +175,23 @@ func (mock *InitialiserMock) DoGetAuthorisationMiddlewareCalls() []struct {
 }
 
 // DoGetDataBundleSlackClient calls DoGetDataBundleSlackClientFunc.
-func (mock *InitialiserMock) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+func (mock *InitialiserMock) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
 	if mock.DoGetDataBundleSlackClientFunc == nil {
 		panic("InitialiserMock.DoGetDataBundleSlackClientFunc: method is nil but Initialiser.DoGetDataBundleSlackClient was just called")
 	}
 	callInfo := struct {
 		SlackConfig *slack.SlackConfig
 		ApiToken    string
+		Enabled     bool
 	}{
 		SlackConfig: slackConfig,
 		ApiToken:    apiToken,
+		Enabled:     enabled,
 	}
 	mock.lockDoGetDataBundleSlackClient.Lock()
 	mock.calls.DoGetDataBundleSlackClient = append(mock.calls.DoGetDataBundleSlackClient, callInfo)
 	mock.lockDoGetDataBundleSlackClient.Unlock()
-	return mock.DoGetDataBundleSlackClientFunc(slackConfig, apiToken)
+	return mock.DoGetDataBundleSlackClientFunc(slackConfig, apiToken, enabled)
 }
 
 // DoGetDataBundleSlackClientCalls gets all the calls that were made to DoGetDataBundleSlackClient.
@@ -197,10 +201,12 @@ func (mock *InitialiserMock) DoGetDataBundleSlackClient(slackConfig *slack.Slack
 func (mock *InitialiserMock) DoGetDataBundleSlackClientCalls() []struct {
 	SlackConfig *slack.SlackConfig
 	ApiToken    string
+	Enabled     bool
 } {
 	var calls []struct {
 		SlackConfig *slack.SlackConfig
 		ApiToken    string
+		Enabled     bool
 	}
 	mock.lockDoGetDataBundleSlackClient.RLock()
 	calls = mock.calls.DoGetDataBundleSlackClient

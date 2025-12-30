@@ -55,6 +55,7 @@ func TestSpec(t *testing.T) {
 
 				So(cfg.AuthConfig, ShouldResemble, authorisation.NewDefaultConfig())
 
+				So(cfg.DataBundlePublicationServiceSlackEnabled, ShouldBeFalse)
 				So(cfg.DataBundlePublicationServiceSlackAPIToken, ShouldEqual, "test-data-bundle-publication-service-slack-api-token")
 				So(cfg.SlackConfig, ShouldResemble, &slack.SlackConfig{})
 			})

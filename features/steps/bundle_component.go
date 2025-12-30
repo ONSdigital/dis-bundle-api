@@ -284,7 +284,7 @@ func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) pe
 	return c.permissionsAPIClient
 }
 
-func (c *BundleComponent) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string) (slack.Clienter, error) {
+func (c *BundleComponent) DoGetDataBundleSlackClient(slackConfig *slack.SlackConfig, apiToken string, enabled bool) (slack.Clienter, error) {
 	c.slackClient = &slack.NoopClient{}
 	return c.slackClient, nil
 }
