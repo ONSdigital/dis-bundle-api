@@ -86,6 +86,47 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
                 }
             ]
             """
+        And I have these dataset versions:
+            """
+            [
+                {
+                    "id": "version-1",
+                    "version": 1,
+                    "dataset_id": "dataset1",
+                    "edition": "edition1",
+                    "state": "approved" 
+                },
+                {
+                    "id": "version-2",
+                    "version": 2,
+                    "dataset_id": "dataset2",
+                    "edition": "edition2",
+                    "state": "approved" 
+                },
+                {
+                    "id": "version-3",
+                    "version": 3,
+                    "dataset_id": "dataset3",
+                    "edition": "edition3",
+                    "state": "approved" 
+                }
+            ]
+            """
+        And I have these policies:
+            """
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": ["dataset1", "dataset1/edition1"]
+                    }
+                }
+            ]
+            """
 
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} successfully
         Given I am an admin user
@@ -149,4 +190,16 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
         Then the HTTP status code should be "401"
         And the response body should be empty
 
+    Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} updates permissions policy condition
+        Given I am an admin user
+        And the policy "890m231k-98df-11ec-b909-0242ac120002" should have these condition values:
+            """
+            ["dataset1", "dataset1/edition1"]
+            """
+        When I DELETE "/bundles/bundle-1/contents/content-item-1"
+        Then the HTTP status code should be "204"
 
+        And the policy "890m231k-98df-11ec-b909-0242ac120002" should have these condition values:
+            """
+            []
+            """

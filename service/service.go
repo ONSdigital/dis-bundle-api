@@ -166,7 +166,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 
 	// Setup state machine
 	sm := GetStateMachine(ctx, datastore)
-	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.dataBundleSlackClient)
+	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, cfg.AuthConfig.PermissionsAPIURL, svc.dataBundleSlackClient)
 
 	// Setup API
 	svc.API = api.Setup(ctx, svc.Config, r, &datastore, svc.stateMachineBundleAPI, authorisation, svc.ZebedeeClient.Client)

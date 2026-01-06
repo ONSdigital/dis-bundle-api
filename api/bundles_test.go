@@ -181,6 +181,7 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 		StateMachine:         stateMachine,
 		DatasetAPIClient:     datasetAPIClient,
 		PermissionsAPIClient: permissionsAPIClient,
+		PermissionsAPIURL:    "http://localhost:25400",
 	}
 
 	var cliMock *dphttp.ClienterMock

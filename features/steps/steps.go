@@ -67,6 +67,8 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 
 	// Policy assertions (permissions API)
 	ctx.Step(`the following policies should have been created:$`, c.theFollowingPoliciesShouldHaveBeenCreated)
+	ctx.Step(`the policy "([^"]*)" should have these condition values:$`, c.thePolicyShouldHaveTheseConditionValues)
+	ctx.Step(`^I have these policies:$`, c.iHaveThesePolicies)
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -530,6 +532,47 @@ func (c *BundleComponent) theFollowingPoliciesShouldHaveBeenCreated(policiesJSON
 
 	if diff := cmp.Diff(expectedPolicies, c.permissionsAPIPolicies); diff != "" {
 		return fmt.Errorf("policies do not match expected:\n%s", diff)
+	}
+
+	return nil
+}
+
+func (c *BundleComponent) iHaveThesePolicies(policiesJSON *godog.DocString) error {
+	var policies []*permissionsAPIModels.Policy
+	if err := json.Unmarshal([]byte(policiesJSON.Content), &policies); err != nil {
+		return fmt.Errorf("failed to unmarshal policies JSON: %w", err)
+	}
+
+	c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, policies...)
+	return nil
+}
+
+func (c *BundleComponent) thePolicyShouldHaveTheseConditionValues(policyID string, valuesJSON *godog.DocString) error {
+	var expectedValues []string
+	if err := json.Unmarshal([]byte(valuesJSON.Content), &expectedValues); err != nil {
+		return fmt.Errorf("failed to unmarshal expected values: %w", err)
+	}
+
+	var foundPolicy *permissionsAPIModels.Policy
+	for _, p := range c.permissionsAPIPolicies {
+		if p.ID == policyID {
+			foundPolicy = p
+			break
+		}
+	}
+
+	if foundPolicy == nil {
+		return fmt.Errorf("policy with id %s not found", policyID)
+	}
+
+	actualValues := foundPolicy.Condition.Values
+
+	if len(expectedValues) == 0 && len(actualValues) == 0 {
+		return nil
+	}
+
+	if diff := cmp.Diff(expectedValues, actualValues); diff != "" {
+		return fmt.Errorf("policy condition values do not match:\n%s", diff)
 	}
 
 	return nil
