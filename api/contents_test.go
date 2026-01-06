@@ -17,15 +17,20 @@ import (
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 const (
-	dataset2 = "dataset-2"
-	edition2 = "edition-2"
-	cont1    = "content-1"
-	cont2    = "content-2"
+	dataset2     = "dataset-2"
+	edition2     = "edition-2"
+	cont1        = "content-1"
+	cont2        = "content-2"
+	policiesPath = "/v1/policies/team-123"
+	getMethod    = "GET"
+	putMethod    = "PUT"
 )
 
 var (
@@ -1678,7 +1683,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
-		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/"+bundleID+"/contents", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -1761,7 +1766,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 
-		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents"+"?offset=1&limit=1", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/"+bundleID+"/contents"+"?offset=1&limit=1", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -1809,7 +1814,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 			},
 		}
 
-		r := httptest.NewRequest("GET", "/bundles/"+bundleID+"/contents", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/"+bundleID+"/contents", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -1870,7 +1875,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
-		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents?offset=-1", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/bundle-1/contents?offset=-1", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -1909,7 +1914,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
-		r := httptest.NewRequest("GET", "/bundles/non-existent-bundle-id/contents", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/non-existent-bundle-id/contents", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -1949,7 +1954,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
-		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/bundle-1/contents", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -2021,7 +2026,7 @@ func TestGetBundleContents_Failure(t *testing.T) {
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockedDatasetAPI, &permissionsAPISDKMock.ClienterMock{}, false)
-		r := httptest.NewRequest("GET", "/bundles/bundle-1/contents", http.NoBody)
+		r := httptest.NewRequest(getMethod, "/bundles/bundle-1/contents", http.NoBody)
 		r.Header.Set("Authorization", "test-auth-token")
 		w := httptest.NewRecorder()
 
@@ -2044,6 +2049,335 @@ func TestGetBundleContents_Failure(t *testing.T) {
 							Source: &models.Source{
 								Field: "/metadata/dataset_id",
 							},
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestPostBundleContents_WithPreviewTeams_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a POST request to /bundles/{bundle-id}/contents with a bundle that has preview teams", t, func() {
+		permissionsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == getMethod && r.URL.Path == policiesPath {
+				policy := permissionsAPIModels.Policy{
+					ID:        "team-123",
+					Condition: permissionsAPIModels.Condition{},
+				}
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(policy)
+			} else if r.Method == putMethod && r.URL.Path == policiesPath {
+				w.WriteHeader(http.StatusOK)
+			}
+		}))
+		defer permissionsServer.Close()
+
+		newContentItem := &models.ContentItem{
+			BundleID:    "bundle-1",
+			ContentType: models.ContentTypeDataset,
+			Metadata: models.Metadata{
+				DatasetID: "dataset-1",
+				EditionID: "edition-1",
+				Title:     "Example Content Item",
+				VersionID: 1,
+			},
+			Links: models.Links{
+				Edit:    "/edit",
+				Preview: "/preview",
+			},
+		}
+		newContentItemJSON, err := json.Marshal(newContentItem)
+		So(err, ShouldBeNil)
+
+		previewTeam := models.PreviewTeam{ID: "team-123"}
+		previewTeams := []models.PreviewTeam{previewTeam}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+				return true, nil
+			},
+			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+				return false, nil
+			},
+			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:           bundleID,
+					ETag:         "new-etag",
+					PreviewTeams: &previewTeams,
+				}, nil
+			},
+		}
+
+		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+				return datasetAPIModels.Version{}, nil
+			},
+		}
+
+		permissionsAPIClient := permissionsAPISDK.NewClient(permissionsServer.URL)
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &mockDatasetAPIClient, permissionsAPIClient, false)
+
+		bundleAPI.stateMachineBundleAPI.PermissionsAPIURL = permissionsServer.URL
+
+		Convey("When postBundleContents is called", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 201 Created status", func() {
+				So(w.Code, ShouldEqual, 201)
+			})
+		})
+	})
+}
+
+func TestPostBundleContents_PermissionsUpdateFailure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a POST request and the permissions API fails to update", t, func() {
+		permissionsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Return 500 error for any request
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer permissionsServer.Close()
+
+		newContentItem := &models.ContentItem{
+			BundleID:    "bundle-1",
+			ContentType: models.ContentTypeDataset,
+			Metadata: models.Metadata{
+				DatasetID: "dataset-1",
+				EditionID: "edition-1",
+				VersionID: 1,
+			},
+			Links: models.Links{
+				Edit:    "/edit",
+				Preview: "/preview",
+			},
+		}
+		newContentItemJSON, err := json.Marshal(newContentItem)
+		So(err, ShouldBeNil)
+
+		previewTeam := models.PreviewTeam{ID: "team-123"}
+		previewTeams := []models.PreviewTeam{previewTeam}
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+				return true, nil
+			},
+			CheckContentItemExistsByDatasetEditionVersionFunc: func(ctx context.Context, datasetID, editionID string, versionID int) (bool, error) {
+				return false, nil
+			},
+			CreateContentItemFunc: func(ctx context.Context, contentItem *models.ContentItem) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:           bundleID,
+					ETag:         "new-etag",
+					PreviewTeams: &previewTeams,
+				}, nil
+			},
+		}
+
+		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+				return datasetAPIModels.Version{}, nil
+			},
+		}
+
+		permissionsAPIClient := permissionsAPISDK.NewClient(permissionsServer.URL)
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &mockDatasetAPIClient, permissionsAPIClient, false)
+		bundleAPI.stateMachineBundleAPI.PermissionsAPIURL = permissionsServer.URL
+
+		Convey("When postBundleContents is called", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestDeleteContentItem_WithPreviewTeams_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE request for a content item in a bundle with preview teams", t, func() {
+		permissionsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == getMethod && r.URL.Path == policiesPath {
+				policy := permissionsAPIModels.Policy{
+					ID: "team-123",
+					Condition: permissionsAPIModels.Condition{
+						Attribute: "dataset_edition",
+						Operator:  "StringEquals",
+						Values:    []string{"dataset-1", "dataset-1/edition-1"},
+					},
+				}
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(policy)
+			} else if r.Method == putMethod && r.URL.Path == policiesPath {
+				w.WriteHeader(http.StatusOK)
+			}
+		}))
+		defer permissionsServer.Close()
+
+		previewTeam := models.PreviewTeam{ID: "team-123"}
+		previewTeams := []models.PreviewTeam{previewTeam}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+				return &models.ContentItem{
+					ID:       contentItemID,
+					BundleID: bundleID,
+					Metadata: models.Metadata{
+						DatasetID: "dataset-1",
+						EditionID: "edition-1",
+						VersionID: 1,
+					},
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:           bundleID,
+					ETag:         "etag-after-delete",
+					PreviewTeams: &previewTeams,
+				}, nil
+			},
+		}
+
+		permissionsAPIClient := permissionsAPISDK.NewClient(permissionsServer.URL)
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, permissionsAPIClient, false)
+		bundleAPI.stateMachineBundleAPI.PermissionsAPIURL = permissionsServer.URL
+
+		Convey("When deleteContentItem is called", func() {
+			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 204 No Content status", func() {
+				So(w.Code, ShouldEqual, 204)
+			})
+
+			Convey("And the response body should be empty", func() {
+				So(w.Body.Len(), ShouldEqual, 0)
+			})
+		})
+	})
+}
+
+func TestDeleteContentItem_PermissionsUpdateFailure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a DELETE request and the permissions API fails", t, func() {
+		permissionsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer permissionsServer.Close()
+
+		previewTeam := models.PreviewTeam{ID: "team-123"}
+		previewTeams := []models.PreviewTeam{previewTeam}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error) {
+				return &models.ContentItem{
+					ID:       contentItemID,
+					BundleID: bundleID,
+					Metadata: models.Metadata{
+						DatasetID: "dataset-1",
+						EditionID: "edition-1",
+						VersionID: 1,
+					},
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:           bundleID,
+					ETag:         "etag-after-delete",
+					PreviewTeams: &previewTeams,
+				}, nil
+			},
+		}
+
+		permissionsAPIClient := permissionsAPISDK.NewClient(permissionsServer.URL)
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, permissionsAPIClient, false)
+		bundleAPI.stateMachineBundleAPI.PermissionsAPIURL = permissionsServer.URL
+
+		Convey("When deleteContentItem is called", func() {
+			r := httptest.NewRequest("DELETE", "/bundles/bundle-1/contents/content-1", http.NoBody)
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
 						},
 					},
 				}

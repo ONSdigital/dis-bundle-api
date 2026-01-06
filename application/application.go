@@ -24,15 +24,17 @@ type StateMachineBundleAPI struct {
 	StateMachine          *StateMachine
 	DatasetAPIClient      datasetAPISDK.Clienter
 	PermissionsAPIClient  permissionsAPISDK.Clienter
+	PermissionsAPIURL     string
 	DataBundleSlackClient slack.Clienter
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, permissionsAPIURL string, dataBundleSlackClient slack.Clienter) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:             datastore,
 		StateMachine:          stateMachine,
 		DatasetAPIClient:      datasetAPIClient,
 		PermissionsAPIClient:  permissionsAPIClient,
+		PermissionsAPIURL:     permissionsAPIURL,
 		DataBundleSlackClient: dataBundleSlackClient,
 	}
 }
