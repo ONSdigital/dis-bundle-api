@@ -1187,7 +1187,13 @@ func TestCreateBundle_Success(t *testing.T) {
 			}
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					if id == "team1" {
+						return &permissionsAPIModels.Policy{}, errors.New("404 Not Found")
+					}
+					return &permissionsAPIModels.Policy{}, nil
+				},
+				PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
 					return nil, nil
 				},
 			}
@@ -1216,8 +1222,9 @@ func TestCreateBundle_Success(t *testing.T) {
 				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
 				So(w.Header().Get("ETag"), ShouldEqual, "some-etag")
 			})
-			Convey("And a policy should be created for each preview team", func() {
-				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, len(*validBundle.PreviewTeams))
+			Convey("And a policy should be created for any non-existing preview teams", func() {
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 1)
 			})
 		})
 	})
@@ -1255,11 +1262,7 @@ func TestCreateBundleNoPreviewTeam_Success(t *testing.T) {
 				},
 			}
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
-			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
-					return nil, nil
-				},
-			}
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 			bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient, mockPermissionsAPIClient, false)
 			bundleAPI.Router.ServeHTTP(w, r)
 
@@ -1704,7 +1707,11 @@ func TestCreateBundle_Failure_CheckBundleExistsByTitleFails(t *testing.T) {
 			mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					// Policy must not exist to trigger creation
+					return &permissionsAPIModels.Policy{}, errors.New("404 Not Found")
+				},
+				PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
 					return nil, errors.New("failed to create policy")
 				},
 			}
