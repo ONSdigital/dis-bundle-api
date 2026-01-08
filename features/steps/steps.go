@@ -66,7 +66,8 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
 
 	// Policy assertions (permissions API)
-	ctx.Step(`the following policies should have been created:$`, c.theFollowingPoliciesShouldHaveBeenCreated)
+	ctx.Step(`I have these policies:$`, c.iHaveThesePolicies)
+	ctx.Step(`the following policies should exist:$`, c.theFollowingPoliciesShouldExist)
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -518,18 +519,37 @@ func (c *BundleComponent) theNumberOfEventsWithActionAndDatatypeShouldBe(action,
 	return nil
 }
 
-func (c *BundleComponent) theFollowingPoliciesShouldHaveBeenCreated(policiesJSON *godog.DocString) error {
+func (c *BundleComponent) iHaveThesePolicies(policiesJSON *godog.DocString) error {
+	var policies []*permissionsAPIModels.Policy
+	if err := json.Unmarshal([]byte(policiesJSON.Content), &policies); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, policies...)
+
+	return nil
+}
+
+func (c *BundleComponent) theFollowingPoliciesShouldExist(policiesJSON *godog.DocString) error {
 	var expectedPolicies []*permissionsAPIModels.Policy
 	if err := json.Unmarshal([]byte(policiesJSON.Content), &expectedPolicies); err != nil {
 		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
 	}
 
-	if len(expectedPolicies) != len(c.permissionsAPIPolicies) {
-		return fmt.Errorf("expected %d policies to have been created, but found %d", len(expectedPolicies), len(c.permissionsAPIPolicies))
-	}
-
-	if diff := cmp.Diff(expectedPolicies, c.permissionsAPIPolicies); diff != "" {
-		return fmt.Errorf("policies do not match expected:\n%s", diff)
+	for _, expectedPolicy := range expectedPolicies {
+		policyFound := false
+		for _, existingPolicy := range c.permissionsAPIPolicies {
+			if existingPolicy.ID == expectedPolicy.ID {
+				if diff := cmp.Diff(expectedPolicy, existingPolicy); diff != "" {
+					return fmt.Errorf("policy with ID %s does not match expected:\n%s", expectedPolicy.ID, diff)
+				}
+				policyFound = true
+				break
+			}
+		}
+		if !policyFound {
+			return fmt.Errorf("expected policy with ID %s to exist, but it was not found", expectedPolicy.ID)
+		}
 	}
 
 	return nil

@@ -267,7 +267,15 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 
 func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAPISDK.Clienter {
 	permissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-		PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+		GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+			for _, policy := range c.permissionsAPIPolicies {
+				if policy.ID == id {
+					return policy, nil
+				}
+			}
+			return nil, errors.New("404 Not Found")
+		},
+		PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
 			createdPolicy := &permissionsAPIModels.Policy{
 				ID:        id,
 				Entities:  policy.Entities,
