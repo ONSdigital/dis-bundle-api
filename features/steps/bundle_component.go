@@ -109,6 +109,26 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 			}
 			return
 		}
+		if r.Method == "POST" && strings.HasPrefix(r.URL.Path, "/v1/policies/") {
+			policyID := strings.TrimPrefix(r.URL.Path, "/v1/policies/")
+			var policyInfo permissionsAPIModels.PolicyInfo
+			if err := json.NewDecoder(r.Body).Decode(&policyInfo); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			createdPolicy := &permissionsAPIModels.Policy{
+				ID:        policyID,
+				Entities:  policyInfo.Entities,
+				Role:      policyInfo.Role,
+				Condition: policyInfo.Condition,
+			}
+			c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, createdPolicy)
+			w.WriteHeader(http.StatusCreated)
+			if err := json.NewEncoder(w).Encode(createdPolicy); err != nil {
+				log.Error(context.Background(), "failed to encode created policy", err)
+			}
+			return
+		}
 		if r.Method == "PUT" && strings.HasPrefix(r.URL.Path, "/v1/policies/") {
 			policyID := strings.TrimPrefix(r.URL.Path, "/v1/policies/")
 			var policy permissionsAPIModels.Policy
@@ -208,11 +228,12 @@ func (c *BundleComponent) Reset() error {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
 
+	c.permissionsAPIPolicies = []*permissionsAPIModels.Policy{}
+
 	c.setInitialiserMock()
 
 	return nil
 }
-
 func (c *BundleComponent) InitialiseService() (http.Handler, error) {
 	c.svc = service.New(c.Config, service.NewServiceList(c.initialiser))
 

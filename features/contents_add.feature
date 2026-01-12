@@ -88,6 +88,22 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             }
         ]
         """
+
+    And I have these policies:
+    """
+    [
+        {
+            "id": "890m231k-98df-11ec-b909-0242ac120002",
+            "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+            "role": "datasets-previewer",
+            "condition": {
+                "attribute": "",
+                "operator": "",
+                "values": null
+            }
+        }
+    ]
+    """
         
     Scenario: POST /bundles/{id}/contents successfully for SCHEDULED bundle
         Given I am an admin user
