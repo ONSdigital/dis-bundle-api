@@ -56,6 +56,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
 	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
 
+	// Policy assertions (permissions API)
 	ctx.Step(`I have these policies:$`, c.iHaveThesePolicies)
 	ctx.Step(`the following policies should exist:$`, c.theFollowingPoliciesShouldExist)
 	ctx.Step(`the policy "([^"]*)" should have these condition values:$`, c.thePolicyShouldHaveTheseConditionValues)

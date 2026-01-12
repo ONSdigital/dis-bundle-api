@@ -56,7 +56,66 @@ Feature: Create bundle - POST /Bundles
         And the response header "Location" should not be empty
         And the total number of events should be 1
         And the number of events with action "CREATE" and datatype "bundle" should be 1
-        And the following policies should have been created:
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "team1",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team1"
+                    ]
+                },
+                {
+                    "id": "team2",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team2"
+                    ]
+                }
+            ]
+            """
+
+    Scenario: POST /bundles successfully when some policies already exist
+        Given I am an admin user
+        And I have these policies:
+            """
+            [
+                {
+                    "id": "team2",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team2"
+                    ]
+                }
+            ]
+            """
+        When I POST "/bundles"
+            """
+                {
+                    "bundle_type": "SCHEDULED",
+                    "preview_teams": [
+                        {
+                            "id": "team1"
+                        },
+                        {
+                            "id": "team2"
+                        }
+                    ],
+                    "scheduled_at": "2125-07-05T07:00:00.000Z",
+                    "state": "DRAFT",
+                    "title": "Title of the Bundle",
+                    "managed_by": "WAGTAIL"
+                }
+            """
+        Then the HTTP status code should be "201"
+        And the response header "Content-Type" should be "application/json"
+        And the response header "Cache-Control" should be "no-store"
+        And the response header "ETag" should not be empty
+        And the response header "Location" should not be empty
+        And the total number of events should be 1
+        And the number of events with action "CREATE" and datatype "bundle" should be 1
+        And the following policies should exist:
             """
             [
                 {
