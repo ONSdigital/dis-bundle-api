@@ -24,100 +24,197 @@ const (
 func TestCreateBundlePolicies(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
 		ctx := context.Background()
+		stateMachineBundleAPI := &StateMachineBundleAPI{}
 
-		type testCase struct {
-			name          string
-			previewTeams  *[]models.PreviewTeam
-			role          models.Role
-			expectedErr   error
-			expectedCalls int
-		}
-
-		cases := []testCase{
-			{
-				name: "single preview team",
-				previewTeams: &[]models.PreviewTeam{
-					{ID: "team-1"},
-				},
-				role:          models.RoleDatasetsPreviewer,
-				expectedErr:   nil,
-				expectedCalls: 1,
-			},
-			{
-				name: "multiple preview teams",
-				previewTeams: &[]models.PreviewTeam{
-					{ID: "team-1"},
-					{ID: "team-2"},
-				},
-				role:          models.RoleDatasetsPreviewer,
-				expectedErr:   nil,
-				expectedCalls: 2,
-			},
-			{
-				name: "invalid role",
-				previewTeams: &[]models.PreviewTeam{
-					{ID: "team-1"},
-				},
-				role:          models.Role("invalid-role"),
-				expectedErr:   apierrors.ErrInvalidRole,
-				expectedCalls: 0,
-			},
-			{
-				name:          "nil preview teams",
-				previewTeams:  nil,
-				role:          models.RoleDatasetsPreviewer,
-				expectedErr:   nil,
-				expectedCalls: 0,
-			},
-			{
-				name:          "empty preview teams slice",
-				previewTeams:  &[]models.PreviewTeam{},
-				role:          models.RoleDatasetsPreviewer,
-				expectedErr:   nil,
-				expectedCalls: 0,
-			},
-		}
-
-		for _, tc := range cases {
-			Convey("When CreateBundlePolicies is called with: "+tc.name, func() {
-				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-					PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
-						return nil, nil
-					},
-				}
-
-				stateMachineBundleAPI := &StateMachineBundleAPI{
-					PermissionsAPIClient: mockPermissionsAPIClient,
-				}
-
-				Convey("Then the expected error and number of calls are returned", func() {
-					err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", tc.previewTeams, tc.role)
-					So(err, ShouldEqual, tc.expectedErr)
-					So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, tc.expectedCalls)
-				})
-			})
-		}
-
-		Convey("When PostPolicyWithID returns an error", func() {
-			errExpectedFailure := errors.New("expected failure")
+		Convey("When CreateBundlePolicies is called with existing policies", func() {
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-				PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
-					return nil, errExpectedFailure
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return &permissionsAPIModels.Policy{}, nil
 				},
 			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
 
-			stateMachineBundleAPI := &StateMachineBundleAPI{
-				PermissionsAPIClient: mockPermissionsAPIClient,
+			previewTeams := []models.PreviewTeam{
+				{ID: "team-1"},
+				{ID: "team-2"},
 			}
 
-			previewTeams := &[]models.PreviewTeam{
+			Convey("Then CreateBundlePolicies does not attempt to create new policies", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 0)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
+			})
+		})
+
+		Convey("When CreateBundlePolicies is called with non-existing policies", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("404 Not Found")
+				},
+				PostPolicyWithIDFunc: func(ctx context.Context, id string, policyInfo permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return &permissionsAPIModels.Policy{}, nil
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			previewTeams := []models.PreviewTeam{
+				{ID: "team-1"},
+				{ID: "team-2"},
+			}
+
+			Convey("Then CreateBundlePolicies creates new policies for each preview team", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 2)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
+			})
+		})
+
+		Convey("When CreateBundlePolicies is called with some existing and some non-existing policies", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					if id == "team-1" {
+						return &permissionsAPIModels.Policy{}, nil
+					}
+					return nil, errors.New("404 Not Found")
+				},
+				PostPolicyWithIDFunc: func(ctx context.Context, id string, policyInfo permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return &permissionsAPIModels.Policy{}, nil
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			previewTeams := []models.PreviewTeam{
+				{ID: "team-1"},
+				{ID: "team-2"},
+			}
+
+			Convey("Then CreateBundlePolicies creates new policies only for non-existing preview teams", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
+			})
+		})
+
+		Convey("When CreateBundlePolicies is called and CheckPolicyExists returns an unexpected error", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("unexpected error")
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			previewTeams := []models.PreviewTeam{
 				{ID: "team-1"},
 			}
 
-			Convey("Then the error is returned", func() {
-				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", previewTeams, models.RoleDatasetsPreviewer)
-				So(err, ShouldEqual, errExpectedFailure)
+			Convey("Then CreateBundlePolicies returns the error", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "unexpected error")
+				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 0)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When CreateBundlePolicies is called and PostPolicyWithID returns an error", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("404 Not Found")
+				},
+				PostPolicyWithIDFunc: func(ctx context.Context, id string, policyInfo permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("post error")
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			previewTeams := []models.PreviewTeam{
+				{ID: "team-1"},
+			}
+
+			Convey("Then CreateBundlePolicies returns the error", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "post error")
 				So(len(mockPermissionsAPIClient.PostPolicyWithIDCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When CreateBundlePolicies is called with the following invalid inputs then the correct errors are returned", func() {
+			Convey("nil preview teams", func() {
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", nil, models.RoleDatasetsPreviewer)
+				So(err, ShouldBeNil)
+			})
+
+			Convey("empty preview teams", func() {
+				emptyPreviewTeams := []models.PreviewTeam{}
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &emptyPreviewTeams, models.RoleDatasetsPreviewer)
+				So(err, ShouldBeNil)
+			})
+
+			Convey("invalid role", func() {
+				previewTeams := []models.PreviewTeam{
+					{ID: "team-1"},
+				}
+				err := stateMachineBundleAPI.CreateBundlePolicies(ctx, "auth-token", &previewTeams, models.Role("invalid-role"))
+				So(err, ShouldNotBeNil)
+				So(err, ShouldResemble, apierrors.ErrInvalidRole)
+			})
+		})
+	})
+}
+
+func TestCheckPolicyExists(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
+		ctx := context.Background()
+		stateMachineBundleAPI := &StateMachineBundleAPI{}
+
+		Convey("When the policy exists", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return &permissionsAPIModels.Policy{}, nil
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			Convey("Then CheckPolicyExists returns true and no error", func() {
+				exists, err := stateMachineBundleAPI.CheckPolicyExists(ctx, "auth-token", "policy-id")
+				So(err, ShouldBeNil)
+				So(exists, ShouldBeTrue)
+			})
+		})
+
+		Convey("When the policy does not exist", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("404 Not Found")
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			Convey("Then CheckPolicyExists returns false and no error", func() {
+				exists, err := stateMachineBundleAPI.CheckPolicyExists(ctx, "auth-token", "policy-id")
+				So(err, ShouldBeNil)
+				So(exists, ShouldBeFalse)
+			})
+		})
+
+		Convey("When an unexpected error occurs", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("unexpected error")
+				},
+			}
+			stateMachineBundleAPI.PermissionsAPIClient = mockPermissionsAPIClient
+
+			Convey("Then CheckPolicyExists returns the error", func() {
+				exists, err := stateMachineBundleAPI.CheckPolicyExists(ctx, "auth-token", "policy-id")
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "unexpected error")
+				So(exists, ShouldBeFalse)
 			})
 		})
 	})

@@ -3,6 +3,8 @@ package application
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -22,6 +24,15 @@ func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, authTo
 	}
 
 	for _, team := range *previewTeams {
+		policyExists, err := s.CheckPolicyExists(ctx, authToken, team.ID)
+		if err != nil {
+			return err
+		}
+
+		if policyExists {
+			continue
+		}
+
 		policyInfo := permissionsAPIModels.PolicyInfo{
 			Entities: []string{
 				"groups/" + team.ID,
@@ -29,13 +40,28 @@ func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, authTo
 			Role: role.String(),
 		}
 
-		_, err := s.PermissionsAPIClient.PostPolicyWithID(ctx, permissionsAPISDK.Headers{Authorization: authToken}, team.ID, policyInfo)
+		_, err = s.PermissionsAPIClient.PostPolicyWithID(ctx, team.ID, policyInfo, permissionsAPISDK.Headers{Authorization: authToken})
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// CheckPolicyExists checks if a policy with the given ID exists
+func (s *StateMachineBundleAPI) CheckPolicyExists(ctx context.Context, authToken, policyID string) (bool, error) {
+	_, err := s.PermissionsAPIClient.GetPolicy(ctx, policyID, permissionsAPISDK.Headers{Authorization: authToken})
+	if err != nil {
+		// Permissions API will return an error containing "404" if the policy is not found
+		// Note: The Permissions API SDK does not currently provide an alternative way to check for API response codes
+		if strings.Contains(err.Error(), strconv.Itoa(http.StatusNotFound)) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
 }
 
 // UpdatePolicyConditionsForContentItem updates policy conditions for all preview teams in a bundle
@@ -56,7 +82,7 @@ func (s *StateMachineBundleAPI) UpdatePolicyConditionsForContentItem(ctx context
 
 // updatePolicyConditionForTeam updates the policy condition for a single preview team
 func (s *StateMachineBundleAPI) updatePolicyConditionForTeam(ctx context.Context, authToken, teamID, datasetID, editionID string, isAdd bool) error {
-	policy, err := s.PermissionsAPIClient.GetPolicy(ctx, teamID)
+	policy, err := s.PermissionsAPIClient.GetPolicy(ctx, teamID, permissionsAPISDK.Headers{Authorization: authToken})
 	if err != nil {
 		return err
 	}
@@ -78,12 +104,7 @@ func (s *StateMachineBundleAPI) updatePolicyConditionForTeam(ctx context.Context
 		policy.Condition.Values = removeConditionValues(policy.Condition.Values, datasetValue, datasetEditionValue)
 	}
 
-	headers := http.Header{}
-	headers.Set("Authorization", "Bearer "+authToken)
-	opts := permissionsAPISDK.Options{Headers: headers}
-	authClient := permissionsAPISDK.NewClientWithOptions(s.PermissionsAPIURL, opts)
-
-	err = authClient.PutPolicy(ctx, teamID, *policy)
+	err = s.PermissionsAPIClient.PutPolicy(ctx, teamID, *policy, permissionsAPISDK.Headers{Authorization: authToken})
 	if err != nil {
 		return err
 	}
@@ -91,7 +112,7 @@ func (s *StateMachineBundleAPI) updatePolicyConditionForTeam(ctx context.Context
 	return nil
 }
 
-// removeValuesFromSlice removes specific values from the Condition array
+// removeConditionValues removes specific values from the Condition array
 func removeConditionValues(values []string, toRemove ...string) []string {
 	result := []string{}
 	removeMap := make(map[string]bool)

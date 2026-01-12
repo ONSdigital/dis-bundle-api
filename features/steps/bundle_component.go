@@ -70,7 +70,7 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		},
 		errorChan:              make(chan error),
 		ServiceRunning:         false,
-		permissionsAPIPolicies: []*permissionsAPIModels.Policy{}, // Initialize
+		permissionsAPIPolicies: []*permissionsAPIModels.Policy{},
 	}
 
 	var err error
@@ -169,10 +169,10 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 func getPermissionsBundle() *permissionsAPISDK.Bundle {
 	return &permissionsAPISDK.Bundle{
-		"bundles:read": { // role
-			"groups/role-admin": { // group
+		"bundles:read": {
+			"groups/role-admin": {
 				{
-					ID: "1", // policy
+					ID: "1",
 				},
 			},
 		},
@@ -214,7 +214,6 @@ func (c *BundleComponent) Reset() error {
 }
 
 func (c *BundleComponent) InitialiseService() (http.Handler, error) {
-	// Initialiser before Run to allow switching out of Initialiser between tests.
 	c.svc = service.New(c.Config, service.NewServiceList(c.initialiser))
 
 	if err := c.svc.Run(context.Background(), "1", "", "", c.errorChan); err != nil {
@@ -242,7 +241,6 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
-//nolint:gocyclo // This function requires high cyclomatic as the mocks need to handle multiple cases
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
@@ -312,7 +310,15 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 
 func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) permissionsAPISDK.Clienter {
 	permissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
-		PostPolicyWithIDFunc: func(ctx context.Context, headers permissionsAPISDK.Headers, id string, policy permissionsAPIModels.PolicyInfo) (*permissionsAPIModels.Policy, error) {
+		GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+			for _, policy := range c.permissionsAPIPolicies {
+				if policy.ID == id {
+					return policy, nil
+				}
+			}
+			return nil, errors.New("404 Not Found")
+		},
+		PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
 			createdPolicy := &permissionsAPIModels.Policy{
 				ID:        id,
 				Entities:  policy.Entities,
@@ -322,15 +328,7 @@ func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) pe
 			c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, createdPolicy)
 			return createdPolicy, nil
 		},
-		GetPolicyFunc: func(ctx context.Context, id string) (*permissionsAPIModels.Policy, error) {
-			for _, p := range c.permissionsAPIPolicies {
-				if p.ID == id {
-					return p, nil
-				}
-			}
-			return &permissionsAPIModels.Policy{ID: id}, nil
-		},
-		PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy) error {
+		PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
 			for i, p := range c.permissionsAPIPolicies {
 				if p.ID == id {
 					c.permissionsAPIPolicies[i] = &policy
@@ -379,7 +377,6 @@ func (c *BundleComponent) Close() error {
 		c.permissionsAPIServer.Close()
 	}
 
-	// Closing Mongo DB
 	if c.svc != nil && c.ServiceRunning {
 		if err := c.MongoClient.Connection.DropDatabase(ctx); err != nil {
 			log.Warn(ctx, "error dropping database on Close", log.Data{"err": err.Error()})

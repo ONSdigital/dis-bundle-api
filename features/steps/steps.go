@@ -24,18 +24,15 @@ import (
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	c.apiFeature.RegisterSteps(ctx)
 
-	// Background setup steps
 	ctx.Step(`^I have these bundles:$`, c.iHaveTheseBundles)
 	ctx.Step(`^I have these content items:$`, c.iHaveTheseContentItems)
 	ctx.Step(`^I have these bundle events:$`, c.iHaveTheseBundleEvents)
 	ctx.Step(`^I have these dataset versions:$`, c.iHaveTheseDatasetVersions)
 
-	// Response assertions
 	ctx.Step(`^the response should contain:$`, c.theResponseShouldContain)
 	ctx.Step(`^the response should contain the following JSON response with a dynamic timestamp:$`, c.theResponseShouldContainTheFollowingJSONResponseWithADynamicTimestamp)
 	ctx.Step(`^the response body should be empty$`, c.theResponseBodyShouldBeEmpty)
 
-	// Header assertions
 	ctx.Step(`^the response header "([^"]*)" should equal "([^"]*)"$`, c.theResponseHeaderShouldBe)
 	ctx.Step(`^the response header "([^"]*)" should not be empty$`, c.theResponseHeaderShouldNotBeEmpty)
 	ctx.Step(`^the response header "([^"]*)" should contain "([^"]*)"$`, c.theResponseHeaderShouldContain)
@@ -43,32 +40,25 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 
 	ctx.Step(`^I set the header "([^"]*)" to "([^"]*)"$`, c.iSetTheHeaderTo)
 
-	// Database assertions
 	ctx.Step(`^the record with id "([^"]*)" should not exist in the "([^"]*)" collection$`, c.theRecordWithIDShouldNotExistInTheCollection)
 
-	// Bundle assertions
 	ctx.Step(`^bundle "([^"]*)" should have state "([^"]*)"`, c.bundleShouldHaveState)
 	ctx.Step(`^bundle "([^"]*)" should have this etag "([^"]*)"$`, c.bundleETagShouldMatch)
 	ctx.Step(`^bundle "([^"]*)" should not have this etag "([^"]*)"$`, c.bundleETagShouldNotMatch)
 
-	// Content Item assertions
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
 
-	// Dataset version assertions
 	ctx.Step(`^the release date for the dataset version with id "([^"]*)" should be "([^"]*)"$`, c.theReleaseDateForDatasetVersionShouldBe)
 
-	// Event assertions
 	ctx.Step(`the total number of events should be (\d+)`, c.theTotalNumberOfEventsShouldBe)
 	ctx.Step(`the number of events with action "([^"]*)" and datatype "([^"]*)" should be (\d+)`, c.theNumberOfEventsWithActionAndDatatypeShouldBe)
 
-	// State assertions
 	ctx.Step(`^these content item states should match:$`, c.contentItemsShouldMatchState)
 	ctx.Step(`^these dataset versions states should match:$`, c.theseVersionsShouldHaveTheseStates)
 
-	// Policy assertions (permissions API)
-	ctx.Step(`the following policies should have been created:$`, c.theFollowingPoliciesShouldHaveBeenCreated)
+	ctx.Step(`I have these policies:$`, c.iHaveThesePolicies)
+	ctx.Step(`the following policies should exist:$`, c.theFollowingPoliciesShouldExist)
 	ctx.Step(`the policy "([^"]*)" should have these condition values:$`, c.thePolicyShouldHaveTheseConditionValues)
-	ctx.Step(`^I have these policies:$`, c.iHaveThesePolicies)
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -91,7 +81,6 @@ func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error 
 }
 
 func (c *BundleComponent) putBundleInDatabase(ctx context.Context, collectionName string, bundle models.Bundle) error {
-	// Set the etag (json omitted)
 	bundle.ETag = "etag-" + bundle.ID
 	update := bson.M{
 		"$set": bundle,
@@ -148,7 +137,6 @@ func (c *BundleComponent) theResponseBodyShouldBeEmpty() error {
 		return fmt.Errorf("error reading response body: %w", err)
 	}
 
-	// Reset the body so other steps can still use it
 	c.apiFeature.HTTPResponse.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	if len(bytes.TrimSpace(bodyBytes)) > 0 {
@@ -350,6 +338,7 @@ func (c *BundleComponent) theResponseShouldContainTheFollowingJSONResponseWithAD
 	}
 	return nil
 }
+
 func (c *BundleComponent) iHaveTheseDatasetVersions(contentItemsJSON *godog.DocString) error {
 	versions := []*datasetAPIModels.Version{}
 
@@ -520,30 +509,39 @@ func (c *BundleComponent) theNumberOfEventsWithActionAndDatatypeShouldBe(action,
 	return nil
 }
 
-func (c *BundleComponent) theFollowingPoliciesShouldHaveBeenCreated(policiesJSON *godog.DocString) error {
+func (c *BundleComponent) iHaveThesePolicies(policiesJSON *godog.DocString) error {
+	var policies []*permissionsAPIModels.Policy
+	if err := json.Unmarshal([]byte(policiesJSON.Content), &policies); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, policies...)
+
+	return nil
+}
+
+func (c *BundleComponent) theFollowingPoliciesShouldExist(policiesJSON *godog.DocString) error {
 	var expectedPolicies []*permissionsAPIModels.Policy
 	if err := json.Unmarshal([]byte(policiesJSON.Content), &expectedPolicies); err != nil {
 		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
 	}
 
-	if len(expectedPolicies) != len(c.permissionsAPIPolicies) {
-		return fmt.Errorf("expected %d policies to have been created, but found %d", len(expectedPolicies), len(c.permissionsAPIPolicies))
+	for _, expectedPolicy := range expectedPolicies {
+		policyFound := false
+		for _, existingPolicy := range c.permissionsAPIPolicies {
+			if existingPolicy.ID == expectedPolicy.ID {
+				if diff := cmp.Diff(expectedPolicy, existingPolicy); diff != "" {
+					return fmt.Errorf("policy with ID %s does not match expected:\n%s", expectedPolicy.ID, diff)
+				}
+				policyFound = true
+				break
+			}
+		}
+		if !policyFound {
+			return fmt.Errorf("expected policy with ID %s to exist, but it was not found", expectedPolicy.ID)
+		}
 	}
 
-	if diff := cmp.Diff(expectedPolicies, c.permissionsAPIPolicies); diff != "" {
-		return fmt.Errorf("policies do not match expected:\n%s", diff)
-	}
-
-	return nil
-}
-
-func (c *BundleComponent) iHaveThesePolicies(policiesJSON *godog.DocString) error {
-	var policies []*permissionsAPIModels.Policy
-	if err := json.Unmarshal([]byte(policiesJSON.Content), &policies); err != nil {
-		return fmt.Errorf("failed to unmarshal policies JSON: %w", err)
-	}
-
-	c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, policies...)
 	return nil
 }
 
