@@ -63,6 +63,7 @@ type BundleComponent struct {
 	DatasetAPIVersions      []*datasetAPIModels.Version
 }
 
+//nolint:gocognit,gocyclo // This function sets up complex test infrastructure with multiple handlers
 func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c := &BundleComponent{
 		HTTPServer: &http.Server{
@@ -262,6 +263,7 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
+//nolint:gocyclo,gocognit // This function requires high cyclomatic complexity as the mocks need to handle multiple cases
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
