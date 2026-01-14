@@ -88,6 +88,21 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             }
         ]
         """
+    And I have these policies:
+    """
+    [
+        {
+            "id": "890m231k-98df-11ec-b909-0242ac120002",
+            "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+            "role": "datasets-previewer",
+            "condition": {
+                "attribute": "",
+                "operator": "",
+                "values": null
+            }
+        }
+    ]
+    """
         
     Scenario: POST /bundles/{id}/contents successfully for SCHEDULED bundle
         Given I am an admin user
@@ -399,3 +414,38 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
             """
         Then the HTTP status code should be "401"
         And the response body should be empty
+
+    Scenario: POST /bundles/{id}/contents updates permissions policy
+        Given I am an admin user
+        When I POST "/bundles/bundle-1/contents"
+            """
+            {
+                "content_type": "DATASET",
+                "metadata": {
+                    "dataset_id": "dataset1",
+                    "edition_id": "edition1",
+                    "version_id": 1,
+                    "title": "Test Dataset"
+                },
+                "links": {
+                    "edit": "edit/link",
+                    "preview": "preview/link"
+                }
+            }
+            """
+        Then the HTTP status code should be "201"
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": ["dataset1", "dataset1/edition1"]
+                    }
+                }
+            ]
+            """

@@ -2,9 +2,11 @@ package steps
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"time"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
 	componenttest "github.com/ONSdigital/dp-component-test"
 	"github.com/ONSdigital/dp-component-test/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
@@ -64,8 +65,9 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		HTTPServer: &http.Server{
 			ReadHeaderTimeout: 60 * time.Second,
 		},
-		errorChan:      make(chan error),
-		ServiceRunning: false,
+		errorChan:              make(chan error),
+		ServiceRunning:         false,
+		permissionsAPIPolicies: []*permissionsAPIModels.Policy{},
 	}
 
 	var err error
@@ -77,8 +79,21 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
-	fakePermissionsAPI := setupFakePermissionsAPI()
-	c.Config.AuthConfig.PermissionsAPIURL = fakePermissionsAPI.URL()
+	// Create a simple server ONLY for the permissions bundle endpoint (for authorization)
+	permissionsAPIServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Path == "/v1/permissions-bundle" {
+			bundle := getPermissionsBundle()
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(bundle); err != nil {
+				log.Error(context.Background(), "failed to encode permissions bundle", err)
+			}
+			return
+		}
+		// All other requests should not reach here (handled by mock client)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	c.Config.AuthConfig.PermissionsAPIURL = permissionsAPIServer.URL
 
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
@@ -112,22 +127,12 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	return c, nil
 }
 
-func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
-	fakePermissionsAPI := authorisationtest.NewFakePermissionsAPI()
-	bundle := getPermissionsBundle()
-	fakePermissionsAPI.Reset()
-	if err := fakePermissionsAPI.UpdatePermissionsBundleResponse(bundle); err != nil {
-		log.Error(context.Background(), "failed to update permissions bundle response", err)
-	}
-	return fakePermissionsAPI
-}
-
 func getPermissionsBundle() *permissionsAPISDK.Bundle {
 	return &permissionsAPISDK.Bundle{
-		"bundles:read": { // role
-			"groups/role-admin": { // group
+		"bundles:read": {
+			"groups/role-admin": {
 				{
-					ID: "1", // policy
+					ID: "1",
 				},
 			},
 		},
@@ -163,13 +168,14 @@ func (c *BundleComponent) Reset() error {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
 
+	c.permissionsAPIPolicies = []*permissionsAPIModels.Policy{}
+
 	c.setInitialiserMock()
 
 	return nil
 }
 
 func (c *BundleComponent) InitialiseService() (http.Handler, error) {
-	// Initialiser before Run to allow switching out of Initialiser between tests.
 	c.svc = service.New(c.Config, service.NewServiceList(c.initialiser))
 
 	if err := c.svc.Run(context.Background(), "1", "", "", c.errorChan); err != nil {
@@ -197,7 +203,7 @@ func (c *BundleComponent) DoGetMongoDB(context.Context, config.MongoConfig) (sto
 	return c.MongoClient, nil
 }
 
-//nolint:gocyclo // This function requires high cyclomatic as the mocks need to handle multiple cases
+//nolint:gocyclo,gocognit // This function requires high cyclomatic complexity as the mocks need to handle multiple cases
 func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPISDK.Clienter {
 	datasetAPIClient := &datasetAPISDKMock.ClienterMock{
 		GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
@@ -285,6 +291,16 @@ func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) pe
 			c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, createdPolicy)
 			return createdPolicy, nil
 		},
+		PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+			for i, p := range c.permissionsAPIPolicies {
+				if p.ID == id {
+					c.permissionsAPIPolicies[i] = &policy
+					return nil
+				}
+			}
+			c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, &policy)
+			return nil
+		},
 	}
 	c.permissionsAPIClient = permissionsAPIClient
 	return c.permissionsAPIClient
@@ -320,7 +336,6 @@ func (c *BundleComponent) setInitialiserMock() {
 func (c *BundleComponent) Close() error {
 	ctx := context.Background()
 
-	// Closing Mongo DB
 	if c.svc != nil && c.ServiceRunning {
 		if err := c.MongoClient.Connection.DropDatabase(ctx); err != nil {
 			log.Warn(ctx, "error dropping database on Close", log.Data{"err": err.Error()})
