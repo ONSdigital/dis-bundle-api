@@ -79,7 +79,6 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
-	// Create a simple server ONLY for the permissions bundle endpoint (for authorization)
 	permissionsAPIServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" && r.URL.Path == "/v1/permissions-bundle" {
 			bundle := getPermissionsBundle()
@@ -89,7 +88,6 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 			}
 			return
 		}
-		// All other requests should not reach here (handled by mock client)
 		w.WriteHeader(http.StatusNotFound)
 	}))
 
@@ -129,10 +127,10 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 func getPermissionsBundle() *permissionsAPISDK.Bundle {
 	return &permissionsAPISDK.Bundle{
-		"bundles:read": {
-			"groups/role-admin": {
+		"bundles:read": { // role
+			"groups/role-admin": { // group
 				{
-					ID: "1",
+					ID: "1", // policy
 				},
 			},
 		},
@@ -176,6 +174,7 @@ func (c *BundleComponent) Reset() error {
 }
 
 func (c *BundleComponent) InitialiseService() (http.Handler, error) {
+	// Initialiser before Run to allow switching out of Initialiser between tests.
 	c.svc = service.New(c.Config, service.NewServiceList(c.initialiser))
 
 	if err := c.svc.Run(context.Background(), "1", "", "", c.errorChan); err != nil {
@@ -336,6 +335,7 @@ func (c *BundleComponent) setInitialiserMock() {
 func (c *BundleComponent) Close() error {
 	ctx := context.Background()
 
+	// Closing Mongo DB
 	if c.svc != nil && c.ServiceRunning {
 		if err := c.MongoClient.Connection.DropDatabase(ctx); err != nil {
 			log.Warn(ctx, "error dropping database on Close", log.Data{"err": err.Error()})
