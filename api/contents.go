@@ -178,6 +178,18 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	err = api.stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem, true)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to update permissions policy conditions", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
 	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil)
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, logData)
@@ -302,6 +314,18 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
 	if err != nil {
 		log.Error(ctx, "deleteContentItem endpoint: failed to update bundle ETag", err, logData)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+
+	err = api.stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem, false)
+	if err != nil {
+		log.Error(ctx, "deleteContentItem endpoint: failed to update permissions policy conditions", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
