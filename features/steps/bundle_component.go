@@ -65,9 +65,8 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		HTTPServer: &http.Server{
 			ReadHeaderTimeout: 60 * time.Second,
 		},
-		errorChan:              make(chan error),
-		ServiceRunning:         false,
-		permissionsAPIPolicies: []*permissionsAPIModels.Policy{},
+		errorChan:      make(chan error),
+		ServiceRunning: false,
 	}
 
 	var err error
@@ -165,8 +164,6 @@ func (c *BundleComponent) Reset() error {
 	if err := c.MongoClient.Init(ctx); err != nil {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
-
-	c.permissionsAPIPolicies = []*permissionsAPIModels.Policy{}
 
 	c.setInitialiserMock()
 

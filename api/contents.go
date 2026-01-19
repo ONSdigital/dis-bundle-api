@@ -178,9 +178,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err = api.stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem, true)
+	err = api.stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem)
 	if err != nil {
-		log.Error(ctx, "postBundleContents endpoint: failed to update permissions policy conditions", err, logData)
+		log.Error(ctx, "postBundleContents endpoint: failed to add permissions policy conditions", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -323,9 +323,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = api.stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem, false)
+	err = api.stateMachineBundleAPI.RemovePolicyConditionsForContentItem(ctx, authEntityData.Headers.AccessToken, updatedBundle, contentItem)
 	if err != nil {
-		log.Error(ctx, "deleteContentItem endpoint: failed to update permissions policy conditions", err, logData)
+		log.Error(ctx, "deleteContentItem endpoint: failed to remove permissions policy conditions", err, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,

@@ -193,14 +193,35 @@ Feature: Delete a content item from a bundle - POST /bundles/{bundle-id}/content
 
     Scenario: DELETE /bundles/{bundle-id}/contents/{content-id} updates permissions policy condition
         Given I am an admin user
-        And the policy "890m231k-98df-11ec-b909-0242ac120002" should have these condition values:
+        And the following policies should exist:
             """
-            ["dataset1", "dataset1/edition1"]
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": ["dataset1", "dataset1/edition1"]
+                    }
+                }
+            ]
             """
         When I DELETE "/bundles/bundle-1/contents/content-item-1"
         Then the HTTP status code should be "204"
-
-        And the policy "890m231k-98df-11ec-b909-0242ac120002" should have these condition values:
+        And the following policies should exist:
             """
-            []
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": []
+                    }
+                }
+            ]
             """

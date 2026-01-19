@@ -212,11 +212,11 @@ func TestCheckPolicyExists(t *testing.T) {
 	})
 }
 
-func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
+func TestAddPolicyConditionsForContentItem(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI", t, func() {
 		ctx := context.Background()
 
-		Convey("When updating policies for a bundle with no preview teams", func() {
+		Convey("When adding policies for a bundle with no preview teams", func() {
 			stateMachineBundleAPI := &StateMachineBundleAPI{}
 
 			bundle := &models.Bundle{
@@ -230,7 +230,7 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, true)
+			err := stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then no error is returned and no API calls are made", func() {
 				So(err, ShouldBeNil)
@@ -268,7 +268,7 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, true)
+			err := stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -312,12 +312,115 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, true)
+			err := stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
 				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
 				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When GetPolicy fails", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("internal server error")
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			previewTeam := models.PreviewTeam{ID: "team-123"}
+			previewTeams := []models.PreviewTeam{previewTeam}
+
+			bundle := &models.Bundle{
+				PreviewTeams: &previewTeams,
+			}
+
+			contentItem := &models.ContentItem{
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+				},
+			}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
+
+			Convey("Then error is returned", func() {
+				So(err, ShouldNotBeNil)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When adding for multiple preview teams", func() {
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return &permissionsAPIModels.Policy{
+						ID:        id,
+						Condition: permissionsAPIModels.Condition{},
+					}, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			previewTeams := []models.PreviewTeam{
+				{ID: "team-alpha"},
+				{ID: "team-beta"},
+			}
+
+			bundle := &models.Bundle{
+				PreviewTeams: &previewTeams,
+			}
+
+			contentItem := &models.ContentItem{
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+				},
+			}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 2)
+			})
+		})
+	})
+}
+
+func TestRemovePolicyConditionsForContentItem(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI", t, func() {
+		ctx := context.Background()
+
+		Convey("When removing policies for a bundle with no preview teams", func() {
+			stateMachineBundleAPI := &StateMachineBundleAPI{}
+
+			bundle := &models.Bundle{
+				PreviewTeams: nil,
+			}
+
+			contentItem := &models.ContentItem{
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+				},
+			}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
+
+			Convey("Then no error is returned and no API calls are made", func() {
+				So(err, ShouldBeNil)
 			})
 		})
 
@@ -356,7 +459,7 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, false)
+			err := stateMachineBundleAPI.RemovePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -390,7 +493,7 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, true)
+			err := stateMachineBundleAPI.RemovePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then error is returned", func() {
 				So(err, ShouldNotBeNil)
@@ -399,12 +502,16 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 			})
 		})
 
-		Convey("When updating multiple preview teams", func() {
+		Convey("When removing for multiple preview teams", func() {
 			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
 				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
 					return &permissionsAPIModels.Policy{
-						ID:        id,
-						Condition: permissionsAPIModels.Condition{},
+						ID: id,
+						Condition: permissionsAPIModels.Condition{
+							Attribute: "dataset_edition",
+							Operator:  "StringEquals",
+							Values:    []string{"dataset-1", "dataset-1/edition-1"},
+						},
 					}, nil
 				},
 				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
@@ -432,7 +539,7 @@ func TestUpdatePolicyConditionsForContentItem(t *testing.T) {
 				},
 			}
 
-			err := stateMachineBundleAPI.UpdatePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem, true)
+			err := stateMachineBundleAPI.RemovePolicyConditionsForContentItem(ctx, "auth-token", bundle, contentItem)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)

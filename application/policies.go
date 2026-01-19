@@ -13,6 +13,11 @@ import (
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 )
 
+const (
+	conditionAttributeDatasetEdition = "dataset_edition"
+	conditionOperatorStringEquals    = "StringEquals"
+)
+
 // CreateBundlePolicies creates a new policy for each preview team with the provided role
 func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, authToken string, previewTeams *[]models.PreviewTeam, role models.Role) error {
 	if previewTeams == nil || len(*previewTeams) == 0 {
@@ -62,15 +67,15 @@ func (s *StateMachineBundleAPI) CheckPolicyExists(ctx context.Context, authToken
 	return true, nil
 }
 
-// UpdatePolicyConditionsForContentItem updates policy conditions for all preview teams in a bundle
-// when a content item is added (isAdd=true) or removed (isAdd=false)
-func (s *StateMachineBundleAPI) UpdatePolicyConditionsForContentItem(ctx context.Context, authToken string, bundle *models.Bundle, contentItem *models.ContentItem, isAdd bool) error {
+// AddPolicyConditionsForContentItem adds policy conditions for all preview teams in a bundle
+// when a content item is added
+func (s *StateMachineBundleAPI) AddPolicyConditionsForContentItem(ctx context.Context, authToken string, bundle *models.Bundle, contentItem *models.ContentItem) error {
 	if bundle.PreviewTeams == nil || len(*bundle.PreviewTeams) == 0 {
 		return nil
 	}
 
 	for _, team := range *bundle.PreviewTeams {
-		if err := s.updatePolicyConditionForTeam(ctx, authToken, team.ID, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, isAdd); err != nil {
+		if err := s.addPolicyConditionForTeam(ctx, authToken, team.ID, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID); err != nil {
 			return err
 		}
 	}
@@ -78,29 +83,55 @@ func (s *StateMachineBundleAPI) UpdatePolicyConditionsForContentItem(ctx context
 	return nil
 }
 
-// updatePolicyConditionForTeam updates the policy condition for a single preview team
-func (s *StateMachineBundleAPI) updatePolicyConditionForTeam(ctx context.Context, authToken, teamID, datasetID, editionID string, isAdd bool) error {
+// RemovePolicyConditionsForContentItem removes policy conditions for all preview teams in a bundle
+// when a content item is removed
+func (s *StateMachineBundleAPI) RemovePolicyConditionsForContentItem(ctx context.Context, authToken string, bundle *models.Bundle, contentItem *models.ContentItem) error {
+	if bundle.PreviewTeams == nil || len(*bundle.PreviewTeams) == 0 {
+		return nil
+	}
+
+	for _, team := range *bundle.PreviewTeams {
+		if err := s.removePolicyConditionForTeam(ctx, authToken, team.ID, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// addPolicyConditionForTeam adds dataset/edition values to a single preview team's policy
+func (s *StateMachineBundleAPI) addPolicyConditionForTeam(ctx context.Context, authToken, teamID, datasetID, editionID string) error {
 	policy, err := s.PermissionsAPIClient.GetPolicy(ctx, teamID, permissionsAPISDK.Headers{Authorization: authToken})
 	if err != nil {
 		return err
 	}
 
-	datasetValue := datasetID
-	datasetEditionValue := datasetID + "/" + editionID
-
-	if isAdd {
-		if policy.Condition.Attribute == "" {
-			policy.Condition = permissionsAPIModels.Condition{
-				Attribute: "dataset_edition",
-				Operator:  "StringEquals",
-				Values:    []string{datasetValue, datasetEditionValue},
-			}
-		} else {
-			policy.Condition.Values = append(policy.Condition.Values, datasetValue, datasetEditionValue)
+	if policy.Condition.Attribute == "" {
+		policy.Condition = permissionsAPIModels.Condition{
+			Attribute: conditionAttributeDatasetEdition,
+			Operator:  conditionOperatorStringEquals,
+			Values:    []string{datasetID, datasetID + "/" + editionID},
 		}
 	} else {
-		policy.Condition.Values = removeConditionValues(policy.Condition.Values, datasetValue, datasetEditionValue)
+		policy.Condition.Values = append(policy.Condition.Values, datasetID, datasetID+"/"+editionID)
 	}
+
+	err = s.PermissionsAPIClient.PutPolicy(ctx, teamID, *policy, permissionsAPISDK.Headers{Authorization: authToken})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// removePolicyConditionForTeam removes dataset/edition values from a single preview team's policy
+func (s *StateMachineBundleAPI) removePolicyConditionForTeam(ctx context.Context, authToken, teamID, datasetID, editionID string) error {
+	policy, err := s.PermissionsAPIClient.GetPolicy(ctx, teamID, permissionsAPISDK.Headers{Authorization: authToken})
+	if err != nil {
+		return err
+	}
+
+	policy.Condition.Values = removeConditionValues(policy.Condition.Values, datasetID, datasetID+"/"+editionID)
 
 	err = s.PermissionsAPIClient.PutPolicy(ctx, teamID, *policy, permissionsAPISDK.Headers{Authorization: authToken})
 	if err != nil {
