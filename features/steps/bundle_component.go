@@ -2,11 +2,9 @@ package steps
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 	"time"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisationtest"
 	componenttest "github.com/ONSdigital/dp-component-test"
 	"github.com/ONSdigital/dp-component-test/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
@@ -78,19 +77,8 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
-	permissionsAPIServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" && r.URL.Path == "/v1/permissions-bundle" {
-			bundle := getPermissionsBundle()
-			w.WriteHeader(http.StatusOK)
-			if err := json.NewEncoder(w).Encode(bundle); err != nil {
-				log.Error(context.Background(), "failed to encode permissions bundle", err)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-
-	c.Config.AuthConfig.PermissionsAPIURL = permissionsAPIServer.URL
+	fakePermissionsAPI := setupFakePermissionsAPI()
+	c.Config.AuthConfig.PermissionsAPIURL = fakePermissionsAPI.URL()
 
 	c.initialiser = &serviceMock.InitialiserMock{
 		DoGetMongoDBFunc:                 c.DoGetMongoDB,
@@ -122,6 +110,16 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c.apiFeature = componenttest.NewAPIFeature(c.InitialiseService)
 	c.DatasetAPIVersions = mockDatasetVersions
 	return c, nil
+}
+
+func setupFakePermissionsAPI() *authorisationtest.FakePermissionsAPI {
+	fakePermissionsAPI := authorisationtest.NewFakePermissionsAPI()
+	bundle := getPermissionsBundle()
+	fakePermissionsAPI.Reset()
+	if err := fakePermissionsAPI.UpdatePermissionsBundleResponse(bundle); err != nil {
+		log.Error(context.Background(), "failed to update permissions bundle response", err)
+	}
+	return fakePermissionsAPI
 }
 
 func getPermissionsBundle() *permissionsAPISDK.Bundle {
@@ -294,7 +292,6 @@ func (c *BundleComponent) DoGetPermissionsAPIClient(permissionsAPIURL string) pe
 					return nil
 				}
 			}
-			c.permissionsAPIPolicies = append(c.permissionsAPIPolicies, &policy)
 			return nil
 		},
 	}
