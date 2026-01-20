@@ -9,7 +9,7 @@ require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.270.0
 	github.com/ONSdigital/dp-authorisation/v2 v2.33.1
 	github.com/ONSdigital/dp-component-test v1.0.1-alpha
-	github.com/ONSdigital/dp-dataset-api v1.92.1
+	github.com/ONSdigital/dp-dataset-api v1.95.0
 	github.com/ONSdigital/dp-healthcheck v1.6.4
 	github.com/ONSdigital/dp-mongodb-in-memory v1.8.1
 	github.com/ONSdigital/dp-mongodb/v3 v3.8.0
