@@ -94,7 +94,11 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         {
             "id": "890m231k-98df-11ec-b909-0242ac120002",
             "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
-            "role": "datasets-previewer"
+            "role": "datasets-previewer",
+            "condition": {
+                "attribute": "dataset_edition",
+                "operator": "StringEquals"
+            }
         }
     ]
     """

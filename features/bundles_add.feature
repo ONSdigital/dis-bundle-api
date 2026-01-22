@@ -64,14 +64,22 @@ Feature: Create bundle - POST /Bundles
                     "role": "datasets-previewer",
                     "entities": [
                         "groups/team1"
-                    ]
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
                 },
                 {
                     "id": "team2",
                     "role": "datasets-previewer",
                     "entities": [
                         "groups/team2"
-                    ]
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
                 }
             ]
             """
@@ -86,7 +94,11 @@ Feature: Create bundle - POST /Bundles
                     "role": "datasets-previewer",
                     "entities": [
                         "groups/team2"
-                    ]
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
                 }
             ]
             """
@@ -123,14 +135,22 @@ Feature: Create bundle - POST /Bundles
                     "role": "datasets-previewer",
                     "entities": [
                         "groups/team1"
-                    ]
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
                 },
                 {
                     "id": "team2",
                     "role": "datasets-previewer",
                     "entities": [
                         "groups/team2"
-                    ]
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
                 }
             ]
             """
