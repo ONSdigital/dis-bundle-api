@@ -45,6 +45,8 @@ func TestCreateBundlePolicies(t *testing.T) {
 					return nil, errors.New("404 Not Found")
 				},
 				PostPolicyWithIDFunc: func(ctx context.Context, id string, policyInfo permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					So(policyInfo.Condition.Attribute, ShouldEqual, conditionAttributeDatasetEdition)
+					So(policyInfo.Condition.Operator.String(), ShouldEqual, conditionOperatorStringEquals)
 					return &permissionsAPIModels.Policy{}, nil
 				},
 			}
@@ -72,6 +74,8 @@ func TestCreateBundlePolicies(t *testing.T) {
 					return nil, errors.New("404 Not Found")
 				},
 				PostPolicyWithIDFunc: func(ctx context.Context, id string, policyInfo permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					So(policyInfo.Condition.Attribute, ShouldEqual, conditionAttributeDatasetEdition)
+					So(policyInfo.Condition.Operator.String(), ShouldEqual, conditionOperatorStringEquals)
 					return &permissionsAPIModels.Policy{}, nil
 				},
 			}

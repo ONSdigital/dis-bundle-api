@@ -42,6 +42,10 @@ func (s *StateMachineBundleAPI) CreateBundlePolicies(ctx context.Context, authTo
 				"groups/" + team.ID,
 			},
 			Role: role.String(),
+			Condition: permissionsAPIModels.Condition{
+				Attribute: conditionAttributeDatasetEdition,
+				Operator:  conditionOperatorStringEquals,
+			},
 		}
 
 		_, err = s.PermissionsAPIClient.PostPolicyWithID(ctx, team.ID, policyInfo, permissionsAPISDK.Headers{Authorization: authToken})
