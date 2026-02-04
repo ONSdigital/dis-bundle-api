@@ -379,14 +379,21 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 
 	for _, contentItem := range contentResults {
 		datasetID := contentItem.Metadata.DatasetID
-		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, datasetID)
+		editionID := contentItem.Metadata.EditionID
+		versionID := strconv.Itoa(contentItem.Metadata.VersionID)
 
+		dataset, err := s.DatasetAPIClient.GetDataset(ctx, authHeaders, datasetID)
 		if err != nil {
 			log.Error(ctx, "failed to fetch dataset", err, log.Data{"dataset_id": datasetID})
 			return nil, 0, err
 		}
 
-		contentItem.State = (*models.State)(&dataset.State)
+		version, err := s.DatasetAPIClient.GetVersion(ctx, authHeaders, datasetID, editionID, versionID)
+		if err != nil {
+			log.Error(ctx, "failed to fetch dataset version", err, log.Data{"dataset_id": datasetID, "edition_id": editionID, "version_id": versionID})
+			return nil, 0, err
+		}
+		contentItem.State = (*models.State)(&version.State)
 		contentItem.Metadata.Title = dataset.Title
 	}
 

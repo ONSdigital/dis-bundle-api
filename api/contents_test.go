@@ -1839,6 +1839,11 @@ func TestGetBundleContents_Success(t *testing.T) {
 				}
 				return dataset, nil
 			},
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+				return datasetAPIModels.Version{
+					State: "draft",
+				}, nil
+			},
 		}
 
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &mockDatasetAPIClient, &permissionsAPISDKMock.ClienterMock{}, false)
@@ -1857,7 +1862,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(resp.Items), ShouldEqual, 1)
 				So(resp.Items[0].Metadata.Title, ShouldEqual, "Test Title")
-				So(resp.Items[0].State.String(), ShouldEqual, "DRAFT")
+				So(resp.Items[0].State.String(), ShouldEqual, "draft")
 			})
 		})
 	})

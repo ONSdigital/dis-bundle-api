@@ -34,6 +34,7 @@ const (
 )
 
 var mockDatasetVersions = []*datasetAPIModels.Version{
+	{ID: "dataset1-edition1-1", DatasetID: "dataset1", Edition: "edition1", Version: 1, State: "edition-confirmed"},
 	{ID: "1"},
 	{ID: "2"},
 	{ID: "inreview-version", State: "IN_REVIEW"},
