@@ -917,7 +917,7 @@ func TestGetBundleContents(t *testing.T) {
 			}
 			mockDatasetAPI.GetVersionFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
 				return datasetAPIModels.Version{
-					State: "draft",
+					State: "associated",
 				}, nil
 			}
 
@@ -925,7 +925,7 @@ func TestGetBundleContents(t *testing.T) {
 
 			So(err, ShouldBeNil)
 			So(items, ShouldHaveLength, 1)
-			So(items[0].State.String(), ShouldEqual, "draft")
+			So(items[0].State.String(), ShouldEqual, "associated")
 			So(items[0].Metadata.Title, ShouldEqual, "Dataset Title")
 			So(total, ShouldEqual, 1)
 		})

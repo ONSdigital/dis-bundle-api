@@ -208,7 +208,7 @@ Feature: Get all content items in a bundle - GET /bundles/{id}/contents
                         "id": "content-item-2",
                         "bundle_id": "bundle-2",
                         "content_type": "DATASET",
-                        "state": "edition-confirmed",
+                        "state": "APPROVED",
                         "metadata": {
                             "dataset_id": "dataset1",
                             "edition_id": "edition1",

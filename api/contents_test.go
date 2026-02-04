@@ -1841,7 +1841,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 			},
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
 				return datasetAPIModels.Version{
-					State: "draft",
+					State: "associated",
 				}, nil
 			},
 		}
@@ -1862,7 +1862,7 @@ func TestGetBundleContents_Success(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(resp.Items), ShouldEqual, 1)
 				So(resp.Items[0].Metadata.Title, ShouldEqual, "Test Title")
-				So(resp.Items[0].State.String(), ShouldEqual, "draft")
+				So(resp.Items[0].State.String(), ShouldEqual, "associated")
 			})
 		})
 	})
