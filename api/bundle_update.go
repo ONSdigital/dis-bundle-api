@@ -95,6 +95,14 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create policies for any preview teams added in the update.
+	// NOTE: This does not currently handle the case where existing preview teams are removed.
+	// If a preview team is removed from the bundle, their policies will still exist.
+	if err := api.stateMachineBundleAPI.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
+		api.handleInternalError(ctx, w, r, "failed to create bundle policies", err, logdata)
+		return
+	}
+
 	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData)
 	if err != nil {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)

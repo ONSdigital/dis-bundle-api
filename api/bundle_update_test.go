@@ -15,6 +15,8 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
@@ -96,9 +98,21 @@ func TestPutBundle_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				if id == "team-1" {
+					return &permissionsAPIModels.Policy{}, nil
+				}
+				return nil, errors.New("404 policy not found")
+			},
+			PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return nil, nil
+			},
+		}
 
-		Convey("When putBundle is called with valid data", func() {
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+
+		Convey("When putBundle is called with existing preview teams", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
 			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
 			r.Header.Set("If-Match", "original-etag")
@@ -118,6 +132,44 @@ func TestPutBundle_Success(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(response.ID, ShouldEqual, bundle1)
 				So(response.Title, ShouldEqual, title1)
+			})
+
+			Convey("And no policies should have been created", func() {
+				So(len(mockPermissionsClient.GetPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsClient.PostPolicyWithIDCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When putBundle is called with new preview teams and an existing preview team", func() {
+			bundleRequest := updateRequest
+			bundleRequest.PreviewTeams = &[]models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}, {ID: "team-3"}}
+			bundleRequestJSON, err := json.Marshal(bundleRequest)
+			So(err, ShouldBeNil)
+
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(bundleRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK with updated bundle", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+				So(w.Header().Get("ETag"), ShouldEqual, newEtag)
+
+				var response models.Bundle
+				err := json.NewDecoder(w.Body).Decode(&response)
+				So(err, ShouldBeNil)
+				So(response.ID, ShouldEqual, bundle1)
+				So(response.Title, ShouldEqual, title1)
+			})
+
+			Convey("And new policies should have been created for the new preview teams", func() {
+				So(len(mockPermissionsClient.GetPolicyCalls()), ShouldEqual, 3)
+				So(len(mockPermissionsClient.PostPolicyWithIDCalls()), ShouldEqual, 2)
 			})
 		})
 	})
@@ -540,6 +592,81 @@ func TestPutBundle_MultipleValidationErrors_Failure(t *testing.T) {
 				So(errorFields, ShouldContain, "/bundle_type")
 				So(errorFields, ShouldContain, "/title")
 				So(errorFields, ShouldContain, "/managed_by")
+			})
+		})
+	})
+}
+
+func TestPutBundle_CreateBundlePolicies_Failure(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request where the permissions API call fails", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:         bundle1,
+			Title:      "Original Title",
+			BundleType: models.BundleTypeManual,
+			ETag:       "original-etag",
+			State:      models.BundleStateDraft,
+			CreatedAt:  &now,
+			CreatedBy:  &models.User{Email: "creator@example.com"},
+			UpdatedAt:  &now,
+			ManagedBy:  models.ManagedByDataAdmin,
+		}
+
+		updateRequest := &models.Bundle{
+			Title:        title1,
+			BundleType:   models.BundleTypeManual,
+			State:        models.BundleStateDraft,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return nil, errors.New("permissions API error")
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 500 Internal Server Error", func() {
+				So(w.Code, ShouldEqual, http.StatusInternalServerError)
+
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
 			})
 		})
 	})
