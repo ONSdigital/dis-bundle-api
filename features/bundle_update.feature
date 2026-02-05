@@ -14,11 +14,6 @@ Feature: Update a bundle - PUT /bundles/{id}
                     "last_updated_by": {
                         "email": "publisher@ons.gov.uk"
                     },
-                    "preview_teams": [
-                        {
-                            "id": "890m231k-98df-11ec-b909-0242ac120002"
-                        }
-                    ],
                     "state": "DRAFT",
                     "title": "Original Bundle Title",
                     "updated_at": "2025-04-03T11:25:00Z",
@@ -34,11 +29,6 @@ Feature: Update a bundle - PUT /bundles/{id}
                     "last_updated_by": {
                         "email": "publisher@ons.gov.uk"
                     },
-                    "preview_teams": [
-                        {
-                            "id": "567j908h-98df-11ec-b909-0242ac120002"
-                        }
-                    ],
                     "scheduled_at": "2025-05-05T08:00:00Z",
                     "state": "IN_REVIEW",
                     "title": "Scheduled Bundle",
@@ -55,11 +45,6 @@ Feature: Update a bundle - PUT /bundles/{id}
                     "last_updated_by": {
                         "email": "publisher@ons.gov.uk"
                     },
-                    "preview_teams": [
-                        {
-                            "id": "567j908h-98df-11ec-b909-0242ac120002"
-                        }
-                    ],
                     "state": "APPROVED",
                     "title": "Approved Bundle",
                     "updated_at": "2025-04-05T13:40:00Z",
@@ -68,18 +53,13 @@ Feature: Update a bundle - PUT /bundles/{id}
             ]
             """
 
-Scenario: PUT /bundles/{id} successfully updates a bundle
+    Scenario: PUT /bundles/{id} successfully updates a bundle
         Given I am an admin user
         And I set the header "If-Match" to "etag-bundle-1"
         When I PUT "/bundles/bundle-1"
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "title": "Updated Bundle Title",
                 "managed_by": "DATA-ADMIN"
@@ -102,11 +82,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                     "email": "janedoe@example.com"
                 },
                 "managed_by": "DATA-ADMIN",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "title": "Updated Bundle Title",
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
@@ -115,13 +90,21 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
         And the total number of events should be 1
         And the number of events with action "UPDATE" and datatype "bundle" should be 1
 
-    Scenario: PUT /bundles/{id} successfully updates a bundle with no preview team
+    Scenario: PUT /bundles/{id} with additional preview teams successfully updates a bundle and creates policies for new teams
         Given I am an admin user
         And I set the header "If-Match" to "etag-bundle-1"
         When I PUT "/bundles/bundle-1"
             """
             {
                 "bundle_type": "MANUAL",
+                "preview_teams": [
+                    {
+                        "id": "team1"
+                    },
+                    {
+                        "id": "team2"
+                    }
+                ],
                 "state": "DRAFT",
                 "title": "Updated Bundle Title",
                 "managed_by": "DATA-ADMIN"
@@ -144,6 +127,14 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                     "email": "janedoe@example.com"
                 },
                 "managed_by": "DATA-ADMIN",
+                "preview_teams": [
+                    {
+                        "id": "team1"
+                    },
+                    {
+                        "id": "team2"
+                    }
+                ],
                 "state": "DRAFT",
                 "title": "Updated Bundle Title",
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
@@ -151,6 +142,33 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
         And the total number of events should be 1
         And the number of events with action "UPDATE" and datatype "bundle" should be 1
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "team1",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team1"
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
+                },
+                {
+                    "id": "team2",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team2"
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals"
+                    }
+                }
+            ]
+            """
 
     Scenario: PUT /bundles/{id} with state transition from DRAFT to IN_REVIEW
         Given I am an admin user
@@ -159,11 +177,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "IN_REVIEW",
                 "title": "Bundle Moving to Review",
                 "managed_by": "DATA-ADMIN"
@@ -183,11 +196,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                     "email": "janedoe@example.com"
                 },
                 "managed_by": "DATA-ADMIN",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "IN_REVIEW",
                 "title": "Bundle Moving to Review",
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
@@ -203,11 +211,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "567j908h-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "PUBLISHED",
                 "title": "Published Bundle",
                 "managed_by": "DATA-ADMIN"
@@ -227,11 +230,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
                     "email": "janedoe@example.com"
                 },
                 "managed_by": "DATA-ADMIN",
-                "preview_teams": [
-                    {
-                        "id": "567j908h-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "PUBLISHED",
                 "title": "Published Bundle",
                 "updated_at": "{{DYNAMIC_TIMESTAMP}}"
@@ -246,11 +244,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "title": "Updated Title",
                 "managed_by": "DATA-ADMIN"
             }
@@ -274,11 +267,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "title": "Updated Title",
                 "managed_by": "DATA-ADMIN"
             }
@@ -302,7 +290,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "INVALID_TYPE",
-                "preview_teams": [],
                 "state": "INVALID_STATE",
                 "title": "",
                 "managed_by": "INVALID_MANAGER"
@@ -351,11 +338,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "title": "Scheduled Bundle",
                 "managed_by": "DATA-ADMIN"
@@ -384,11 +366,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "SCHEDULED",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "title": "Missing Scheduled Date",
                 "managed_by": "DATA-ADMIN"
@@ -416,11 +393,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "scheduled_at": "2025-06-01T10:00:00Z",
                 "title": "Manual with Scheduled Date",
@@ -449,11 +421,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "SCHEDULED",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "DRAFT",
                 "scheduled_at": "2020-01-01T10:00:00Z",
                 "title": "Past Scheduled Date",
@@ -482,11 +449,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "state": "PUBLISHED",
                 "title": "Invalid Transition",
                 "managed_by": "DATA-ADMIN"
@@ -514,11 +476,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "title": "Missing Bundle",
                 "managed_by": "DATA-ADMIN"
             }
@@ -542,11 +499,6 @@ Scenario: PUT /bundles/{id} successfully updates a bundle
             """
             {
                 "bundle_type": "MANUAL",
-                "preview_teams": [
-                    {
-                        "id": "890m231k-98df-11ec-b909-0242ac120002"
-                    }
-                ],
                 "title": "Updated Title",
                 "managed_by": "DATA-ADMIN"
             }
