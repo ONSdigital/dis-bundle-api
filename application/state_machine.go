@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
+	"sync"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
@@ -141,6 +144,8 @@ func (sm *StateMachine) IsValidTransition(ctx context.Context, sourceState, targ
 }
 
 func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState *models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
+	fmt.Println("Entering transition bundle at: ", time.Now().String())
+
 	if err := sm.IsValidTransition(ctx, &bundle.State, targetState); err != nil {
 		return nil, err
 	}
@@ -155,14 +160,29 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	}
 
 	if targetState.String() == models.BundleStateApproved.String() || targetState.String() == models.BundleStatePublished.String() {
+		// cores := runtime.NumCPU()
+		// runtime.GOMAXPROCS(cores)
+		//var wg sync.WaitGroup
+		var wg sync.WaitGroup
+		// numWorkers := len(*contents)
+		// wg.Add(numWorkers)
+		//ch := make(chan int)
+		fmt.Println("Starting go routines at: ", time.Now().String())
 		for index := range *contents {
+			wg.Add(1)
+			fmt.Println("Starting loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
 			contentItem := &(*contents)[index]
-			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
-			if err != nil {
-				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
-				return nil, err
-			}
+			go sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData, &wg)
+			fmt.Println("Ending loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
+			// err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
+			// if err != nil {
+			// 	log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
+			// 	return nil, err
+			// }
 		}
+		wg.Wait()
+		//close(ch)
+
 	}
 
 	bundle.State = *targetState
@@ -177,11 +197,13 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": updatedBundle.ID})
 		return nil, err
 	}
+	fmt.Println("Exiting transition bundle at: ", time.Now().String())
 
 	return updatedBundle, nil
 }
 
-func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {
+func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	if err := stateMachineBundleAPI.updateVersionStateForContentItem(ctx, contentItem, targetState, authEntityData.Headers); err != nil {
 		return err
 	}
@@ -194,6 +216,8 @@ func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *mod
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
 		return err
 	}
+
+	//ch <- 42
 
 	return nil
 }
