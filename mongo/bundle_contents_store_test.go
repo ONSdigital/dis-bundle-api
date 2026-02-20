@@ -439,8 +439,9 @@ func TestUpdateContentItemState_Failure(t *testing.T) {
 
 			err := mongodb.UpdateContentItemState(ctx, "some-other-content-item-id", state.String())
 
-			Convey("Then an error should be returned", func() {
+			Convey("Then a content item not found error should be returned", func() {
 				So(err, ShouldNotBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
 			})
 		})
 	})
@@ -534,6 +535,33 @@ func TestListBundleContentIDsWithoutLimit_Failure(t *testing.T) {
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldContainSubstring, "client is disconnected")
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemState_Idempotent(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, _, err := getTestMongoDB(ctx)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateContentItemState is called with the same state the content item already has", func() {
+			contentItemID := contentsTestData[0].ID
+			state := models.StateApproved
+
+			err := mongodb.UpdateContentItemState(ctx, contentItemID, state.String())
+
+			Convey("Then it succeeds without error (idempotent)", func() {
+				So(err, ShouldBeNil)
+
+				contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, contentsTestData[0].BundleID, contentItemID)
+				So(err, ShouldBeNil)
+				So(contentItem.State.String(), ShouldEqual, state.String())
 			})
 		})
 	})

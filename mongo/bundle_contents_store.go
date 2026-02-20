@@ -137,8 +137,20 @@ func (m *Mongo) DeleteContentItem(ctx context.Context, contentItemID string) err
 
 // UpdateContentItemState updates the state for the content item matching the contentItemID
 func (m *Mongo) UpdateContentItemState(ctx context.Context, contentItemID, state string) error {
-	filter := bson.M{
-		"id": contentItemID,
+	var currentItem models.ContentItem
+	filter := bson.M{"id": contentItemID}
+	err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		FindOne(ctx, filter, &currentItem)
+
+	if err != nil {
+		if errors.Is(err, mongodriver.ErrNoDocumentFound) {
+			return apierrors.ErrContentItemNotFound
+		}
+		return err
+	}
+
+	if currentItem.State != nil && string(*currentItem.State) == state {
+		return nil
 	}
 
 	updateData := bson.M{
@@ -147,7 +159,8 @@ func (m *Mongo) UpdateContentItemState(ctx context.Context, contentItemID, state
 		},
 	}
 
-	result, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).UpdateOne(ctx, filter, updateData)
+	result, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		UpdateOne(ctx, filter, updateData)
 
 	if err != nil {
 		return err
