@@ -70,23 +70,23 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	validationErrs := api.stateMachineBundleAPI.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
 	allValidationErrors = append(allValidationErrors, validationErrs...)
 
-	if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
-		err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
-		if err != nil {
-			if err == apierrors.ErrInvalidTransition {
-				code := models.CodeInvalidParameters
-				stateError := &models.Error{
-					Code:        &code,
-					Description: apierrors.ErrorDescriptionMalformedRequest,
-					Source:      &models.Source{Field: "/state"},
-				}
-				allValidationErrors = append(allValidationErrors, stateError)
-			} else {
-				api.handleInternalError(ctx, w, r, "state transition validation failed", err, logdata)
-				return
-			}
-		}
-	}
+	// if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
+	// 	err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
+	// 	if err != nil {
+	// 		if err == apierrors.ErrInvalidTransition {
+	// 			code := models.CodeInvalidParameters
+	// 			stateError := &models.Error{
+	// 				Code:        &code,
+	// 				Description: apierrors.ErrorDescriptionMalformedRequest,
+	// 				Source:      &models.Source{Field: "/state"},
+	// 			}
+	// 			allValidationErrors = append(allValidationErrors, stateError)
+	// 		} else {
+	// 			api.handleInternalError(ctx, w, r, "state transition validation failed", err, logdata)
+	// 			return
+	// 		}
+	// 	}
+	// }
 
 	if len(allValidationErrors) > 0 {
 		logdata["validation_errors"] = allValidationErrors

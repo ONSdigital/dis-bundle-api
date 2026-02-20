@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"net/http"
+	"net/http/pprof"
 	"sync"
 
 	"github.com/ONSdigital/dis-bundle-api/api"
@@ -73,11 +74,11 @@ func GetListTransitions() []application.Transition {
 	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
 }
 
-func GetStateMachine(ctx context.Context, datastore store.Datastore) *application.StateMachine {
+func GetStateMachine(ctx context.Context, datastore store.Datastore, datasetAPIClienter datasetAPISDK.Clienter) *application.StateMachine {
 	stateMachineInit.Do(func() {
 		states := []application.State{application.Draft, application.InReview, application.Approved, application.Published}
 		transitions := GetListTransitions()
-		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore)
+		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore, datasetAPIClienter)
 	})
 
 	return stateMachine
@@ -156,6 +157,17 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
 
+	// Register pprof handlers
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+
+	r.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	r.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	r.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+	r.Handle("/debug/pprof/block", pprof.Handler("block"))
+
 	// Register Health Checkers
 	if err := svc.registerCheckers(ctx); err != nil {
 		return errors.Wrap(err, "unable to register checkers")
@@ -165,7 +177,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
 
 	// Setup state machine
-	sm := GetStateMachine(ctx, datastore)
+	sm := GetStateMachine(ctx, datastore, svc.datasetAPIClient)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.dataBundleSlackClient)
 
 	// Setup API
