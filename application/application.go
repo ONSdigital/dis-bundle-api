@@ -3,7 +3,9 @@ package application
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -248,6 +250,17 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 
 	return http.StatusCreated, createdBundle, nil, nil
 }
+func removeConditionValuesForBundlePreviewTeam(values []string, toRemove ...string) []string {
+	removed := []string{}
+	for _, v := range toRemove {
+		if slices.Contains(values, v) && !slices.Contains(removed, v) {
+			idx := slices.Index(values, v)
+			values = slices.Delete(values, idx, idx+1)
+			removed = append(removed, v)
+		}
+	}
+	return values
+}
 
 func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID string, authEntityData *models.AuthEntityData) (int, *models.Error, error) {
 	bundle, err := s.GetBundle(ctx, bundleID)
@@ -279,8 +292,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		return http.StatusConflict, e, err
 	}
 
-	bundleContents, err := s.Datastore.ListBundleContentIDsWithoutLimit(ctx, bundleID)
-
+	bundleContents, err := s.Datastore.GetBundleContentsForBundle(ctx, bundleID)
 	if err != nil {
 		code := models.CodeInternalError
 		e := &models.Error{
@@ -290,8 +302,8 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		return http.StatusInternalServerError, e, err
 	}
 
-	if len(bundleContents) > 0 {
-		for _, contentItem := range bundleContents {
+	if len(*bundleContents) > 0 {
+		for _, contentItem := range *bundleContents {
 			err = s.DeleteContentItem(ctx, contentItem.ID)
 			if err != nil {
 				log.Error(ctx, "failed to delete content item", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID})
@@ -303,7 +315,42 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 				return http.StatusInternalServerError, e, err
 			}
 
-			if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, contentItem); err != nil {
+			for _, team := range *bundle.PreviewTeams {
+				policy, err := s.PermissionsAPIClient.GetPolicy(ctx, team.ID, permissionsAPISDK.Headers{Authorization: authEntityData.Headers.AccessToken})
+				if err != nil {
+					log.Error(ctx, "failed to get permissions policy for preview team", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID, "preview_team": team.ID})
+					code := models.CodeNotFound
+					e := &models.Error{
+						Code:        &code,
+						Description: errs.ErrorDescriptionNotFound,
+					}
+					return http.StatusNotFound, e, err
+				}
+
+				toRemove := []string{
+					contentItem.Metadata.DatasetID,
+					fmt.Sprintf("%s/%s", contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID),
+				}
+
+				policy.Condition.Values = removeConditionValuesForBundlePreviewTeam(policy.Condition.Values, toRemove...)
+
+				err = s.PermissionsAPIClient.PutPolicy(ctx, team.ID, *policy, permissionsAPISDK.Headers{Authorization: authEntityData.Headers.AccessToken})
+				if err != nil {
+					log.Error(ctx, "failed to update permissions policy for preview team", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID, "preview_team": team.ID})
+					code := models.CodeInternalError
+					e := &models.Error{
+						Code:        &code,
+						Description: errs.ErrorDescriptionInternalError,
+					}
+					return http.StatusInternalServerError, e, err
+				}
+			}
+
+			contentItemForEvent := models.ContentItem{
+				ID: contentItem.ID,
+			}
+
+			if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, &contentItemForEvent); err != nil {
 				log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID})
 				return http.StatusInternalServerError, models.GetMatchingModelError(err), err
 			}
