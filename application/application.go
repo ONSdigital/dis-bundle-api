@@ -578,6 +578,29 @@ func createValidationError(code models.Code, field string) *models.Error {
 	}
 }
 
+func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	fmt.Println("Starting put version state for edition ", contentItem.Metadata.EditionID)
+	fmt.Println(time.Now().String())
+	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), "published"); err != nil {
+		return err
+	}
+	fmt.Println("Ending put version state for edition ", contentItem.Metadata.EditionID)
+
+	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, "PUBLISHED"); err != nil {
+		return err
+	}
+
+	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
+		return err
+	}
+
+	ch <- contentItem.BundleID
+	return nil
+}
+
 func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 
 	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
@@ -590,6 +613,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	var wg sync.WaitGroup
+	ch := make(chan string, len(*contents))
 	// numWorkers := len(getScheduledBundlesResult.Items)
 	// wg.Add(numWorkers)
 	//ch := make(chan string, len(*contents))
@@ -600,23 +624,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		fmt.Println("Starting loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
 		fmt.Println("Number of goroutines on startup", runtime.NumGoroutine())
 		fmt.Println("ABOUT TO EXECUTE PUT DATASET STUFF")
-		go func() error {
-			defer wg.Done()
-			if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), "published"); err != nil {
-				return err
-			}
-
-			if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, "PUBLISHED"); err != nil {
-				return err
-			}
-
-			if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
-				log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
-				return err
-			}
-			//ch <- bundleId
-			return nil
-		}()
+		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg)
 		fmt.Println("Ending loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
 		fmt.Println("Number of goroutines after", runtime.NumGoroutine())
 	}
