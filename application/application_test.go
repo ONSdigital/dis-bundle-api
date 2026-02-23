@@ -16,7 +16,9 @@ import (
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	datasetAPIMocks "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
-	permissionsSDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
+	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -33,7 +35,7 @@ const (
 )
 
 var authEntityData = &models.AuthEntityData{
-	EntityData: &permissionsSDK.EntityData{
+	EntityData: &permissionsAPISDK.EntityData{
 		UserID: "test-user-id",
 		Groups: []string{"group1", "group2"},
 	},
@@ -993,17 +995,30 @@ func TestDeleteBundle_Success(t *testing.T) {
 					return &models.Bundle{
 						ID:    bundle1,
 						State: models.BundleStateDraft,
+						PreviewTeams: &[]models.PreviewTeam{
+							{ID: "preview-team-1"},
+						},
 					}, nil
 				}
 				return nil, apierrors.ErrBundleNotFound
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{
-						ID: "content-1",
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
 					},
 					{
-						ID: "content-2",
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
 					},
 				}, nil
 			},
@@ -1020,9 +1035,22 @@ func TestDeleteBundle_Success(t *testing.T) {
 				return nil
 			},
 		}
-
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return &permissionsAPIModels.Policy{
+					ID: "preview-team-1",
+					Condition: permissionsAPIModels.Condition{
+						Values: []string{"dataset-1", "dataset-1/edition-1", "dataset-2", "dataset-2/edition-2"},
+					},
+				}, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
 		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
+			Datastore:            store.Datastore{Backend: mockedDatastore},
+			PermissionsAPIClient: mockPermissionsClient,
 		}
 
 		Convey("When DeleteBundle is called with an existing bundle ID", func() {
@@ -1135,7 +1163,7 @@ func TestDeleteBundle_Failure_Transition(t *testing.T) {
 	})
 }
 
-func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
+func TestDeleteBundle_Failure_GetBundleContentsForBundle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
 
@@ -1146,8 +1174,8 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
-				return nil, errors.New("failed to list bundle contents")
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return nil, errors.New("failed to get bundle contents")
 			},
 		}
 
@@ -1164,7 +1192,7 @@ func TestDeleteBundle_Failure_ListBundleContentIDsWithoutLimit(t *testing.T) {
 
 			Convey("And the errorObject/error should indicate an internal server error", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldEqual, "failed to list bundle contents")
+				So(err.Error(), ShouldEqual, "failed to get bundle contents")
 
 				code := models.CodeInternalError
 				expectedErr := &models.Error{
@@ -1188,10 +1216,24 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
-					{ID: "content-1"},
-					{ID: "content-2"},
+					{
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
+					},
+					{
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
+					},
 				}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
@@ -1225,6 +1267,164 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 	})
 }
 
+func TestDeleteBundle_Failure_GetPolicy(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:    bundle1,
+					State: models.BundleStateDraft,
+					PreviewTeams: &[]models.PreviewTeam{
+						{ID: "preview-team-1"},
+					},
+				}, nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
+					{
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
+					},
+					{
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
+					},
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return nil, errors.New("404 Not Found")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:            store.Datastore{Backend: mockedDatastore},
+			PermissionsAPIClient: mockPermissionsClient,
+		}
+
+		Convey("When DeleteBundle is called and getting the policy associated with the bundle's preview team fails", func() {
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
+
+			Convey("Then it should return a 404 Not Found", func() {
+				So(statusCode, ShouldEqual, 404)
+			})
+
+			Convey("And the errorObject/error should indicate a Not Found error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "404 Not Found")
+
+				code := models.CodeNotFound
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionNotFound,
+				}
+				So(errObject, ShouldResemble, expectedErr)
+			})
+		})
+	})
+}
+
+func TestDeleteBundle_Failure_PutPolicy(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
+		ctx := context.Background()
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return &models.Bundle{
+					ID:    bundle1,
+					State: models.BundleStateDraft,
+					PreviewTeams: &[]models.PreviewTeam{
+						{ID: "preview-team-1"},
+					},
+				}, nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
+					{
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
+					},
+					{
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
+					},
+				}, nil
+			},
+			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return &permissionsAPIModels.Policy{
+					ID: "preview-team-1",
+					Condition: permissionsAPIModels.Condition{
+						Values: []string{"dataset-1", "dataset-1/edition-1", "dataset-2", "dataset-2/edition-2"},
+					},
+				}, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return errors.New("failed to update policy")
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:            store.Datastore{Backend: mockedDatastore},
+			PermissionsAPIClient: mockPermissionsClient,
+		}
+
+		Convey("When DeleteBundle is called and updating the policy associated with the bundle's preview team fails", func() {
+			statusCode, errObject, err := stateMachine.DeleteBundle(ctx, bundle1, authEntityData)
+
+			Convey("Then it should return a 500 Internal Server Error", func() {
+				So(statusCode, ShouldEqual, 500)
+			})
+
+			Convey("And the errorObject/error should indicate an internal server error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "failed to update policy")
+
+				code := models.CodeInternalError
+				expectedErr := &models.Error{
+					Code:        &code,
+					Description: apierrors.ErrorDescriptionInternalError,
+				}
+				So(errObject, ShouldResemble, expectedErr)
+			})
+		})
+	})
+}
+
 func TestDeleteBundle_Failure_CreateEvent(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
@@ -1234,11 +1434,29 @@ func TestDeleteBundle_Failure_CreateEvent(t *testing.T) {
 				return &models.Bundle{
 					ID:    bundle1,
 					State: models.BundleStateDraft,
+					PreviewTeams: &[]models.PreviewTeam{
+						{ID: "preview-team-1"},
+					},
 				}, nil
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
-					{ID: "content-1"},
+					{
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
+					},
+					{
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
+					},
 				}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
@@ -1248,9 +1466,22 @@ func TestDeleteBundle_Failure_CreateEvent(t *testing.T) {
 				return errors.New("failed to create event")
 			},
 		}
-
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return &permissionsAPIModels.Policy{
+					ID: "preview-team-1",
+					Condition: permissionsAPIModels.Condition{
+						Values: []string{"dataset-1", "dataset-1/edition-1", "dataset-2", "dataset-2/edition-2"},
+					},
+				}, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
 		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
+			Datastore:            store.Datastore{Backend: mockedDatastore},
+			PermissionsAPIClient: mockPermissionsClient,
 		}
 
 		Convey("When DeleteBundle is called and creating an event for the content item fails", func() {
@@ -1314,21 +1545,57 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 				return &models.Bundle{
 					ID:    bundle1,
 					State: models.BundleStateDraft,
+					PreviewTeams: &[]models.PreviewTeam{
+						{ID: "preview-team-1"},
+					},
 				}, nil
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
-				return []*models.ContentItem{}, nil
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
+					{
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
+					},
+					{
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
+					},
+				}, nil
 			},
 			DeleteContentItemFunc: func(ctx context.Context, contentItemID string) error {
+				return nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
 			DeleteBundleFunc: func(ctx context.Context, id string) error {
 				return errors.New("failed to delete bundle")
 			},
 		}
-
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return &permissionsAPIModels.Policy{
+					ID: "preview-team-1",
+					Condition: permissionsAPIModels.Condition{
+						Values: []string{"dataset-1", "dataset-1/edition-1", "dataset-2", "dataset-2/edition-2"},
+					},
+				}, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
 		stateMachine := &application.StateMachineBundleAPI{
-			Datastore: store.Datastore{Backend: mockedDatastore},
+			Datastore:            store.Datastore{Backend: mockedDatastore},
+			PermissionsAPIClient: mockPermissionsClient,
 		}
 
 		Convey("When DeleteBundle is called and deleting the bundle fails", func() {
@@ -1376,7 +1643,7 @@ func TestPutBundle_Success(t *testing.T) {
 		}
 
 		authEntityData := &models.AuthEntityData{
-			EntityData: &permissionsSDK.EntityData{
+			EntityData: &permissionsAPISDK.EntityData{
 				UserID: userEmail,
 			},
 			Headers: datasetAPISDK.Headers{
