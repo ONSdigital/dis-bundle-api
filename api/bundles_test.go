@@ -2029,8 +2029,8 @@ func TestDeleteBundle_Success(t *testing.T) {
 				}
 				return nil, apierrors.ErrBundleNotFound
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,

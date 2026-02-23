@@ -292,7 +292,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		return http.StatusConflict, e, err
 	}
 
-	bundleContents, err := s.Datastore.GetBundleContentsForBundle(ctx, bundleID)
+	bundleContents, err := s.Datastore.GetContentItemsByBundleID(ctx, bundleID)
 	if err != nil {
 		code := models.CodeInternalError
 		e := &models.Error{
@@ -302,8 +302,8 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		return http.StatusInternalServerError, e, err
 	}
 
-	if len(*bundleContents) > 0 {
-		for _, contentItem := range *bundleContents {
+	if len(bundleContents) > 0 {
+		for _, contentItem := range bundleContents {
 			err = s.DeleteContentItem(ctx, contentItem.ID)
 			if err != nil {
 				log.Error(ctx, "failed to delete content item", err, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID})

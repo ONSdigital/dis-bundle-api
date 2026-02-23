@@ -1002,8 +1002,8 @@ func TestDeleteBundle_Success(t *testing.T) {
 				}
 				return nil, apierrors.ErrBundleNotFound
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
@@ -1174,7 +1174,7 @@ func TestDeleteBundle_Failure_GetBundleContentsForBundle(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return nil, errors.New("failed to get bundle contents")
 			},
 		}
@@ -1216,8 +1216,8 @@ func TestDeleteBundle_Failure_DeleteContentItem(t *testing.T) {
 					State: models.BundleStateDraft,
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
@@ -1281,8 +1281,8 @@ func TestDeleteBundle_Failure_GetPolicy(t *testing.T) {
 					},
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
@@ -1356,8 +1356,8 @@ func TestDeleteBundle_Failure_PutPolicy(t *testing.T) {
 					},
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
@@ -1439,8 +1439,8 @@ func TestDeleteBundle_Failure_CreateEvent(t *testing.T) {
 					},
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
@@ -1550,8 +1550,8 @@ func TestDeleteBundle_Failure_DeleteBundle(t *testing.T) {
 					},
 				}, nil
 			},
-			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
-				return &[]models.ContentItem{
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{
 					{
 						ID:       "content-1",
 						BundleID: bundle1,
