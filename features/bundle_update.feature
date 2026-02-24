@@ -505,3 +505,222 @@ Feature: Update a bundle - PUT /bundles/{id}
             """
         Then the HTTP status code should be "401"
         And the response body should be empty
+
+    Scenario: PUT /bundles/{id} removing preview team with content - dataset not used elsewhere
+        Given I am an admin user
+        And I have these bundles:
+            """
+            [
+                {
+                    "id": "bundle-with-team",
+                    "bundle_type": "MANUAL",
+                    "created_by": {"email": "test@ons.gov.uk"},
+                    "created_at": "2025-04-03T11:25:00Z",
+                    "last_updated_by": {"email": "test@ons.gov.uk"},
+                    "state": "DRAFT",
+                    "title": "Bundle With Team",
+                    "updated_at": "2025-04-03T11:25:00Z",
+                    "managed_by": "DATA-ADMIN",
+                    "preview_teams": [{"id": "team-to-remove"}]
+                }
+            ]
+            """
+        And I have these content items:
+            """
+            [
+                {
+                    "id": "content-1",
+                    "bundle_id": "bundle-with-team",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "test-dataset",
+                        "edition_id": "test-edition",
+                        "version_id": 1
+                    },
+                    "links": {
+                        "edit": "https://example.com/edit",
+                        "preview": "https://example.com/preview"
+                    }
+                }
+            ]
+            """
+        And I have these dataset versions:
+            """
+            [
+                {
+                    "id": "test-version",
+                    "dataset_id": "test-dataset",
+                    "edition": "test-edition",
+                    "version": 1,
+                    "state": "APPROVED"
+                }
+            ]
+            """
+        And I have these policies:
+            """
+            [
+                {
+                    "id": "team-to-remove",
+                    "role": "datasets-previewer",
+                    "entities": ["groups/team-to-remove"],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "Values": ["test-dataset", "test-dataset/test-edition"]
+                    }
+                }
+            ]
+            """
+        And I set the header "If-Match" to "etag-bundle-with-team"
+        When I PUT "/bundles/bundle-with-team"
+            """
+            {
+                "bundle_type": "MANUAL",
+                "state": "DRAFT",
+                "title": "Bundle With Team",
+                "managed_by": "DATA-ADMIN",
+                "preview_teams": []
+            }
+            """
+        Then the HTTP status code should be "200"
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "team-to-remove",
+                    "role": "datasets-previewer",
+                    "entities": ["groups/team-to-remove"],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "Values": null
+                    }
+                }
+            ]
+            """
+
+    Scenario: PUT /bundles/{id} removing preview team but dataset used in another bundle
+        Given I am an admin user
+        And I have these bundles:
+            """
+            [
+                {
+                    "id": "bundle-1",
+                    "bundle_type": "MANUAL",
+                    "created_by": {"email": "test@ons.gov.uk"},
+                    "created_at": "2025-04-03T11:25:00Z",
+                    "last_updated_by": {"email": "test@ons.gov.uk"},
+                    "state": "DRAFT",
+                    "title": "Bundle 1",
+                    "updated_at": "2025-04-03T11:25:00Z",
+                    "managed_by": "DATA-ADMIN",
+                    "preview_teams": [{"id": "shared-team"}]
+                },
+                {
+                    "id": "bundle-2",
+                    "bundle_type": "MANUAL",
+                    "created_by": {"email": "test@ons.gov.uk"},
+                    "created_at": "2025-04-03T11:25:00Z",
+                    "last_updated_by": {"email": "test@ons.gov.uk"},
+                    "state": "DRAFT",
+                    "title": "Bundle 2",
+                    "updated_at": "2025-04-03T11:25:00Z",
+                    "managed_by": "DATA-ADMIN",
+                    "preview_teams": [{"id": "shared-team"}]
+                }
+            ]
+            """
+        And I have these content items:
+            """
+            [
+                {
+                    "id": "content-1",
+                    "bundle_id": "bundle-1",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "shared-dataset",
+                        "edition_id": "edition-1",
+                        "version_id": 1
+                    },
+                    "links": {
+                        "edit": "https://example.com/edit",
+                        "preview": "https://example.com/preview"
+                    }
+                },
+                {
+                    "id": "content-2",
+                    "bundle_id": "bundle-2",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "shared-dataset",
+                        "edition_id": "edition-2",
+                        "version_id": 1
+                    },
+                    "links": {
+                        "edit": "https://example.com/edit",
+                        "preview": "https://example.com/preview"
+                    }
+                }
+            ]
+            """
+        And I have these dataset versions:
+            """
+            [
+                {
+                    "id": "v1",
+                    "dataset_id": "shared-dataset",
+                    "edition": "edition-1",
+                    "version": 1,
+                    "state": "APPROVED"
+                },
+                {
+                    "id": "v2",
+                    "dataset_id": "shared-dataset",
+                    "edition": "edition-2",
+                    "version": 1,
+                    "state": "APPROVED"
+                }
+            ]
+            """
+        And I have these policies:
+            """
+            [
+                {
+                    "id": "shared-team",
+                    "role": "datasets-previewer",
+                    "entities": ["groups/shared-team"],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "Values": ["shared-dataset", "shared-dataset/edition-1", "shared-dataset/edition-2"]
+                    }
+                }
+            ]
+            """
+        And I set the header "If-Match" to "etag-bundle-1"
+        When I PUT "/bundles/bundle-1"
+            """
+            {
+                "bundle_type": "MANUAL",
+                "state": "DRAFT",
+                "title": "Bundle 1",
+                "managed_by": "DATA-ADMIN",
+                "preview_teams": []
+            }
+            """
+        Then the HTTP status code should be "200"
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "shared-team",
+                    "role": "datasets-previewer",
+                    "entities": ["groups/shared-team"],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "Values": ["shared-dataset", "shared-dataset/edition-2"]
+                    }
+                }
+            ]
+            """

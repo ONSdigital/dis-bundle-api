@@ -7,6 +7,8 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/store"
+	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
@@ -549,6 +551,614 @@ func TestRemovePolicyConditionsForContentItem(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 2)
 				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 2)
+			})
+		})
+	})
+}
+
+func TestAddPolicyConditionsForAddedPreviewTeams(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI", t, func() {
+		ctx := context.Background()
+
+		Convey("When no teams are added", func() {
+			mockDatastore := &storetest.StorerMock{}
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore: store.Datastore{Backend: mockDatastore},
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then no error is returned and no API calls are made", func() {
+				So(err, ShouldBeNil)
+				So(len(mockDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When a team is added but bundle has no content items", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{}, nil
+				},
+			}
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore: store.Datastore{Backend: mockDatastore},
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then no error is returned and GetPolicy is not called", func() {
+				So(err, ShouldBeNil)
+				So(len(mockDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is added with content items", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							ID:       "content-1",
+							BundleID: "bundle-1",
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+								VersionID: 1,
+							},
+						},
+					}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					So(policy.Condition.Values, ShouldContain, "dataset-1")
+					So(policy.Condition.Values, ShouldContain, "dataset-1/edition-1")
+					So(len(policy.Condition.Values), ShouldEqual, 2)
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then values are added to the policy", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is added and policy already has some values", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{"dataset-2", "dataset-2/edition-2"},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					So(policy.Condition.Values, ShouldContain, "dataset-1")
+					So(policy.Condition.Values, ShouldContain, "dataset-1/edition-1")
+					So(policy.Condition.Values, ShouldContain, "dataset-2")
+					So(policy.Condition.Values, ShouldContain, "dataset-2/edition-2")
+					So(len(policy.Condition.Values), ShouldEqual, 4)
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then new values are added without duplicates", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is added and values already exist (no duplicates)", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{"dataset-1", "dataset-1/edition-1"},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					So(len(policy.Condition.Values), ShouldEqual, 2)
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then no duplicate values are added", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When GetPolicy fails", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("get policy error")
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			err := stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then error is returned", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "get policy error")
+			})
+		})
+	})
+}
+
+func TestRemovePolicyConditionsForRemovedPreviewTeams(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI", t, func() {
+		ctx := context.Background()
+
+		Convey("When no teams are removed", func() {
+			mockDatastore := &storetest.StorerMock{}
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore: store.Datastore{Backend: mockDatastore},
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then no error is returned and no API calls are made", func() {
+				So(err, ShouldBeNil)
+				So(len(mockDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When a team is removed but bundle has no content items", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{}, nil
+				},
+			}
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore: store.Datastore{Backend: mockDatastore},
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then no error is returned and GetPolicy is not called", func() {
+				So(err, ShouldBeNil)
+				So(len(mockDatastore.GetContentItemsByBundleIDCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is removed and dataset not used elsewhere", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+				GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+					return []*models.Bundle{}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{"dataset-1", "dataset-1/edition-1"},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					So(policy.Condition.Values, ShouldBeNil)
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then both dataset and edition values are removed and values becomes nil", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is removed but dataset used in another bundle", func() {
+			bundle2 := &models.Bundle{
+				ID:    "bundle-2",
+				Title: "Bundle 2",
+			}
+
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					if bundleID == "bundle-1" {
+						return []*models.ContentItem{
+							{
+								Metadata: models.Metadata{
+									DatasetID: "dataset-1",
+									EditionID: "edition-1",
+								},
+							},
+						}, nil
+					}
+					if bundleID == "bundle-2" {
+						return []*models.ContentItem{
+							{
+								Metadata: models.Metadata{
+									DatasetID: "dataset-1",
+									EditionID: "edition-2",
+								},
+							},
+						}, nil
+					}
+					return []*models.ContentItem{}, nil
+				},
+				GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+					return []*models.Bundle{bundle2}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{"dataset-1", "dataset-1/edition-1", "dataset-1/edition-2"},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					So(policy.Condition.Values, ShouldContain, "dataset-1")
+					So(policy.Condition.Values, ShouldContain, "dataset-1/edition-2")
+					So(policy.Condition.Values, ShouldNotContain, "dataset-1/edition-1")
+					So(len(policy.Condition.Values), ShouldEqual, 2)
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then only edition is removed, dataset value remains", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+			})
+		})
+
+		Convey("When a team is removed but policy has no matching values", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+				GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+					return []*models.Bundle{}, nil
+				},
+			}
+
+			existingPolicy := &permissionsAPIModels.Policy{
+				Condition: permissionsAPIModels.Condition{
+					Attribute: "dataset_edition",
+					Operator:  "StringEquals",
+					Values:    []string{"different-dataset", "different-dataset/edition"},
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return existingPolicy, nil
+				},
+				PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+					return nil
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then PutPolicy is not called since values didn't change", func() {
+				So(err, ShouldBeNil)
+				So(len(mockPermissionsAPIClient.GetPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 0)
+			})
+		})
+
+		Convey("When GetPolicy fails", func() {
+			mockDatastore := &storetest.StorerMock{
+				GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+					return []*models.ContentItem{
+						{
+							Metadata: models.Metadata{
+								DatasetID: "dataset-1",
+								EditionID: "edition-1",
+							},
+						},
+					}, nil
+				},
+				GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+					return []*models.Bundle{}, nil
+				},
+			}
+
+			mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{
+				GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+					return nil, errors.New("get policy error")
+				},
+			}
+
+			stateMachineBundleAPI := &StateMachineBundleAPI{
+				Datastore:            store.Datastore{Backend: mockDatastore},
+				PermissionsAPIClient: mockPermissionsAPIClient,
+			}
+
+			currentTeams := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updatedTeams := []models.PreviewTeam{{ID: "team-1"}}
+
+			err := stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, "auth-token", "bundle-1", &currentTeams, &updatedTeams)
+
+			Convey("Then error is returned", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldEqual, "get policy error")
+			})
+		})
+	})
+}
+
+func TestFindRemovedTeams(t *testing.T) {
+	Convey("When finding removed teams", t, func() {
+		Convey("With no teams removed", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updated := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			removed := findRemovedTeams(&current, &updated)
+
+			Convey("Then no teams are returned", func() {
+				So(len(removed), ShouldEqual, 0)
+			})
+		})
+
+		Convey("With one team removed", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updated := []models.PreviewTeam{{ID: "team-1"}}
+
+			removed := findRemovedTeams(&current, &updated)
+
+			Convey("Then one team is returned", func() {
+				So(len(removed), ShouldEqual, 1)
+				So(removed[0].ID, ShouldEqual, "team-2")
+			})
+		})
+
+		Convey("With all teams removed", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updated := []models.PreviewTeam{}
+
+			removed := findRemovedTeams(&current, &updated)
+
+			Convey("Then all teams are returned", func() {
+				So(len(removed), ShouldEqual, 2)
+			})
+		})
+
+		Convey("With nil current teams", func() {
+			updated := []models.PreviewTeam{{ID: "team-1"}}
+
+			removed := findRemovedTeams(nil, &updated)
+
+			Convey("Then no teams are returned", func() {
+				So(len(removed), ShouldEqual, 0)
+			})
+		})
+
+		Convey("With nil updated teams", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			removed := findRemovedTeams(&current, nil)
+
+			Convey("Then all current teams are returned", func() {
+				So(len(removed), ShouldEqual, 2)
+			})
+		})
+	})
+}
+
+func TestFindAddedTeams(t *testing.T) {
+	Convey("When finding added teams", t, func() {
+		Convey("With no teams added", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+			updated := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			added := findAddedTeams(&current, &updated)
+
+			Convey("Then no teams are returned", func() {
+				So(len(added), ShouldEqual, 0)
+			})
+		})
+
+		Convey("With one team added", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}}
+			updated := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			added := findAddedTeams(&current, &updated)
+
+			Convey("Then one team is returned", func() {
+				So(len(added), ShouldEqual, 1)
+				So(added[0].ID, ShouldEqual, "team-2")
+			})
+		})
+
+		Convey("With all teams added", func() {
+			current := []models.PreviewTeam{}
+			updated := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			added := findAddedTeams(&current, &updated)
+
+			Convey("Then all teams are returned", func() {
+				So(len(added), ShouldEqual, 2)
+			})
+		})
+
+		Convey("With nil current teams", func() {
+			updated := []models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}}
+
+			added := findAddedTeams(nil, &updated)
+
+			Convey("Then all updated teams are returned", func() {
+				So(len(added), ShouldEqual, 2)
+			})
+		})
+
+		Convey("With nil updated teams", func() {
+			current := []models.PreviewTeam{{ID: "team-1"}}
+
+			added := findAddedTeams(&current, nil)
+
+			Convey("Then no teams are returned", func() {
+				So(len(added), ShouldEqual, 0)
 			})
 		})
 	})

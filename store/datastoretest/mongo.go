@@ -65,6 +65,9 @@ var _ store.MongoDB = &MongoDBMock{}
 //			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
 //				panic("mock out the GetBundleContentsForBundle method")
 //			},
+//			GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+//				panic("mock out the GetBundlesByPreviewTeamID method")
+//			},
 //			GetContentItemByBundleIDAndContentItemIDFunc: func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error) {
 //				panic("mock out the GetContentItemByBundleIDAndContentItemID method")
 //			},
@@ -143,6 +146,9 @@ type MongoDBMock struct {
 
 	// GetBundleContentsForBundleFunc mocks the GetBundleContentsForBundle method.
 	GetBundleContentsForBundleFunc func(ctx context.Context, bundleID string) (*[]models.ContentItem, error)
+
+	// GetBundlesByPreviewTeamIDFunc mocks the GetBundlesByPreviewTeamID method.
+	GetBundlesByPreviewTeamIDFunc func(ctx context.Context, teamID string) ([]*models.Bundle, error)
 
 	// GetContentItemByBundleIDAndContentItemIDFunc mocks the GetContentItemByBundleIDAndContentItemID method.
 	GetContentItemByBundleIDAndContentItemIDFunc func(ctx context.Context, bundleID string, contentItemID string) (*models.ContentItem, error)
@@ -278,6 +284,13 @@ type MongoDBMock struct {
 			// BundleID is the bundleID argument value.
 			BundleID string
 		}
+		// GetBundlesByPreviewTeamID holds details about calls to the GetBundlesByPreviewTeamID method.
+		GetBundlesByPreviewTeamID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// TeamID is the teamID argument value.
+			TeamID string
+		}
 		// GetContentItemByBundleIDAndContentItemID holds details about calls to the GetContentItemByBundleIDAndContentItemID method.
 		GetContentItemByBundleIDAndContentItemID []struct {
 			// Ctx is the ctx argument value.
@@ -391,6 +404,7 @@ type MongoDBMock struct {
 	lockDeleteContentItem                             sync.RWMutex
 	lockGetBundle                                     sync.RWMutex
 	lockGetBundleContentsForBundle                    sync.RWMutex
+	lockGetBundlesByPreviewTeamID                     sync.RWMutex
 	lockGetContentItemByBundleIDAndContentItemID      sync.RWMutex
 	lockGetContentItemsByBundleID                     sync.RWMutex
 	lockListBundleContentIDsWithoutLimit              sync.RWMutex
@@ -912,6 +926,42 @@ func (mock *MongoDBMock) GetBundleContentsForBundleCalls() []struct {
 	mock.lockGetBundleContentsForBundle.RLock()
 	calls = mock.calls.GetBundleContentsForBundle
 	mock.lockGetBundleContentsForBundle.RUnlock()
+	return calls
+}
+
+// GetBundlesByPreviewTeamID calls GetBundlesByPreviewTeamIDFunc.
+func (mock *MongoDBMock) GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+	if mock.GetBundlesByPreviewTeamIDFunc == nil {
+		panic("MongoDBMock.GetBundlesByPreviewTeamIDFunc: method is nil but MongoDB.GetBundlesByPreviewTeamID was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		TeamID string
+	}{
+		Ctx:    ctx,
+		TeamID: teamID,
+	}
+	mock.lockGetBundlesByPreviewTeamID.Lock()
+	mock.calls.GetBundlesByPreviewTeamID = append(mock.calls.GetBundlesByPreviewTeamID, callInfo)
+	mock.lockGetBundlesByPreviewTeamID.Unlock()
+	return mock.GetBundlesByPreviewTeamIDFunc(ctx, teamID)
+}
+
+// GetBundlesByPreviewTeamIDCalls gets all the calls that were made to GetBundlesByPreviewTeamID.
+// Check the length with:
+//
+//	len(mockedMongoDB.GetBundlesByPreviewTeamIDCalls())
+func (mock *MongoDBMock) GetBundlesByPreviewTeamIDCalls() []struct {
+	Ctx    context.Context
+	TeamID string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		TeamID string
+	}
+	mock.lockGetBundlesByPreviewTeamID.RLock()
+	calls = mock.calls.GetBundlesByPreviewTeamID
+	mock.lockGetBundlesByPreviewTeamID.RUnlock()
 	return calls
 }
 
