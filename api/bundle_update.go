@@ -129,19 +129,13 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bundleJSON, err := json.Marshal(updatedBundle)
-	if err != nil {
-		api.handleInternalError(ctx, w, r, "failed to marshal bundle to JSON", err, logdata)
-		return
-	}
-
 	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if _, err := w.Write(bundleJSON); err != nil {
-		log.Error(ctx, "putBundle endpoint: error writing response body", err, logdata)
+	if err := json.NewEncoder(w).Encode(updatedBundle); err != nil {
+		log.Error(ctx, "putBundle endpoint: error encoding response body", err, logdata)
 	}
 }
 
