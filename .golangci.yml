@@ -44,6 +44,11 @@ linters:
         - style
     gocyclo:
       min-complexity: 20
+    gosec:
+      excludes:
+        - G705
+        # G705: XSS via taint analysis
+        # This is a false positive as this service only serves JSON responses and does not render any HTML.
     lll:
       line-length: 140
     misspell:
