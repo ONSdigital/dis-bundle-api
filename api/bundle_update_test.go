@@ -24,6 +24,7 @@ import (
 
 const (
 	bundle1   = "bundle-1"
+	bundleTwo = "bundle-2"
 	title1    = "title1"
 	newEtag   = "new-etag"
 	urlString = "/bundles/bundle-1"
@@ -960,7 +961,7 @@ func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_DatasetInOtherBu
 		contentItemsBundle2 := []*models.ContentItem{
 			{
 				ID:       "content-2",
-				BundleID: "bundle-2",
+				BundleID: bundleTwo,
 				Metadata: models.Metadata{
 					DatasetID: "dataset-1",
 					EditionID: "edition-2",
@@ -970,7 +971,7 @@ func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_DatasetInOtherBu
 		}
 
 		bundle2 := &models.Bundle{
-			ID:           "bundle-2",
+			ID:           bundleTwo,
 			Title:        "Bundle 2",
 			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
@@ -998,7 +999,7 @@ func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_DatasetInOtherBu
 				if bundleID == bundle1 {
 					return contentItemsBundle1, nil
 				}
-				if bundleID == "bundle-2" {
+				if bundleID == bundleTwo {
 					return contentItemsBundle2, nil
 				}
 				return []*models.ContentItem{}, nil
