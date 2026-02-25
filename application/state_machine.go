@@ -174,9 +174,11 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 	}
 
 	if err = stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": updatedBundle.ID})
 		return nil, err
 	}
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
 
 	return updatedBundle, nil
 }
@@ -191,9 +193,10 @@ func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *mod
 	}
 
 	if err := stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
+		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
 		return err
 	}
-
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
 	return nil
 }
