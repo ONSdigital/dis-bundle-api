@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -81,20 +82,15 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	fakePermissionsAPI := setupFakePermissionsAPI()
 	c.Config.AuthConfig.PermissionsAPIURL = fakePermissionsAPI.URL()
 
-	c.initialiser = &serviceMock.InitialiserMock{
-		DoGetMongoDBFunc:                 c.DoGetMongoDB,
-		DoGetDatasetAPIClientFunc:        c.DoGetDatasetAPIClient,
-		DoGetPermissionsAPIClientFunc:    c.DoGetPermissionsAPIClient,
-		DoGetDataBundleSlackClientFunc:   c.DoGetDataBundleSlackClient,
-		DoGetHealthCheckFunc:             c.DoGetHealthcheckOk,
-		DoGetHTTPServerFunc:              c.DoGetHTTPServer,
-		DoGetAuthorisationMiddlewareFunc: c.DoGetAuthorisationMiddleware,
+	parsedMongoURI, err := url.Parse(mongoURI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MongoDB URI: %w", err)
 	}
 
 	mongodb := &mongo.Mongo{
 		MongoConfig: config.MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
-				ClusterEndpoint: mongoURI,
+				ClusterEndpoint: parsedMongoURI.Host,
 				Database:        utils.RandomDatabase(),
 				Collections:     c.Config.Collections,
 				ConnectTimeout:  c.Config.ConnectTimeout,
@@ -106,7 +102,6 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		return nil, err
 	}
 
-	c.ServiceRunning = true
 	c.MongoClient = mongodb
 	c.apiFeature = componenttest.NewAPIFeature(c.InitialiseService)
 	c.DatasetAPIVersions = mockDatasetVersions

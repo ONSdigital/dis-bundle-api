@@ -18,7 +18,6 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/google/go-cmp/cmp"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
@@ -158,39 +157,27 @@ func (c *BundleComponent) theResponseBodyShouldBeEmpty() error {
 
 func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) error {
 	ctx := context.Background()
+	events := []models.Event{}
 
-	var mapEvents []map[string]interface{}
-	err := json.Unmarshal([]byte(eventsJSON.Content), &mapEvents)
+	err := json.Unmarshal([]byte(eventsJSON.Content), &events)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal events JSON: %w", err)
 	}
 
 	bundleEventsCollection := c.MongoClient.ActualCollectionName("BundleEventsCollection")
 
-	for _, event := range mapEvents {
-		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
+	for event := range events {
+		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, events[event]); err != nil {
 			return fmt.Errorf("failed to insert event: %w", err)
 		}
 	}
 	return nil
 }
 
-func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event map[string]interface{}) error {
-	if event["_id"] == nil {
-		event["_id"] = primitive.NewObjectID()
-	}
-
-	if createdAtStr, ok := event["created_at"].(string); ok {
-		parsedTime, err := time.Parse(time.RFC3339, createdAtStr)
-		if err != nil {
-			return fmt.Errorf("failed to parse created_at: %w", err)
-		}
-		event["created_at"] = parsedTime
-	}
-
+func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event models.Event) error {
 	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
 	if err != nil {
-		return fmt.Errorf("failed to insert event: %w", err)
+		return err
 	}
 
 	return nil

@@ -2022,17 +2022,30 @@ func TestDeleteBundle_Success(t *testing.T) {
 					return &models.Bundle{
 						ID:    "bundle-1",
 						State: models.BundleStateDraft,
+						PreviewTeams: &[]models.PreviewTeam{
+							{ID: "preview-team-1"},
+						},
 					}, nil
 				}
 				return nil, apierrors.ErrBundleNotFound
 			},
-			ListBundleContentIDsWithoutLimitFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 				return []*models.ContentItem{
 					{
-						ID: "content-1",
+						ID:       "content-1",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-1",
+							EditionID: "edition-1",
+						},
 					},
 					{
-						ID: "content-2",
+						ID:       "content-2",
+						BundleID: bundle1,
+						Metadata: models.Metadata{
+							DatasetID: "dataset-2",
+							EditionID: "edition-2",
+						},
 					},
 				}, nil
 			},
@@ -2050,7 +2063,20 @@ func TestDeleteBundle_Success(t *testing.T) {
 			},
 		}
 
-		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, nil, false)
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return &permissionsAPIModels.Policy{
+					ID: "preview-team-1",
+					Condition: permissionsAPIModels.Condition{
+						Values: []string{"dataset-1", "dataset-1/edition-1", "dataset-2", "dataset-2/edition-2"},
+					},
+				}, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, nil, mockPermissionsClient, false)
 		bundleAPI.Router.ServeHTTP(w, r)
 
 		Convey("Then the response should be 204 No Content", func() {

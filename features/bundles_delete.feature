@@ -107,6 +107,21 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
             }
         ]
         """
+    And I have these policies:
+            """
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": ["dataset1", "dataset1/edition1", "dataset2", "dataset2/edition2"]
+                    }
+                }
+            ]
+            """
 
     Scenario: DELETE /bundles/{bundle-id} successfully with a bundle that has contents
         Given I am an admin user
@@ -141,7 +156,7 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
                 ]
             }
             """
-    
+
     Scenario: DELETE /bundles/{bundle-id} with a published bundle
         Given I am an admin user
         When I DELETE "/bundles/bundle-published"
@@ -162,3 +177,23 @@ Feature: Delete a bundle and all its associated content items - DELETE /bundles/
         When I DELETE "/bundles/bundle-with-content-items"
         Then the HTTP status code should be "401"
         And the response body should be empty
+
+    Scenario: DELETE /bundles/{bundle-id} updated permissions policy condition
+        Given I am an admin user
+        When I DELETE "/bundles/bundle-with-content-items"
+        Then the HTTP status code should be "204"
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "890m231k-98df-11ec-b909-0242ac120002",
+                    "entities": ["groups/890m231k-98df-11ec-b909-0242ac120002"],
+                    "role": "datasets-previewer",
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": []
+                    }
+                }
+            ]
+            """
