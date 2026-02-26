@@ -125,24 +125,27 @@ func (s *StateMachineBundleAPI) RemovePolicyConditionsForRemovedPreviewTeams(ctx
 			return err
 		}
 
-		datasetsStillInUse := map[string]bool{}
+		datasetsInUse := make(map[string]bool)
 		for _, bundle := range otherBundles {
 			if bundle.ID == bundleID {
 				continue
 			}
-			items, err := s.Datastore.GetContentItemsByBundleID(ctx, bundle.ID)
+
+			otherContentItems, err := s.Datastore.GetContentItemsByBundleID(ctx, bundle.ID)
 			if err != nil {
 				return err
 			}
-			for _, item := range items {
-				datasetsStillInUse[item.Metadata.DatasetID] = true
+
+			for _, otherItem := range otherContentItems {
+				datasetsInUse[otherItem.Metadata.DatasetID] = true
 			}
 		}
 
 		var toRemove []string
 		for _, item := range contentItems {
 			toRemove = append(toRemove, item.Metadata.DatasetID+"/"+item.Metadata.EditionID)
-			if !datasetsStillInUse[item.Metadata.DatasetID] {
+
+			if !datasetsInUse[item.Metadata.DatasetID] {
 				toRemove = append(toRemove, item.Metadata.DatasetID)
 			}
 		}
@@ -153,6 +156,16 @@ func (s *StateMachineBundleAPI) RemovePolicyConditionsForRemovedPreviewTeams(ctx
 		}
 
 		result := removeConditionValues(policy.Condition.Values, toRemove...)
+
+		seen := make(map[string]bool)
+		deduplicated := []string{}
+		for _, v := range result {
+			if !seen[v] {
+				seen[v] = true
+				deduplicated = append(deduplicated, v)
+			}
+		}
+		result = deduplicated
 
 		valuesChanged := len(result) != len(policy.Condition.Values)
 		if !valuesChanged {
