@@ -605,7 +605,7 @@ func TestGetBundlesByPreviewTeamID_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		_, err = setupBundleTestData(ctx, mongodb)
@@ -672,7 +672,7 @@ func TestGetBundlesByPreviewTeamID_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		_, err = setupBundleTestData(ctx, mongodb)
