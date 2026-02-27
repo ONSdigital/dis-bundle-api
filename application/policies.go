@@ -105,6 +105,8 @@ func (s *StateMachineBundleAPI) RemovePolicyConditionsForContentItem(ctx context
 
 // RemovePolicyConditionsForRemovedPreviewTeams removes policy conditions for teams
 // that have been removed from the bundle during a PUT bundle update.
+//
+//nolint:gocognit,gocyclo // cognitive complexity 45 (> 42) is acceptable for now
 func (s *StateMachineBundleAPI) RemovePolicyConditionsForRemovedPreviewTeams(ctx context.Context, authToken, bundleID string, currentTeams, updatedTeams *[]models.PreviewTeam) error {
 	removedTeams := findRemovedTeams(currentTeams, updatedTeams)
 	if len(removedTeams) == 0 {
