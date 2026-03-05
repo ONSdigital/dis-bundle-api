@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -17,9 +18,54 @@ import (
 var (
 	BearerTokenValue = "abearertoken"
 	BearerToken      = fmt.Sprintf("Bearer %s", BearerTokenValue)
+	ServiceToken     = "aservicetoken"
 )
 
-func TestGetAuthEntityData_Success(t *testing.T) {
+func TestGetAuthEntityDataForServiceToken_Success(t *testing.T) {
+	mockEntityData := &sdk.EntityData{
+		UserID: "myIdentity",
+	}
+	mockAuthMiddleware := authorisationMock.MiddlewareMock{
+		ParseFunc: func(token string) (*sdk.EntityData, error) {
+			return nil, errors.New("parse error")
+		},
+		RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+			return handlerFunc
+		},
+	}
+
+	r := http.Request{
+		Header: http.Header{},
+	}
+	r.Header.Set("Authorization", ServiceToken)
+
+	dataStore := &store.Datastore{}
+
+	api := GetBundleAPIWithMocksWithAuthMiddleware(*dataStore, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, &mockAuthMiddleware, false)
+
+	Convey("When GetAuthEntityData is called with a valid Authorization header", t, func() {
+		authEntityData, err := api.GetAuthEntityData(&r)
+
+		Convey("Then authEntityData should not be nil", func() {
+			So(authEntityData, ShouldNotBeNil)
+			So(authEntityData.IsServiceAuth, ShouldBeTrue)
+
+			Convey("And it should contain EntityData from the auth middleware", func() {
+				So(authEntityData.EntityData, ShouldEqual, mockEntityData)
+			})
+
+			Convey("And it should contain the correct Headers", func() {
+				So(authEntityData.Headers.AccessToken, ShouldEqual, ServiceToken)
+			})
+		})
+
+		Convey("And no error should be returned", func() {
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestGetAuthEntityDataForUserToken_Success(t *testing.T) {
 	mockUserID := "mock-user-id"
 	mockEntityData := &sdk.EntityData{
 		UserID: mockUserID,
@@ -47,6 +93,7 @@ func TestGetAuthEntityData_Success(t *testing.T) {
 
 		Convey("Then authEntityData should not be nil", func() {
 			So(authEntityData, ShouldNotBeNil)
+			So(authEntityData.IsServiceAuth, ShouldBeFalse)
 
 			Convey("And it should contain EntityData from the auth middleware", func() {
 				So(authEntityData.EntityData, ShouldEqual, mockEntityData)
