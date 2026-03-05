@@ -27,6 +27,12 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
 	contentItem, err := models.CreateContentItem(r.Body)
 	if err != nil {
 		log.Error(ctx, "postBundleContents endpoint: failed to create content item from request body", err, logData)
@@ -155,9 +161,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 	}
 
 	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionCreate, nil, contentItem)
+	logData["action"] = models.ActionCreate
 	if err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionCreate, "reason": err.Error()})
-		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, logData)
+		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -166,7 +172,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionCreate})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 
 	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserEmail())
 	if err != nil {
@@ -193,9 +199,9 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 	}
 
 	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil)
+	logData["action"] = models.ActionUpdate
 	if err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
-		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, logData)
+		log.Error(ctx, "postBundleContents endpoint: failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -204,7 +210,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 
 	if updatedBundle.BundleType == models.BundleTypeScheduled {
 		err = api.stateMachineBundleAPI.UpdateDatasetVersionReleaseDate(ctx, updatedBundle.ScheduledAt, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID, authEntityData.Headers)
@@ -247,6 +253,12 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		handleErr(ctx, w, r, err, logData, RouteNameDeleteContentItem)
 		return
 	}
+
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
 
 	contentItem, err := api.stateMachineBundleAPI.Datastore.GetContentItemByBundleIDAndContentItemID(ctx, bundleID, contentID)
 	if err != nil {
@@ -304,9 +316,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 	}
 
 	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, contentItem)
+	logData["action"] = models.ActionDelete
 	if err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionDelete, "reason": err.Error()})
-		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, logData)
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -315,7 +327,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionDelete})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 
 	updatedBundle, err := api.stateMachineBundleAPI.UpdateBundleETag(ctx, bundleID, authEntityData.GetUserID())
 	if err != nil {
@@ -342,9 +354,9 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 	}
 
 	err = api.stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil)
+	logData["action"] = models.ActionUpdate
 	if err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
-		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, logData)
+		log.Error(ctx, "deleteContentItem endpoint: failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 		code := models.CodeInternalError
 		errInfo := &models.Error{
 			Code:        &code,
@@ -353,7 +365,7 @@ func (api *BundleAPI) deleteContentItem(w http.ResponseWriter, r *http.Request) 
 		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 		return
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, logData)
 
 	dpresponse.SetETag(w, updatedBundle.ETag)
 	w.WriteHeader(http.StatusNoContent)

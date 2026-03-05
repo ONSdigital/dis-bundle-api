@@ -11,14 +11,15 @@ type AuthEntityData struct {
 	Headers       datasetAPISDK.Headers
 }
 
-func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string) *AuthEntityData {
+func CreateAuthEntityData(entityData *permissionsAPISDK.EntityData, serviceToken string, isServiceAuth bool) *AuthEntityData {
 	headers := datasetAPISDK.Headers{
 		AccessToken: serviceToken,
 	}
 
 	return &AuthEntityData{
-		EntityData: entityData,
-		Headers:    headers,
+		EntityData:    entityData,
+		IsServiceAuth: isServiceAuth,
+		Headers:       headers,
 	}
 }
 

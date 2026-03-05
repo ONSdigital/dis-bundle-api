@@ -28,8 +28,9 @@ func (api *BundleAPI) GetAuthEntityData(r *http.Request) (*models.AuthEntityData
 		} else {
 			// valid
 			JWTEntityData = &sdk.EntityData{UserID: resp.Identifier}
+			return models.CreateAuthEntityData(JWTEntityData, bearerToken, true), nil
 		}
 	}
 
-	return models.CreateAuthEntityData(JWTEntityData, bearerToken), nil
+	return models.CreateAuthEntityData(JWTEntityData, bearerToken, false), nil
 }
