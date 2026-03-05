@@ -250,7 +250,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
 
 	if err = s.CreateEvent(ctx, authEntityData, models.ActionCreate, createdBundle, nil); err != nil {
-		log.Error(ctx, "failed to create event", err, logAuth, log.Data{"bundle_id": createdBundle.ID, "action": models.ActionCreate})
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": createdBundle.ID, "action": models.ActionCreate})
 		return http.StatusInternalServerError, nil, models.GetMatchingModelError(err), err
 	}
 	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"action": models.ActionCreate})
@@ -364,7 +364,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 			}
 
 			if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, nil, &contentItemForEvent); err != nil {
-				log.Error(ctx, "failed to create event", err, logAuth, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID, "action": models.ActionDelete})
+				log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": bundleID, "content_item_id": contentItem.ID, "action": models.ActionDelete})
 				return http.StatusInternalServerError, models.GetMatchingModelError(err), err
 			}
 			log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"action": models.ActionDelete})
@@ -382,7 +382,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 	}
 
 	if err = s.CreateEvent(ctx, authEntityData, models.ActionDelete, bundle, nil); err != nil {
-		log.Error(ctx, "failed to create event", err, logAuth, log.Data{"bundle_id": bundleID})
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": bundleID})
 		return http.StatusInternalServerError, models.GetMatchingModelError(err), err
 	}
 	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"action": models.ActionDelete})
@@ -504,7 +504,7 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 
 	if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
 		logdata["action"] = models.ActionUpdate
-		log.Error(ctx, "failed to create event", err, logAuth, logdata)
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, logdata)
 		return nil, err
 	}
 	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth)

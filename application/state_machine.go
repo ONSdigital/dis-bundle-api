@@ -173,12 +173,17 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 		return nil, err
 	}
 
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
 	if err = stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
-		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": updatedBundle.ID})
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 		return nil, err
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
 	return updatedBundle, nil
 }
@@ -192,11 +197,16 @@ func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *mod
 		return err
 	}
 
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
 	if err := stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
-		log.Info(ctx, "bundle event creation failed", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate, "reason": err.Error()})
-		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID, "action": models.ActionUpdate})
 		return err
 	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), log.Data{"user": authEntityData.GetUserID(), "action": models.ActionUpdate})
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID, "action": models.ActionUpdate})
 	return nil
 }
