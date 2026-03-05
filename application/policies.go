@@ -103,6 +103,100 @@ func (s *StateMachineBundleAPI) RemovePolicyConditionsForContentItem(ctx context
 	return nil
 }
 
+// RemovePolicyConditionsForRemovedPreviewTeams removes policy conditions for teams
+// that have been removed from the bundle during a PUT bundle update.
+//
+//nolint:gocognit,gocyclo // cognitive complexity 45 (> 42) is acceptable for now
+func (s *StateMachineBundleAPI) RemovePolicyConditionsForRemovedPreviewTeams(ctx context.Context, authToken, bundleID string, currentTeams, updatedTeams *[]models.PreviewTeam) error {
+	removedTeams := findRemovedTeams(currentTeams, updatedTeams)
+	if len(removedTeams) == 0 {
+		return nil
+	}
+
+	contentItems, err := s.Datastore.GetContentItemsByBundleID(ctx, bundleID)
+	if err != nil {
+		return err
+	}
+	if len(contentItems) == 0 {
+		return nil
+	}
+
+	for _, team := range removedTeams {
+		otherBundles, err := s.Datastore.GetBundlesByPreviewTeamID(ctx, team.ID)
+		if err != nil {
+			return err
+		}
+
+		datasetsInUse := make(map[string]bool)
+		for _, bundle := range otherBundles {
+			if bundle.ID == bundleID {
+				continue
+			}
+
+			otherContentItems, err := s.Datastore.GetContentItemsByBundleID(ctx, bundle.ID)
+			if err != nil {
+				return err
+			}
+
+			for _, otherItem := range otherContentItems {
+				datasetsInUse[otherItem.Metadata.DatasetID] = true
+			}
+		}
+
+		var toRemove []string
+		for _, item := range contentItems {
+			toRemove = append(toRemove, item.Metadata.DatasetID+"/"+item.Metadata.EditionID)
+
+			if !datasetsInUse[item.Metadata.DatasetID] {
+				toRemove = append(toRemove, item.Metadata.DatasetID)
+			}
+		}
+
+		policy, err := s.PermissionsAPIClient.GetPolicy(ctx, team.ID, permissionsAPISDK.Headers{Authorization: authToken})
+		if err != nil {
+			return err
+		}
+
+		result := removeConditionValues(policy.Condition.Values, toRemove...)
+
+		seen := make(map[string]bool)
+		deduplicated := []string{}
+		for _, v := range result {
+			if !seen[v] {
+				seen[v] = true
+				deduplicated = append(deduplicated, v)
+			}
+		}
+		result = deduplicated
+
+		valuesChanged := len(result) != len(policy.Condition.Values)
+		if !valuesChanged {
+			for i, v := range result {
+				if v != policy.Condition.Values[i] {
+					valuesChanged = true
+					break
+				}
+			}
+		}
+
+		if !valuesChanged {
+			continue
+		}
+
+		if len(result) == 0 {
+			policy.Condition.Values = nil
+		} else {
+			policy.Condition.Values = result
+		}
+
+		if err := s.PermissionsAPIClient.PutPolicy(ctx, team.ID, *policy, permissionsAPISDK.Headers{Authorization: authToken}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // addPolicyConditionForTeam adds dataset/edition values to a single preview team's policy
 func (s *StateMachineBundleAPI) addPolicyConditionForTeam(ctx context.Context, authToken, teamID, datasetID, editionID string) error {
 	policy, err := s.PermissionsAPIClient.GetPolicy(ctx, teamID, permissionsAPISDK.Headers{Authorization: authToken})
@@ -145,6 +239,26 @@ func (s *StateMachineBundleAPI) removePolicyConditionForTeam(ctx context.Context
 	return nil
 }
 
+// findRemovedTeams returns teams present in current but absent from updated.
+func findRemovedTeams(current, updated *[]models.PreviewTeam) []models.PreviewTeam {
+	updatedSet := map[string]bool{}
+	if updated != nil {
+		for _, t := range *updated {
+			updatedSet[t.ID] = true
+		}
+	}
+
+	var removed []models.PreviewTeam
+	if current != nil {
+		for _, t := range *current {
+			if !updatedSet[t.ID] {
+				removed = append(removed, t)
+			}
+		}
+	}
+	return removed
+}
+
 // removeConditionValues removes specific values from the Condition array
 func removeConditionValues(values []string, toRemove ...string) []string {
 	result := []string{}
@@ -161,4 +275,72 @@ func removeConditionValues(values []string, toRemove ...string) []string {
 	}
 
 	return result
+}
+
+// AddPolicyConditionsForAddedPreviewTeams adds policy conditions for teams
+// that have been added to the bundle during a PUT bundle update
+func (s *StateMachineBundleAPI) AddPolicyConditionsForAddedPreviewTeams(ctx context.Context, authToken, bundleID string, currentTeams, updatedTeams *[]models.PreviewTeam) error {
+	addedTeams := findAddedTeams(currentTeams, updatedTeams)
+	if len(addedTeams) == 0 {
+		return nil
+	}
+
+	contentItems, err := s.Datastore.GetContentItemsByBundleID(ctx, bundleID)
+	if err != nil {
+		return err
+	}
+	if len(contentItems) == 0 {
+		return nil
+	}
+
+	for _, team := range addedTeams {
+		valuesToAdd := make(map[string]bool)
+		for _, item := range contentItems {
+			valuesToAdd[item.Metadata.DatasetID] = true
+			valuesToAdd[item.Metadata.DatasetID+"/"+item.Metadata.EditionID] = true
+		}
+
+		policy, err := s.PermissionsAPIClient.GetPolicy(ctx, team.ID, permissionsAPISDK.Headers{Authorization: authToken})
+		if err != nil {
+			return err
+		}
+
+		existingValues := make(map[string]bool)
+		for _, v := range policy.Condition.Values {
+			existingValues[v] = true
+		}
+
+		for value := range valuesToAdd {
+			if !existingValues[value] {
+				policy.Condition.Values = append(policy.Condition.Values, value)
+			}
+		}
+
+		err = s.PermissionsAPIClient.PutPolicy(ctx, team.ID, *policy, permissionsAPISDK.Headers{Authorization: authToken})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// findAddedTeams returns teams present in updated but absent from current
+func findAddedTeams(current, updated *[]models.PreviewTeam) []models.PreviewTeam {
+	currentSet := map[string]bool{}
+	if current != nil {
+		for _, t := range *current {
+			currentSet[t.ID] = true
+		}
+	}
+
+	var added []models.PreviewTeam
+	if updated != nil {
+		for _, t := range *updated {
+			if !currentSet[t.ID] {
+				added = append(added, t)
+			}
+		}
+	}
+	return added
 }

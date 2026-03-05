@@ -24,9 +24,12 @@ import (
 
 const (
 	bundle1   = "bundle-1"
+	bundleTwo = "bundle-2"
 	title1    = "title1"
 	newEtag   = "new-etag"
 	urlString = "/bundles/bundle-1"
+	team1     = "team-1"
+	team2     = "team-2"
 )
 
 func TestPutBundle_Success(t *testing.T) {
@@ -100,7 +103,7 @@ func TestPutBundle_Success(t *testing.T) {
 
 		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
 			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
-				if id == "team-1" {
+				if id == team1 {
 					return &permissionsAPIModels.Policy{}, nil
 				}
 				return nil, errors.New("404 policy not found")
@@ -632,6 +635,9 @@ func TestPutBundle_CreateBundlePolicies_Failure(t *testing.T) {
 			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
 				return false, nil
 			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
+			},
 		}
 
 		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
@@ -667,6 +673,499 @@ func TestPutBundle_CreateBundlePolicies_Failure(t *testing.T) {
 					},
 				}
 				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
+func TestPutBundle_AddPolicyConditionsForAddedPreviewTeams_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request that adds a new preview team to a bundle with existing content", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:           bundle1,
+			Title:        "Original Title",
+			BundleType:   models.BundleTypeManual,
+			ETag:         "original-etag",
+			State:        models.BundleStateDraft,
+			CreatedAt:    &now,
+			CreatedBy:    &models.User{Email: "creator@example.com"},
+			UpdatedAt:    &now,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		updateRequest := &models.Bundle{
+			Title:        title1,
+			BundleType:   models.BundleTypeManual,
+			State:        models.BundleStateDraft,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}},
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		contentItems := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundle1,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+					VersionID: 1,
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				updatedBundle := *existingBundle
+				updatedBundle.ETag = newEtag
+				updatedBundle.PreviewTeams = updateRequest.PreviewTeams
+				return &updatedBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return contentItems, nil
+			},
+		}
+
+		existingPolicy := &permissionsAPIModels.Policy{
+			Condition: permissionsAPIModels.Condition{
+				Attribute: "dataset_edition",
+				Operator:  "StringEquals",
+				Values:    []string{},
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				if id == team1 {
+					return &permissionsAPIModels.Policy{}, nil
+				}
+				if id == team2 {
+					return existingPolicy, nil
+				}
+				return nil, errors.New("404 policy not found")
+			},
+			PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return nil, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And policy conditions should be added for the new team", func() {
+				So(len(mockPermissionsClient.GetPolicyCalls()), ShouldEqual, 3)
+				So(len(mockPermissionsClient.PutPolicyCalls()), ShouldEqual, 1)
+
+				putCall := mockPermissionsClient.PutPolicyCalls()[0]
+				So(putCall.ID, ShouldEqual, "team-2")
+				So(putCall.Policy.Condition.Values, ShouldContain, "dataset-1")
+				So(putCall.Policy.Condition.Values, ShouldContain, "dataset-1/edition-1")
+			})
+		})
+	})
+}
+
+func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_Success(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request that removes a preview team from a bundle", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:           bundle1,
+			Title:        "Original Title",
+			BundleType:   models.BundleTypeManual,
+			ETag:         "original-etag",
+			State:        models.BundleStateDraft,
+			CreatedAt:    &now,
+			CreatedBy:    &models.User{Email: "creator@example.com"},
+			UpdatedAt:    &now,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}, {ID: "team-2"}},
+		}
+
+		updateRequest := &models.Bundle{
+			Title:        title1,
+			BundleType:   models.BundleTypeManual,
+			State:        models.BundleStateDraft,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		contentItems := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundle1,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+					VersionID: 1,
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				updatedBundle := *existingBundle
+				updatedBundle.ETag = newEtag
+				updatedBundle.PreviewTeams = updateRequest.PreviewTeams
+				return &updatedBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return contentItems, nil
+			},
+			GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+				return []*models.Bundle{}, nil
+			},
+		}
+
+		existingPolicy := &permissionsAPIModels.Policy{
+			Condition: permissionsAPIModels.Condition{
+				Attribute: "dataset_edition",
+				Operator:  "StringEquals",
+				Values:    []string{"dataset-1", "dataset-1/edition-1"},
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				if id == team1 {
+					return &permissionsAPIModels.Policy{}, nil
+				}
+				if id == team2 {
+					return existingPolicy, nil
+				}
+				return nil, errors.New("404 policy not found")
+			},
+			PostPolicyWithIDFunc: func(ctx context.Context, id string, policy permissionsAPIModels.PolicyInfo, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				return nil, nil
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And policy conditions should be removed for the removed team", func() {
+				So(len(mockPermissionsClient.PutPolicyCalls()), ShouldEqual, 1)
+
+				putCall := mockPermissionsClient.PutPolicyCalls()[0]
+				So(putCall.ID, ShouldEqual, "team-2")
+				So(putCall.Policy.Condition.Values, ShouldBeNil)
+			})
+		})
+	})
+}
+
+func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_DatasetInOtherBundle(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request that removes a preview team from a bundle, but the dataset is in another bundle", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:           bundle1,
+			Title:        "Original Title",
+			BundleType:   models.BundleTypeManual,
+			ETag:         "original-etag",
+			State:        models.BundleStateDraft,
+			CreatedAt:    &now,
+			CreatedBy:    &models.User{Email: "creator@example.com"},
+			UpdatedAt:    &now,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		updateRequest := &models.Bundle{
+			Title:        title1,
+			BundleType:   models.BundleTypeManual,
+			State:        models.BundleStateDraft,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{},
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		contentItemsBundle1 := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundle1,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+					VersionID: 1,
+				},
+			},
+		}
+
+		contentItemsBundle2 := []*models.ContentItem{
+			{
+				ID:       "content-2",
+				BundleID: bundleTwo,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-2",
+					VersionID: 1,
+				},
+			},
+		}
+
+		bundle2 := &models.Bundle{
+			ID:           bundleTwo,
+			Title:        "Bundle 2",
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				updatedBundle := *existingBundle
+				updatedBundle.ETag = newEtag
+				updatedBundle.PreviewTeams = updateRequest.PreviewTeams
+				return &updatedBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				if bundleID == bundle1 {
+					return contentItemsBundle1, nil
+				}
+				if bundleID == bundleTwo {
+					return contentItemsBundle2, nil
+				}
+				return []*models.ContentItem{}, nil
+			},
+			GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+				if teamID == "team-1" {
+					return []*models.Bundle{bundle2, existingBundle}, nil
+				}
+				return []*models.Bundle{}, nil
+			},
+		}
+
+		existingPolicy := &permissionsAPIModels.Policy{
+			Condition: permissionsAPIModels.Condition{
+				Attribute: "dataset_edition",
+				Operator:  "StringEquals",
+				Values:    []string{"dataset-1", "dataset-1/edition-1", "dataset-1/edition-2"},
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				if id == team1 {
+					return existingPolicy, nil
+				}
+				return nil, errors.New("404 policy not found")
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And only the edition should be removed, not the dataset", func() {
+				So(len(mockPermissionsClient.PutPolicyCalls()), ShouldEqual, 1)
+
+				putCall := mockPermissionsClient.PutPolicyCalls()[0]
+				So(putCall.ID, ShouldEqual, "team-1")
+				So(putCall.Policy.Condition.Values, ShouldContain, "dataset-1")
+				So(putCall.Policy.Condition.Values, ShouldContain, "dataset-1/edition-2")
+				So(putCall.Policy.Condition.Values, ShouldNotContain, "dataset-1/edition-1")
+				So(len(putCall.Policy.Condition.Values), ShouldEqual, 2)
+			})
+		})
+	})
+}
+
+func TestPutBundle_RemovePolicyConditionsForRemovedPreviewTeams_NoChanges(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a PUT request that removes a team, but the policy has no matching values", t, func() {
+		now := time.Now().UTC()
+		existingBundle := &models.Bundle{
+			ID:           bundle1,
+			Title:        "Original Title",
+			BundleType:   models.BundleTypeManual,
+			ETag:         "original-etag",
+			State:        models.BundleStateDraft,
+			CreatedAt:    &now,
+			CreatedBy:    &models.User{Email: "creator@example.com"},
+			UpdatedAt:    &now,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
+		}
+
+		updateRequest := &models.Bundle{
+			Title:        title1,
+			BundleType:   models.BundleTypeManual,
+			State:        models.BundleStateDraft,
+			ManagedBy:    models.ManagedByDataAdmin,
+			PreviewTeams: &[]models.PreviewTeam{},
+		}
+
+		updateRequestJSON, err := json.Marshal(updateRequest)
+		So(err, ShouldBeNil)
+
+		contentItems := []*models.ContentItem{
+			{
+				ID:       "content-1",
+				BundleID: bundle1,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-1",
+					EditionID: "edition-1",
+					VersionID: 1,
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, id string) (*models.Bundle, error) {
+				return existingBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			UpdateBundleETagFunc: func(ctx context.Context, bundleID, email string) (*models.Bundle, error) {
+				updatedBundle := *existingBundle
+				updatedBundle.ETag = newEtag
+				updatedBundle.PreviewTeams = updateRequest.PreviewTeams
+				return &updatedBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return contentItems, nil
+			},
+			GetBundlesByPreviewTeamIDFunc: func(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+				return []*models.Bundle{}, nil
+			},
+		}
+
+		existingPolicy := &permissionsAPIModels.Policy{
+			Condition: permissionsAPIModels.Condition{
+				Attribute: "dataset_edition",
+				Operator:  "StringEquals",
+				Values:    []string{"different-dataset", "different-dataset/edition"},
+			},
+		}
+
+		mockPermissionsClient := &permissionsAPISDKMock.ClienterMock{
+			GetPolicyFunc: func(ctx context.Context, id string, headers permissionsAPISDK.Headers) (*permissionsAPIModels.Policy, error) {
+				if id == team1 {
+					return existingPolicy, nil
+				}
+				return nil, errors.New("404 policy not found")
+			},
+			PutPolicyFunc: func(ctx context.Context, id string, policy permissionsAPIModels.Policy, headers permissionsAPISDK.Headers) error {
+				return nil
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+
+		Convey("When putBundle is called", func() {
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+			})
+
+			Convey("And PutPolicy should NOT be called since values didn't change", func() {
+				So(len(mockPermissionsClient.PutPolicyCalls()), ShouldEqual, 0)
 			})
 		})
 	})

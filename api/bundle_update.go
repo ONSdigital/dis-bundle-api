@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
+//nolint:gocognit,gocyclo // cognitive complexity 21 (> 20) is acceptable for now
 func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	defer dphttp.DrainBody(r)
 
@@ -96,10 +97,20 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create policies for any preview teams added in the update.
-	// NOTE: This does not currently handle the case where existing preview teams are removed.
-	// If a preview team is removed from the bundle, their policies will still exist.
 	if err := api.stateMachineBundleAPI.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
 		api.handleInternalError(ctx, w, r, "failed to create bundle policies", err, logdata)
+		return
+	}
+
+	// Add policy conditions for newly added teams for existing content items.
+	if err := api.stateMachineBundleAPI.AddPolicyConditionsForAddedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, currentBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
+		api.handleInternalError(ctx, w, r, "failed to add policy conditions for added preview teams", err, logdata)
+		return
+	}
+
+	// Remove policy conditions for any preview teams removed in the update.
+	if err := api.stateMachineBundleAPI.RemovePolicyConditionsForRemovedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, currentBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
+		api.handleInternalError(ctx, w, r, "failed to remove policy conditions for removed preview teams", err, logdata)
 		return
 	}
 
