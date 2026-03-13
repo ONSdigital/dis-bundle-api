@@ -2,6 +2,7 @@ package steps
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net/http"
@@ -36,6 +37,9 @@ const (
 
 var mockDatasetVersions = []*datasetAPIModels.Version{
 	{ID: "dataset1-edition1-1", DatasetID: "dataset1", Edition: "edition1", Version: 1, State: "APPROVED"},
+	{ID: "test-static-dataset-1-time-series-1", DatasetID: "test-static-dataset-1", Edition: "time-series", Version: 1, State: "APPROVED"},
+	{ID: "test-static-dataset-2-2024-1", DatasetID: "test-static-dataset-2", Edition: "2024", Version: 1, State: "APPROVED"},
+	{ID: "test-static-dataset-2-2026-1", DatasetID: "test-static-dataset-2", Edition: "2026", Version: 1, State: "APPROVED"},
 	{ID: "1"},
 	{ID: "2"},
 	{ID: "inreview-version", State: "IN_REVIEW"},
@@ -59,13 +63,15 @@ type BundleComponent struct {
 	apiFeature              *componenttest.APIFeature
 	AuthorisationMiddleware authorisation.Middleware
 	DatasetAPIVersions      []*datasetAPIModels.Version
+
+	// Preview-user auth and permissions bundle customisation.
+	viewerPrivKey      *rsa.PrivateKey
+	viewerKID          string
+	fakePermissionsAPI *authorisationtest.FakePermissionsAPI
 }
 
 func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	c := &BundleComponent{
-		HTTPServer: &http.Server{
-			ReadHeaderTimeout: 60 * time.Second,
-		},
 		errorChan:      make(chan error),
 		ServiceRunning: false,
 	}
@@ -79,8 +85,8 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 
 	log.Info(context.Background(), "configuration for component test", log.Data{"config": c.Config})
 
-	fakePermissionsAPI := setupFakePermissionsAPI()
-	c.Config.AuthConfig.PermissionsAPIURL = fakePermissionsAPI.URL()
+	c.fakePermissionsAPI = setupFakePermissionsAPI()
+	c.Config.AuthConfig.PermissionsAPIURL = c.fakePermissionsAPI.URL()
 
 	parsedMongoURI, err := url.Parse(mongoURI)
 	if err != nil {
@@ -159,6 +165,15 @@ func (c *BundleComponent) Reset() error {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
 
+	// Reset permissions bundle back to the default (admin-only).
+	// Any scenario that needs preview-user permissions should set them before the first request.
+	if c.fakePermissionsAPI != nil {
+		c.fakePermissionsAPI.Reset()
+		if err := c.fakePermissionsAPI.UpdatePermissionsBundleResponse(getPermissionsBundle()); err != nil {
+			log.Error(ctx, "failed to reset permissions bundle response", err)
+		}
+	}
+
 	c.setInitialiserMock()
 
 	return nil
@@ -184,8 +199,12 @@ func (c *BundleComponent) DoGetHealthcheckOk(*config.Config, string, string, str
 }
 
 func (c *BundleComponent) DoGetHTTPServer(bindAddr string, router http.Handler) service.HTTPServer {
-	c.HTTPServer.Addr = bindAddr
-	c.HTTPServer.Handler = router
+	// Create a fresh server per run to avoid races with ListenAndServe.
+	c.HTTPServer = &http.Server{
+		Addr:              bindAddr,
+		Handler:           router,
+		ReadHeaderTimeout: 60 * time.Second,
+	}
 	return c.HTTPServer
 }
 
