@@ -165,8 +165,6 @@ func (c *BundleComponent) Reset() error {
 		log.Warn(ctx, "error initialising MongoClient during Reset", log.Data{"err": err.Error()})
 	}
 
-	// Reset permissions bundle back to the default (admin-only).
-	// Any scenario that needs preview-user permissions should set them before the first request.
 	if c.fakePermissionsAPI != nil {
 		c.fakePermissionsAPI.Reset()
 		if err := c.fakePermissionsAPI.UpdatePermissionsBundleResponse(getPermissionsBundle()); err != nil {

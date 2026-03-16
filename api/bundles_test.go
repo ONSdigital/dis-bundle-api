@@ -83,7 +83,7 @@ func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *author
 		}
 	}
 
-	requireFn := func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+	RequireFunc := func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 		if !validateAuth {
 			return handlerFunc
 		}
@@ -101,9 +101,9 @@ func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *author
 	}
 
 	return &authorisationMock.MiddlewareMock{
-		RequireFunc: requireFn,
+		RequireFunc: RequireFunc,
 		RequireWithAttributesFunc: func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
-			return requireFn(permission, handlerFunc)
+			return RequireFunc(permission, handlerFunc)
 		},
 		ParseFunc: parseFunc,
 	}
@@ -151,8 +151,6 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 	}
 	r := mux.NewRouter()
 
-	// api.Setup wires some routes with RequireWithAttributes; older tests build a
-	// middleware mock that only provides RequireFunc. Backfill so tests don't panic.
 	if authMiddleware != nil && authMiddleware.RequireWithAttributesFunc == nil {
 		authMiddleware.RequireWithAttributesFunc = func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
 			if authMiddleware.RequireFunc != nil {
