@@ -108,10 +108,7 @@ func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
 // getDatasetEditionAttributeForBundle provides the "dataset_edition" attribute required
 // for conditional preview-team policies to apply to bundle read endpoints.
 func (api *BundleAPI) getDatasetEditionAttributeForBundle(req *http.Request) (map[string]string, error) {
-	attrs, err := auth.GetCollectionIDAttribute(req)
-	if err != nil {
-		return nil, err
-	}
+	attrs := map[string]string{}
 
 	bundleID := mux.Vars(req)[RouteVariableBundleID]
 	if bundleID == "" {
