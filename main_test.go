@@ -37,11 +37,11 @@ func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 	}
 
 	godogCtx.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		if err := bundleFeature.Reset(); err != nil {
-			panic(err)
-		}
 		if err := f.MongoFeature.Reset(); err != nil {
 			log.Error(context.Background(), "failed to reset mongo feature", err)
+		}
+		if err := bundleFeature.Reset(); err != nil {
+			panic(err)
 		}
 		authorizationFeature.Reset()
 		return ctx, nil
