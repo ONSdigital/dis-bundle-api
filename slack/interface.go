@@ -8,7 +8,9 @@ import (
 
 // Clienter represents an interface for a generic Client
 type Clienter interface {
-	SendAlarm(ctx context.Context, summary string, err error, details map[string]interface{}) error
-	SendWarning(ctx context.Context, summary string, details map[string]interface{}) error
-	SendInfo(ctx context.Context, summary string, details map[string]interface{}) error
+	SendAlarm(ctx context.Context, summary string, err error, fields []Field) (*MessageRef, error)
+	SendWarning(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
+	SendInfo(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
+	SendPublishLog(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
+	UpdatePublishLog(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error)
 }

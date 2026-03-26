@@ -19,14 +19,20 @@ var _ slack.Clienter = &ClienterMock{}
 //
 //		// make and configure a mocked slack.Clienter
 //		mockedClienter := &ClienterMock{
-//			SendAlarmFunc: func(ctx context.Context, summary string, err error, details map[string]interface{}) error {
+//			SendAlarmFunc: func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error) {
 //				panic("mock out the SendAlarm method")
 //			},
-//			SendInfoFunc: func(ctx context.Context, summary string, details map[string]interface{}) error {
+//			SendInfoFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 //				panic("mock out the SendInfo method")
 //			},
-//			SendWarningFunc: func(ctx context.Context, summary string, details map[string]interface{}) error {
+//			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+//				panic("mock out the SendPublishLog method")
+//			},
+//			SendWarningFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 //				panic("mock out the SendWarning method")
+//			},
+//			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+//				panic("mock out the UpdatePublishLog method")
 //			},
 //		}
 //
@@ -36,13 +42,19 @@ var _ slack.Clienter = &ClienterMock{}
 //	}
 type ClienterMock struct {
 	// SendAlarmFunc mocks the SendAlarm method.
-	SendAlarmFunc func(ctx context.Context, summary string, err error, details map[string]interface{}) error
+	SendAlarmFunc func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error)
 
 	// SendInfoFunc mocks the SendInfo method.
-	SendInfoFunc func(ctx context.Context, summary string, details map[string]interface{}) error
+	SendInfoFunc func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error)
+
+	// SendPublishLogFunc mocks the SendPublishLog method.
+	SendPublishLogFunc func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error)
 
 	// SendWarningFunc mocks the SendWarning method.
-	SendWarningFunc func(ctx context.Context, summary string, details map[string]interface{}) error
+	SendWarningFunc func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error)
+
+	// UpdatePublishLogFunc mocks the UpdatePublishLog method.
+	UpdatePublishLogFunc func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -54,8 +66,8 @@ type ClienterMock struct {
 			Summary string
 			// Err is the err argument value.
 			Err error
-			// Details is the details argument value.
-			Details map[string]interface{}
+			// Fields is the fields argument value.
+			Fields []slack.Field
 		}
 		// SendInfo holds details about calls to the SendInfo method.
 		SendInfo []struct {
@@ -63,8 +75,17 @@ type ClienterMock struct {
 			Ctx context.Context
 			// Summary is the summary argument value.
 			Summary string
-			// Details is the details argument value.
-			Details map[string]interface{}
+			// Fields is the fields argument value.
+			Fields []slack.Field
+		}
+		// SendPublishLog holds details about calls to the SendPublishLog method.
+		SendPublishLog []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Summary is the summary argument value.
+			Summary string
+			// Fields is the fields argument value.
+			Fields []slack.Field
 		}
 		// SendWarning holds details about calls to the SendWarning method.
 		SendWarning []struct {
@@ -72,17 +93,30 @@ type ClienterMock struct {
 			Ctx context.Context
 			// Summary is the summary argument value.
 			Summary string
-			// Details is the details argument value.
-			Details map[string]interface{}
+			// Fields is the fields argument value.
+			Fields []slack.Field
+		}
+		// UpdatePublishLog holds details about calls to the UpdatePublishLog method.
+		UpdatePublishLog []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Ref is the ref argument value.
+			Ref *slack.MessageRef
+			// Summary is the summary argument value.
+			Summary string
+			// Fields is the fields argument value.
+			Fields []slack.Field
 		}
 	}
-	lockSendAlarm   sync.RWMutex
-	lockSendInfo    sync.RWMutex
-	lockSendWarning sync.RWMutex
+	lockSendAlarm        sync.RWMutex
+	lockSendInfo         sync.RWMutex
+	lockSendPublishLog   sync.RWMutex
+	lockSendWarning      sync.RWMutex
+	lockUpdatePublishLog sync.RWMutex
 }
 
 // SendAlarm calls SendAlarmFunc.
-func (mock *ClienterMock) SendAlarm(ctx context.Context, summary string, err error, details map[string]interface{}) error {
+func (mock *ClienterMock) SendAlarm(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error) {
 	if mock.SendAlarmFunc == nil {
 		panic("ClienterMock.SendAlarmFunc: method is nil but Clienter.SendAlarm was just called")
 	}
@@ -90,17 +124,17 @@ func (mock *ClienterMock) SendAlarm(ctx context.Context, summary string, err err
 		Ctx     context.Context
 		Summary string
 		Err     error
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}{
 		Ctx:     ctx,
 		Summary: summary,
 		Err:     err,
-		Details: details,
+		Fields:  fields,
 	}
 	mock.lockSendAlarm.Lock()
 	mock.calls.SendAlarm = append(mock.calls.SendAlarm, callInfo)
 	mock.lockSendAlarm.Unlock()
-	return mock.SendAlarmFunc(ctx, summary, err, details)
+	return mock.SendAlarmFunc(ctx, summary, err, fields)
 }
 
 // SendAlarmCalls gets all the calls that were made to SendAlarm.
@@ -111,13 +145,13 @@ func (mock *ClienterMock) SendAlarmCalls() []struct {
 	Ctx     context.Context
 	Summary string
 	Err     error
-	Details map[string]interface{}
+	Fields  []slack.Field
 } {
 	var calls []struct {
 		Ctx     context.Context
 		Summary string
 		Err     error
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}
 	mock.lockSendAlarm.RLock()
 	calls = mock.calls.SendAlarm
@@ -126,23 +160,23 @@ func (mock *ClienterMock) SendAlarmCalls() []struct {
 }
 
 // SendInfo calls SendInfoFunc.
-func (mock *ClienterMock) SendInfo(ctx context.Context, summary string, details map[string]interface{}) error {
+func (mock *ClienterMock) SendInfo(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 	if mock.SendInfoFunc == nil {
 		panic("ClienterMock.SendInfoFunc: method is nil but Clienter.SendInfo was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
 		Summary string
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}{
 		Ctx:     ctx,
 		Summary: summary,
-		Details: details,
+		Fields:  fields,
 	}
 	mock.lockSendInfo.Lock()
 	mock.calls.SendInfo = append(mock.calls.SendInfo, callInfo)
 	mock.lockSendInfo.Unlock()
-	return mock.SendInfoFunc(ctx, summary, details)
+	return mock.SendInfoFunc(ctx, summary, fields)
 }
 
 // SendInfoCalls gets all the calls that were made to SendInfo.
@@ -152,12 +186,12 @@ func (mock *ClienterMock) SendInfo(ctx context.Context, summary string, details 
 func (mock *ClienterMock) SendInfoCalls() []struct {
 	Ctx     context.Context
 	Summary string
-	Details map[string]interface{}
+	Fields  []slack.Field
 } {
 	var calls []struct {
 		Ctx     context.Context
 		Summary string
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}
 	mock.lockSendInfo.RLock()
 	calls = mock.calls.SendInfo
@@ -165,24 +199,64 @@ func (mock *ClienterMock) SendInfoCalls() []struct {
 	return calls
 }
 
+// SendPublishLog calls SendPublishLogFunc.
+func (mock *ClienterMock) SendPublishLog(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+	if mock.SendPublishLogFunc == nil {
+		panic("ClienterMock.SendPublishLogFunc: method is nil but Clienter.SendPublishLog was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Summary string
+		Fields  []slack.Field
+	}{
+		Ctx:     ctx,
+		Summary: summary,
+		Fields:  fields,
+	}
+	mock.lockSendPublishLog.Lock()
+	mock.calls.SendPublishLog = append(mock.calls.SendPublishLog, callInfo)
+	mock.lockSendPublishLog.Unlock()
+	return mock.SendPublishLogFunc(ctx, summary, fields)
+}
+
+// SendPublishLogCalls gets all the calls that were made to SendPublishLog.
+// Check the length with:
+//
+//	len(mockedClienter.SendPublishLogCalls())
+func (mock *ClienterMock) SendPublishLogCalls() []struct {
+	Ctx     context.Context
+	Summary string
+	Fields  []slack.Field
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Summary string
+		Fields  []slack.Field
+	}
+	mock.lockSendPublishLog.RLock()
+	calls = mock.calls.SendPublishLog
+	mock.lockSendPublishLog.RUnlock()
+	return calls
+}
+
 // SendWarning calls SendWarningFunc.
-func (mock *ClienterMock) SendWarning(ctx context.Context, summary string, details map[string]interface{}) error {
+func (mock *ClienterMock) SendWarning(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 	if mock.SendWarningFunc == nil {
 		panic("ClienterMock.SendWarningFunc: method is nil but Clienter.SendWarning was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
 		Summary string
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}{
 		Ctx:     ctx,
 		Summary: summary,
-		Details: details,
+		Fields:  fields,
 	}
 	mock.lockSendWarning.Lock()
 	mock.calls.SendWarning = append(mock.calls.SendWarning, callInfo)
 	mock.lockSendWarning.Unlock()
-	return mock.SendWarningFunc(ctx, summary, details)
+	return mock.SendWarningFunc(ctx, summary, fields)
 }
 
 // SendWarningCalls gets all the calls that were made to SendWarning.
@@ -192,15 +266,59 @@ func (mock *ClienterMock) SendWarning(ctx context.Context, summary string, detai
 func (mock *ClienterMock) SendWarningCalls() []struct {
 	Ctx     context.Context
 	Summary string
-	Details map[string]interface{}
+	Fields  []slack.Field
 } {
 	var calls []struct {
 		Ctx     context.Context
 		Summary string
-		Details map[string]interface{}
+		Fields  []slack.Field
 	}
 	mock.lockSendWarning.RLock()
 	calls = mock.calls.SendWarning
 	mock.lockSendWarning.RUnlock()
+	return calls
+}
+
+// UpdatePublishLog calls UpdatePublishLogFunc.
+func (mock *ClienterMock) UpdatePublishLog(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+	if mock.UpdatePublishLogFunc == nil {
+		panic("ClienterMock.UpdatePublishLogFunc: method is nil but Clienter.UpdatePublishLog was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Ref     *slack.MessageRef
+		Summary string
+		Fields  []slack.Field
+	}{
+		Ctx:     ctx,
+		Ref:     ref,
+		Summary: summary,
+		Fields:  fields,
+	}
+	mock.lockUpdatePublishLog.Lock()
+	mock.calls.UpdatePublishLog = append(mock.calls.UpdatePublishLog, callInfo)
+	mock.lockUpdatePublishLog.Unlock()
+	return mock.UpdatePublishLogFunc(ctx, ref, summary, fields)
+}
+
+// UpdatePublishLogCalls gets all the calls that were made to UpdatePublishLog.
+// Check the length with:
+//
+//	len(mockedClienter.UpdatePublishLogCalls())
+func (mock *ClienterMock) UpdatePublishLogCalls() []struct {
+	Ctx     context.Context
+	Ref     *slack.MessageRef
+	Summary string
+	Fields  []slack.Field
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Ref     *slack.MessageRef
+		Summary string
+		Fields  []slack.Field
+	}
+	mock.lockUpdatePublishLog.RLock()
+	calls = mock.calls.UpdatePublishLog
+	mock.lockUpdatePublishLog.RUnlock()
 	return calls
 }
