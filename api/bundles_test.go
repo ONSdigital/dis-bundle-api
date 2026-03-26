@@ -20,9 +20,11 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
+	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
@@ -747,6 +749,15 @@ func createMockStore(data *testData) *storetest.StorerMock {
 			}
 			return &items, nil
 		},
+		CountBundleContentsFunc: func(ctx context.Context, bundleID string) (int, error) {
+			count := 0
+			for _, item := range data.contentItems {
+				if item.BundleID == bundleID {
+					count++
+				}
+			}
+			return count, nil
+		},
 		UpdateContentItemStateFunc: func(ctx context.Context, contentItemID, state string) error {
 			for _, item := range data.contentItems {
 				if item.ID == contentItemID {
@@ -858,6 +869,12 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 			additionalEventCalls = 2
 		}
 
+		var isBeingPubished bool
+		if tc.toState == models.BundleStatePublished {
+			// flag so we can assert slack client calls are made when bundle is being published
+			isBeingPubished = true
+		}
+
 		testCaseName := generateTestCaseName(PutBundleStateRoute, "PUT", fmt.Sprintf("With a valid request and a valid state transition to update state from %s", tc.name))
 		t.Run(testCaseName, func(t *testing.T) {
 			t.Parallel()
@@ -867,7 +884,19 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 				mockStore := createMockStore(data)
 				mockDatasetAPIClient := createMockDatasetAPIClient(data)
 				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
+				mockSlackClient := &slackMock.ClienterMock{
+					SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+						return &slack.MessageRef{
+							ChannelID: "example-channel",
+							Timestamp: "example-timestamp",
+						}, nil
+					},
+					UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+						return &slack.MessageRef{}, nil
+					},
+				}
 				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, true)
+				bundleAPI.stateMachineBundleAPI.DataBundleSlackClient = mockSlackClient
 
 				req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, tc.toState, nil, true)
 				rec := httptest.NewRecorder()
@@ -950,6 +979,13 @@ func TestPutBundleState_ValidTransitions(t *testing.T) {
 						event := (*data.events)[index]
 
 						So(event.Action, ShouldEqual, models.ActionUpdate)
+					}
+				})
+
+				Convey("And if the bundle is being published, a message should be sent to Slack", func() {
+					if isBeingPubished {
+						So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
+						So(len(mockSlackClient.UpdatePublishLogCalls()), ShouldEqual, 1)
 					}
 				})
 			})

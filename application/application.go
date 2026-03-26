@@ -15,6 +15,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
@@ -144,16 +145,57 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		return nil, err
 	}
 
+	logData := log.Data{"bundle_id": bundleID, "bundle_type": bundle.BundleType, "title": bundle.Title}
+
+	var publishLogFields []slack.Field
+	var slackMessageRef *slack.MessageRef
+	publishStartTime := time.Now()
+	isPublishTransition := bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String()
+	if isPublishTransition {
+		contentItemCount, err := s.Datastore.Backend.CountBundleContents(ctx, bundleID)
+		if err != nil {
+			// Don't block publication if we can't get the content item count.
+			// Log the error and continue with a count of 0.
+			// If it is a critical issue then a Slack alarm will be raised during the state transition.
+			log.Error(ctx, "failed to count bundle contents: continuing with count 0", err, logData)
+		}
+
+		publishLogFields = []slack.Field{
+			{Title: "Bundle ID", Value: bundle.ID},
+			{Title: "Title", Value: bundle.Title},
+			{Title: "Type", Value: bundle.BundleType.String()},
+			{Title: "Number of Content Items", Value: strconv.Itoa(contentItemCount)},
+			{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
+		}
+
+		slackMessageRef, err = s.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logData)
+		}
+	}
+
 	updatedBundle, err := s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
 	if err != nil {
-		// send slack notification only when there is an error going from approved to published
-		if bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String() {
-			err := s.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+		if isPublishTransition {
+			_, err := s.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, publishLogFields)
 			if err != nil {
-				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
+				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, logData)
 			}
 		}
 		return nil, err
+	}
+
+	if isPublishTransition {
+		publishEndTime := time.Now()
+		publishLogFields = append(publishLogFields,
+			slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
+			slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+		)
+
+		_, err := s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+		}
 	}
 
 	return updatedBundle, nil
