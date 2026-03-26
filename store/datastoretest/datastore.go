@@ -44,6 +44,9 @@ var _ store.Storer = &StorerMock{}
 //			CloseFunc: func(ctx context.Context) error {
 //				panic("mock out the Close method")
 //			},
+//			CountBundleContentsFunc: func(ctx context.Context, bundleID string) (int, error) {
+//				panic("mock out the CountBundleContents method")
+//			},
 //			CreateBundleFunc: func(ctx context.Context, bundle *models.Bundle) error {
 //				panic("mock out the CreateBundle method")
 //			},
@@ -125,6 +128,9 @@ type StorerMock struct {
 
 	// CloseFunc mocks the Close method.
 	CloseFunc func(ctx context.Context) error
+
+	// CountBundleContentsFunc mocks the CountBundleContents method.
+	CountBundleContentsFunc func(ctx context.Context, bundleID string) (int, error)
 
 	// CreateBundleFunc mocks the CreateBundle method.
 	CreateBundleFunc func(ctx context.Context, bundle *models.Bundle) error
@@ -234,6 +240,13 @@ type StorerMock struct {
 		Close []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// CountBundleContents holds details about calls to the CountBundleContents method.
+		CountBundleContents []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BundleID is the bundleID argument value.
+			BundleID string
 		}
 		// CreateBundle holds details about calls to the CreateBundle method.
 		CreateBundle []struct {
@@ -397,6 +410,7 @@ type StorerMock struct {
 	lockCheckContentItemExistsByDatasetEditionVersion sync.RWMutex
 	lockChecker                                       sync.RWMutex
 	lockClose                                         sync.RWMutex
+	lockCountBundleContents                           sync.RWMutex
 	lockCreateBundle                                  sync.RWMutex
 	lockCreateContentItem                             sync.RWMutex
 	lockCreateEvent                                   sync.RWMutex
@@ -674,6 +688,42 @@ func (mock *StorerMock) CloseCalls() []struct {
 	mock.lockClose.RLock()
 	calls = mock.calls.Close
 	mock.lockClose.RUnlock()
+	return calls
+}
+
+// CountBundleContents calls CountBundleContentsFunc.
+func (mock *StorerMock) CountBundleContents(ctx context.Context, bundleID string) (int, error) {
+	if mock.CountBundleContentsFunc == nil {
+		panic("StorerMock.CountBundleContentsFunc: method is nil but Storer.CountBundleContents was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		BundleID string
+	}{
+		Ctx:      ctx,
+		BundleID: bundleID,
+	}
+	mock.lockCountBundleContents.Lock()
+	mock.calls.CountBundleContents = append(mock.calls.CountBundleContents, callInfo)
+	mock.lockCountBundleContents.Unlock()
+	return mock.CountBundleContentsFunc(ctx, bundleID)
+}
+
+// CountBundleContentsCalls gets all the calls that were made to CountBundleContents.
+// Check the length with:
+//
+//	len(mockedStorer.CountBundleContentsCalls())
+func (mock *StorerMock) CountBundleContentsCalls() []struct {
+	Ctx      context.Context
+	BundleID string
+} {
+	var calls []struct {
+		Ctx      context.Context
+		BundleID string
+	}
+	mock.lockCountBundleContents.RLock()
+	calls = mock.calls.CountBundleContents
+	mock.lockCountBundleContents.RUnlock()
 	return calls
 }
 

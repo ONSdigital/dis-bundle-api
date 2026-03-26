@@ -209,6 +209,20 @@ func (m *Mongo) ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID s
 	return results, nil
 }
 
+// CountBundleContents counts the number of content items for a specific bundle
+func (m *Mongo) CountBundleContents(ctx context.Context, bundleID string) (int, error) {
+	filter := bson.M{
+		"bundle_id": bundleID,
+	}
+
+	count, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).Count(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func buildListBundleContentsQuery(bundleID string) (filter, sort bson.M) {
 	filter = bson.M{}
 

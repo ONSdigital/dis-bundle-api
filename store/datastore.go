@@ -32,6 +32,7 @@ type dataMongoDB interface {
 	GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error)
 
 	// Content items
+	CountBundleContents(ctx context.Context, bundleID string) (int, error)
 	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 	ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error)
 	GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error)

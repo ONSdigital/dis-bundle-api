@@ -564,3 +564,46 @@ func TestUpdateContentItemState_Idempotent(t *testing.T) {
 		})
 	})
 }
+
+func TestCountBundleContents(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx, t)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When CountBundleContents is called with a valid bundle ID", func() {
+			bundleID := Bundle1ID
+			count, err := mongodb.CountBundleContents(ctx, bundleID)
+
+			Convey("Then it returns the correct count without error", func() {
+				So(err, ShouldBeNil)
+				So(count, ShouldEqual, 2)
+			})
+		})
+
+		Convey("When CountBundleContents is called with a non-existent bundle ID", func() {
+			bundleID := "non-existent-bundle-id"
+			count, err := mongodb.CountBundleContents(ctx, bundleID)
+
+			Convey("Then it returns zero count without error", func() {
+				So(err, ShouldBeNil)
+				So(count, ShouldEqual, 0)
+			})
+		})
+
+		Convey("When CountBundleContents is called and the connection is closed", func() {
+			mongodb.Connection.Close(ctx)
+			bundleID := Bundle1ID
+			_, err := mongodb.CountBundleContents(ctx, bundleID)
+
+			Convey("Then it returns an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "client is disconnected")
+			})
+		})
+	})
+}
