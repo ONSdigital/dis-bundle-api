@@ -1,7 +1,0 @@
-ignore:
-  - id: GO-2026-4599
-    reason: "Resolved in Go 1.26.1-bookworm; cannot upgrade due to incompatibility which requires Go 1.26.1-bookworm."
-  - id: GO-2026-4600
-    reason: "Resolved in Go 1.26.1-bookworm; cannot upgrade due to incompatibility which requires Go 1.26.1-bookworm."
-  - id: GO-2026-4601
-    reason: "Resolved in Go 1.26.1-bookworm; cannot upgrade due to incompatibility which requires Go 1.26.1-bookworm."
