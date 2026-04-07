@@ -3,10 +3,14 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	dpresponse "github.com/ONSdigital/dp-net/v3/handlers/response"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
@@ -114,9 +118,47 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var publishLogFields []slack.Field
+	var slackMessageRef *slack.MessageRef
+
+	isPublishTransition := currentBundle.State.String() == models.BundleStateApproved.String() && bundleUpdate.State.String() == models.BundleStatePublished.String()
+	publishStartTime := time.Now()
+	if isPublishTransition {
+		contentItemCount, err := api.stateMachineBundleAPI.Datastore.Backend.CountBundleContents(ctx, bundleID)
+		if err != nil {
+			// Don't block publication if we can't get the content item count.
+			// Log the error and continue with a count of 0.
+			// If it is a critical issue then a Slack alarm be raised with the failed PutBundle call.
+			log.Error(ctx, "failed to count bundle contents: continuing with count 0", err, logdata)
+		}
+
+		publishLogFields = []slack.Field{
+			{Title: "Bundle ID", Value: bundleID},
+			{Title: "Title", Value: currentBundle.Title},
+			{Title: "Type", Value: currentBundle.BundleType.String()},
+			{Title: "Number of Content Items", Value: strconv.Itoa(contentItemCount)},
+			{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
+		}
+		logdata["slack_fields"] = publishLogFields
+
+		log.Info(ctx, "sending slack notification: Bundle publish started", logdata)
+		slackMessageRef, err = api.stateMachineBundleAPI.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logdata)
+		}
+	}
+
 	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData)
 	if err != nil {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)
+
+		if isPublishTransition {
+			_, slackErr := api.stateMachineBundleAPI.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, publishLogFields)
+			if slackErr != nil {
+				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", slackErr, logdata)
+			}
+		}
+
 		switch err {
 		case apierrors.ErrInvalidTransition:
 			code := models.CodeInvalidParameters
@@ -138,6 +180,21 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 			api.handleInternalError(ctx, w, r, "bundle update failed", err, logdata)
 		}
 		return
+	}
+
+	if isPublishTransition {
+		publishEndTime := time.Now()
+		publishLogFields = append(publishLogFields,
+			slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
+			slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+		)
+		logdata["slack_fields"] = publishLogFields
+
+		log.Info(ctx, "updating slack notification: Bundle publish completed", logdata)
+		_, err := api.stateMachineBundleAPI.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logdata)
+		}
 	}
 
 	dpresponse.SetETag(w, updatedBundle.ETag)

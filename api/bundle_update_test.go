@@ -12,6 +12,8 @@ import (
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/slack"
+	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
@@ -42,7 +44,7 @@ func TestPutBundle_Success(t *testing.T) {
 			Title:        "Original Title",
 			BundleType:   models.BundleTypeManual,
 			ETag:         "original-etag",
-			State:        models.BundleStateDraft,
+			State:        models.BundleStateApproved,
 			CreatedAt:    &now,
 			CreatedBy:    &models.User{Email: "creator@example.com"},
 			UpdatedAt:    &now,
@@ -53,7 +55,7 @@ func TestPutBundle_Success(t *testing.T) {
 		updateRequest := &models.Bundle{
 			Title:        title1,
 			BundleType:   models.BundleTypeManual,
-			State:        models.BundleStateDraft,
+			State:        models.BundleStateApproved,
 			ManagedBy:    models.ManagedByDataAdmin,
 			PreviewTeams: &[]models.PreviewTeam{{ID: "team-1"}},
 		}
@@ -73,6 +75,9 @@ func TestPutBundle_Success(t *testing.T) {
 					return false, nil
 				}
 				return false, nil
+			},
+			CountBundleContentsFunc: func(ctx context.Context, bundleID string) (int, error) {
+				return 2, nil
 			},
 			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
 				if bundleID == bundle1 {
@@ -113,7 +118,20 @@ func TestPutBundle_Success(t *testing.T) {
 			},
 		}
 
+		mockSlackClient := &slackMock.ClienterMock{
+			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+				return &slack.MessageRef{
+					ChannelID: "example-channel",
+					Timestamp: "example-timestamp",
+				}, nil
+			},
+			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+				return &slack.MessageRef{}, nil
+			},
+		}
+
 		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, mockPermissionsClient, false)
+		bundleAPI.stateMachineBundleAPI.DataBundleSlackClient = mockSlackClient
 
 		Convey("When putBundle is called with existing preview teams", func() {
 			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(updateRequestJSON))
@@ -173,6 +191,39 @@ func TestPutBundle_Success(t *testing.T) {
 			Convey("And new policies should have been created for the new preview teams", func() {
 				So(len(mockPermissionsClient.GetPolicyCalls()), ShouldEqual, 3)
 				So(len(mockPermissionsClient.PostPolicyWithIDCalls()), ShouldEqual, 2)
+			})
+		})
+
+		Convey("When putBundle is called to transition from APPROVED to PUBLISHED", func() {
+			bundleRequest := updateRequest
+			bundleRequest.State = models.BundleStatePublished
+			bundleRequestJSON, err := json.Marshal(bundleRequest)
+			So(err, ShouldBeNil)
+
+			r := httptest.NewRequest("PUT", "/bundles/bundle-1", bytes.NewReader(bundleRequestJSON))
+			r = mux.SetURLVars(r, map[string]string{"bundle-id": bundle1})
+			r.Header.Set("If-Match", "original-etag")
+			r.Header.Set("Authorization", "Bearer test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.putBundle(w, r)
+
+			Convey("Then it should return 200 OK with the updated bundle", func() {
+				So(w.Code, ShouldEqual, http.StatusOK)
+				So(w.Header().Get("Content-Type"), ShouldEqual, "application/json")
+				So(w.Header().Get("Cache-Control"), ShouldEqual, "no-store")
+				So(w.Header().Get("ETag"), ShouldEqual, newEtag)
+
+				var response models.Bundle
+				err := json.NewDecoder(w.Body).Decode(&response)
+				So(err, ShouldBeNil)
+				So(response.ID, ShouldEqual, bundle1)
+				So(response.Title, ShouldEqual, title1)
+			})
+
+			Convey("And it should have sent and updated a slack publish log message", func() {
+				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
+				So(len(mockSlackClient.UpdatePublishLogCalls()), ShouldEqual, 1)
 			})
 		})
 	})
