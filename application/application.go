@@ -167,7 +167,9 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 			{Title: "Number of Content Items", Value: strconv.Itoa(contentItemCount)},
 			{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
 		}
+		logData["slack_fields"] = publishLogFields
 
+		log.Info(ctx, "sending slack notification: Bundle publish started", logData)
 		slackMessageRef, err = s.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
 		if err != nil {
 			log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logData)
@@ -191,7 +193,9 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 			slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
 			slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
 		)
+		logData["slack_fields"] = publishLogFields
 
+		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
 		_, err := s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
 		if err != nil {
 			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
