@@ -43,11 +43,11 @@ func Setup(ctx context.Context, cfg *config.Config, router *mux.Router, dataStor
 	)
 	api.get(
 		"/bundles/{bundle-id}",
-		authMiddleware.Require("bundles:read", api.getBundle),
+		authMiddleware.RequireWithAttributes("bundles:read", api.getBundle, api.getDatasetEditionAttributeForBundle),
 	)
 	api.get(
 		"/bundles/{bundle-id}/contents",
-		authMiddleware.Require("bundles:read", paginator.Paginate(api.getBundleContents)),
+		authMiddleware.RequireWithAttributes("bundles:read", paginator.Paginate(api.getBundleContents), api.getDatasetEditionAttributeForBundle),
 	)
 	api.get(
 		"/bundle-events",
@@ -103,4 +103,33 @@ func (api *BundleAPI) put(path string, handler http.HandlerFunc) {
 // delete registers a DELETE http.HandlerFunc.
 func (api *BundleAPI) delete(path string, handler http.HandlerFunc) {
 	api.Router.HandleFunc(path, handler).Methods(http.MethodDelete)
+}
+
+// getDatasetEditionAttributeForBundle provides the "dataset_edition" attribute required
+// for conditional preview-team policies to apply to bundle read endpoints.
+func (api *BundleAPI) getDatasetEditionAttributeForBundle(req *http.Request) (map[string]string, error) {
+	attrs := map[string]string{}
+
+	bundleID := mux.Vars(req)[RouteVariableBundleID]
+	if bundleID == "" {
+		return attrs, nil
+	}
+
+	contentItems, err := api.stateMachineBundleAPI.Datastore.GetContentItemsByBundleID(req.Context(), bundleID)
+	if err != nil {
+		return nil, err
+	}
+	if len(contentItems) == 0 {
+		return attrs, nil
+	}
+
+	datasetID := contentItems[0].Metadata.DatasetID
+	editionID := contentItems[0].Metadata.EditionID
+	if datasetID != "" && editionID != "" {
+		attrs["dataset_edition"] = datasetID + "/" + editionID
+	} else if datasetID != "" {
+		attrs["dataset_edition"] = datasetID
+	}
+
+	return attrs, nil
 }

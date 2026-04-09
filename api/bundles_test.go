@@ -27,6 +27,7 @@ import (
 	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
+	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
 	authorisationMock "github.com/ONSdigital/dp-authorisation/v2/authorisation/mock"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
@@ -84,22 +85,27 @@ func newAuthMiddlwareMock(validateAuth bool, parseFunc ParseFuncHandler) *author
 		}
 	}
 
+	RequireFunc := func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+		if !validateAuth {
+			return handlerFunc
+		}
+
+		return func(w http.ResponseWriter, r *http.Request) {
+			token := r.Header.Get("Authorization")
+			isAuthorised := token != "" && token == MockAuthBearerHeaderValue
+
+			if !isAuthorised {
+				http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
+			} else if handlerFunc != nil {
+				handlerFunc(w, r)
+			}
+		}
+	}
+
 	return &authorisationMock.MiddlewareMock{
-		RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
-			if !validateAuth {
-				return handlerFunc
-			}
-
-			return func(w http.ResponseWriter, r *http.Request) {
-				token := r.Header.Get("Authorization")
-				isAuthorised := token != "" && token == MockAuthBearerHeaderValue
-
-				if !isAuthorised {
-					http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
-				} else if handlerFunc != nil {
-					handlerFunc(w, r)
-				}
-			}
+		RequireFunc: RequireFunc,
+		RequireWithAttributesFunc: func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
+			return RequireFunc(permission, handlerFunc)
 		},
 		ParseFunc: parseFunc,
 	}
@@ -146,6 +152,15 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 		DefaultMaxLimit: 100,
 	}
 	r := mux.NewRouter()
+
+	if authMiddleware != nil && authMiddleware.RequireWithAttributesFunc == nil {
+		authMiddleware.RequireWithAttributesFunc = func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
+			if authMiddleware.RequireFunc != nil {
+				return authMiddleware.RequireFunc(permission, handlerFunc)
+			}
+			return handlerFunc
+		}
+	}
 
 	mockStates := []application.State{
 		application.Draft,
@@ -639,6 +654,11 @@ func TestGetBundle_Failure(t *testing.T) {
 
 			authMiddleware := &authorisationMock.MiddlewareMock{
 				RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
+					return func(w http.ResponseWriter, r *http.Request) {
+						http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
+					}
+				},
+				RequireWithAttributesFunc: func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
 					return func(w http.ResponseWriter, r *http.Request) {
 						http.Error(w, `{"errors":[{"code":"Unauthorised","description":"Access denied."}]}`, http.StatusUnauthorized)
 					}

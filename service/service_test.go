@@ -67,6 +67,9 @@ func TestRun(t *testing.T) {
 			RequireFunc: func(permission string, handlerFunc http.HandlerFunc) http.HandlerFunc {
 				return handlerFunc
 			},
+			RequireWithAttributesFunc: func(permission string, handlerFunc http.HandlerFunc, _ authorisation.GetAttributesFromRequest) http.HandlerFunc {
+				return handlerFunc
+			},
 			CloseFunc: func(ctx context.Context) error {
 				return nil
 			},
