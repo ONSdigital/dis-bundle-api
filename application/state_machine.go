@@ -160,7 +160,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
 			if err != nil {
 				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
-				return nil, err
+				continue
 			}
 		}
 	}

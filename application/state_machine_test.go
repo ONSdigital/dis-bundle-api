@@ -877,4 +877,64 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			})
 		})
 	})
+
+	t.Run("When one content item fails to transition, the remaining content items should still be processed", func(t *testing.T) {
+		mockBundle.State = fromState
+		createdEvents = nil
+
+		for index := range mockVersions {
+			mockVersions[index].State = strings.ToLower(fromState.String())
+		}
+		for index := range mockContentItems {
+			state := models.State(fromState.String())
+			mockContentItems[index].State = &state
+		}
+
+		mockedDatastore.GetBundleContentsForBundleFunc = getBundleContentsFunc
+		mockedDatastore.UpdateBundleFunc = updateBundleFunc
+		mockedDatastore.CreateEventFunc = createEventFunc
+		mockedDatastore.UpdateContentItemStateFunc = updateContentItemFunc
+
+		mockdatasetAPIClient.PutVersionStateFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+			if datasetID == mockVersions[0].DatasetID {
+				return errors.New("failed to update version state")
+			}
+			version, err := getVersionFunc(ctx, headers, datasetID, editionID, versionID)
+			if err != nil {
+				return err
+			}
+			version.State = state
+			return nil
+		}
+
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore})
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, &mockdatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+
+		bundleInstance := *mockBundle
+		bundle, err := stateMachine.TransitionBundle(ctx, stateMachineBundleAPI, &bundleInstance, &targetState, &mockAuthEntityData)
+
+		Convey("Then no error should be returned", t, func() {
+			So(err, ShouldBeNil)
+
+			Convey("And the bundle should be returned", func() {
+				So(bundle, ShouldNotBeNil)
+			})
+
+			Convey("And the bundle state should be updated to published", func() {
+				So(mockBundle.State.String(), ShouldEqual, targetState.String())
+			})
+
+			Convey("And events should only be created for the successful content item and the bundle", func() {
+				So(createdEvents, ShouldHaveLength, 2)
+			})
+
+			Convey("And the second content item state should be updated", func() {
+				So(mockContentItems[1].State.String(), ShouldEqual, targetState.String())
+			})
+
+			Convey("And the first content item state should not be updated", func() {
+				So(mockContentItems[0].State.String(), ShouldNotEqual, targetState.String())
+			})
+		})
+	})
 }
