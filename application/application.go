@@ -213,12 +213,6 @@ func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Con
 		return err
 	}
 
-	log.Info(ctx, "version state check", log.Data{
-		"version_state": version.State,
-		"target_state":  targetState.String(),
-		"dataset_id":    contentItem.Metadata.DatasetID,
-	})
-
 	// TODO: remove this if condition once we know if approved or published versions can be added to bundles
 	// If the version state is the same as the target state or if it is already published then do not update the version state
 	if strings.EqualFold(version.State, targetState.String()) || strings.EqualFold(version.State, models.StatePublished.String()) {
