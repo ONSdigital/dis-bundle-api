@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -614,27 +613,16 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 	var wg sync.WaitGroup
 	ch := make(chan string, len(*contents))
-	// numWorkers := len(getScheduledBundlesResult.Items)
-	// wg.Add(numWorkers)
-	//ch := make(chan string, len(*contents))
 
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		fmt.Println("Starting loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
-		fmt.Println("Number of goroutines on startup", runtime.NumGoroutine())
-		fmt.Println("ABOUT TO EXECUTE PUT DATASET STUFF")
 		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg)
-		fmt.Println("Ending loop: "+strconv.Itoa(index)+"at: ", time.Now().String())
-		fmt.Println("Number of goroutines after", runtime.NumGoroutine())
 	}
 
-	fmt.Println("Waiting...")
 	wg.Wait()
 
-	fmt.Println("After goroutines launched:", runtime.NumGoroutine())
-
-	bundle.State = "PUBLISHED"
+	bundle.State = models.BundleStatePublished
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
 
 	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)

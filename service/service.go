@@ -281,10 +281,10 @@ func (svc *Service) registerCheckers(ctx context.Context) (err error) {
 		log.Error(ctx, "error adding check for zebedee", err)
 	}
 
-	if err = svc.HealthCheck.AddCheck("Dataset API Client", svc.datasetAPIClient.Checker); err != nil {
-		hasErrors = true
-		log.Error(ctx, "error adding check for dataset api client", err)
-	}
+	// if err = svc.HealthCheck.AddCheck("Dataset API Client", svc.datasetAPIClient.Checker); err != nil {
+	// 	hasErrors = true
+	// 	log.Error(ctx, "error adding check for dataset api client", err)
+	// }
 
 	// TODO: Add Permissions API Client checker when available in dp-permissions-api sdk
 
