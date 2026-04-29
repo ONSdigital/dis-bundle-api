@@ -34,6 +34,9 @@ var _ slack.Clienter = &ClienterMock{}
 //			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 //				panic("mock out the UpdatePublishLog method")
 //			},
+//			UpdatePublishLogAsAlarmFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+//				panic("mock out the UpdatePublishLogAsAlarm method")
+//			},
 //		}
 //
 //		// use mockedClienter in code that requires slack.Clienter
@@ -55,6 +58,9 @@ type ClienterMock struct {
 
 	// UpdatePublishLogFunc mocks the UpdatePublishLog method.
 	UpdatePublishLogFunc func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error)
+
+	// UpdatePublishLogAsAlarmFunc mocks the UpdatePublishLogAsAlarm method.
+	UpdatePublishLogAsAlarmFunc func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -107,12 +113,24 @@ type ClienterMock struct {
 			// Fields is the fields argument value.
 			Fields []slack.Field
 		}
+		// UpdatePublishLogAsAlarm holds details about calls to the UpdatePublishLogAsAlarm method.
+		UpdatePublishLogAsAlarm []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Ref is the ref argument value.
+			Ref *slack.MessageRef
+			// Summary is the summary argument value.
+			Summary string
+			// Fields is the fields argument value.
+			Fields []slack.Field
+		}
 	}
-	lockSendAlarm        sync.RWMutex
-	lockSendInfo         sync.RWMutex
-	lockSendPublishLog   sync.RWMutex
-	lockSendWarning      sync.RWMutex
-	lockUpdatePublishLog sync.RWMutex
+	lockSendAlarm               sync.RWMutex
+	lockSendInfo                sync.RWMutex
+	lockSendPublishLog          sync.RWMutex
+	lockSendWarning             sync.RWMutex
+	lockUpdatePublishLog        sync.RWMutex
+	lockUpdatePublishLogAsAlarm sync.RWMutex
 }
 
 // SendAlarm calls SendAlarmFunc.
@@ -320,5 +338,49 @@ func (mock *ClienterMock) UpdatePublishLogCalls() []struct {
 	mock.lockUpdatePublishLog.RLock()
 	calls = mock.calls.UpdatePublishLog
 	mock.lockUpdatePublishLog.RUnlock()
+	return calls
+}
+
+// UpdatePublishLogAsAlarm calls UpdatePublishLogAsAlarmFunc.
+func (mock *ClienterMock) UpdatePublishLogAsAlarm(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+	if mock.UpdatePublishLogAsAlarmFunc == nil {
+		panic("ClienterMock.UpdatePublishLogAsAlarmFunc: method is nil but Clienter.UpdatePublishLogAsAlarm was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Ref     *slack.MessageRef
+		Summary string
+		Fields  []slack.Field
+	}{
+		Ctx:     ctx,
+		Ref:     ref,
+		Summary: summary,
+		Fields:  fields,
+	}
+	mock.lockUpdatePublishLogAsAlarm.Lock()
+	mock.calls.UpdatePublishLogAsAlarm = append(mock.calls.UpdatePublishLogAsAlarm, callInfo)
+	mock.lockUpdatePublishLogAsAlarm.Unlock()
+	return mock.UpdatePublishLogAsAlarmFunc(ctx, ref, summary, fields)
+}
+
+// UpdatePublishLogAsAlarmCalls gets all the calls that were made to UpdatePublishLogAsAlarm.
+// Check the length with:
+//
+//	len(mockedClienter.UpdatePublishLogAsAlarmCalls())
+func (mock *ClienterMock) UpdatePublishLogAsAlarmCalls() []struct {
+	Ctx     context.Context
+	Ref     *slack.MessageRef
+	Summary string
+	Fields  []slack.Field
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Ref     *slack.MessageRef
+		Summary string
+		Fields  []slack.Field
+	}
+	mock.lockUpdatePublishLogAsAlarm.RLock()
+	calls = mock.calls.UpdatePublishLogAsAlarm
+	mock.lockUpdatePublishLogAsAlarm.RUnlock()
 	return calls
 }

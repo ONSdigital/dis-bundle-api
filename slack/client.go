@@ -60,6 +60,12 @@ func (c *Client) UpdatePublishLog(ctx context.Context, ref *MessageRef, summary 
 	return c.doUpdateMessage(ctx, ref, GreenColour, TickEmoji, summary, buildAttachmentFields(nil, fields))
 }
 
+// UpdatePublishLogAsAlarm updates a previously sent publish log message as a red alarm,
+// used when one or more content items failed to publish.
+func (c *Client) UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
+	return c.doUpdateMessage(ctx, ref, RedColour, AlarmEmoji, summary, buildAttachmentFields(nil, fields))
+}
+
 // doSendMessage is a helper function to send a message to a specified Slack channel with given parameters
 func (c *Client) doSendMessage(ctx context.Context, channel string, color Colour, emoji Emoji, summary string, fields []slack.AttachmentField) (*MessageRef, error) {
 	attachment := slack.Attachment{

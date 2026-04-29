@@ -83,3 +83,18 @@ func TestNoopClient_UpdatePublishLog(t *testing.T) {
 		})
 	})
 }
+
+func TestNoopClient_UpdatePublishLogAsAlarm(t *testing.T) {
+	Convey("Given a NoopClient", t, func() {
+		client := &slack.NoopClient{}
+
+		Convey("When UpdatePublishLogAsAlarm is called", func() {
+			ref, err := client.UpdatePublishLogAsAlarm(context.Background(), &slack.MessageRef{ChannelID: "test-channel", Timestamp: "1234567890.123456"}, "Test Summary", nil)
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+				So(ref, ShouldBeNil)
+			})
+		})
+	})
+}

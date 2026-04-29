@@ -36,6 +36,7 @@ func TestSpec(t *testing.T) {
 				So(cfg.EnablePermissionsAuth, ShouldBeFalse)
 				So(cfg.ZebedeeURL, ShouldEqual, "http://localhost:8082")
 				So(cfg.ZebedeeClientTimeout, ShouldEqual, 30*time.Second)
+				So(cfg.PreviewServiceURL, ShouldEqual, "")
 
 				So(cfg.ClusterEndpoint, ShouldEqual, "localhost:27017")
 				So(cfg.Username, ShouldEqual, "")

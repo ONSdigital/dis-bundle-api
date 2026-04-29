@@ -13,4 +13,5 @@ type Clienter interface {
 	SendInfo(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
 	SendPublishLog(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
 	UpdatePublishLog(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error)
+	UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error)
 }

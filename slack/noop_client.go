@@ -24,3 +24,7 @@ func (n *NoopClient) SendPublishLog(ctx context.Context, summary string, fields 
 func (n *NoopClient) UpdatePublishLog(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
 	return nil, nil
 }
+
+func (n *NoopClient) UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
+	return nil, nil
+}

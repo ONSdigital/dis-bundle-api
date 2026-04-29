@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
+	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/log.go/v2/log"
 )
@@ -140,19 +142,21 @@ func (sm *StateMachine) IsValidTransition(ctx context.Context, sourceState, targ
 	return nil
 }
 
-func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState *models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
+func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundleAPI *StateMachineBundleAPI, bundle *models.Bundle, targetState *models.BundleState, authEntityData *models.AuthEntityData) (*models.Bundle, bool, error) {
 	if err := sm.IsValidTransition(ctx, &bundle.State, targetState); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	contents, err := stateMachineBundleAPI.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
+		return nil, false, apierrors.ErrBundleHasNoContentItems
 	}
+
+	hadContentItemFailures := false
 
 	if targetState.String() == models.BundleStateApproved.String() || targetState.String() == models.BundleStatePublished.String() {
 		for index := range *contents {
@@ -160,6 +164,35 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 			err = sm.transitionContentItem(ctx, contentItem, stateMachineBundleAPI, targetState, authEntityData)
 			if err != nil {
 				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
+
+				previewURL := fmt.Sprintf("%s/datasets/%s/editions/%s/versions/%s",
+					stateMachineBundleAPI.PreviewServiceURL,
+					contentItem.Metadata.DatasetID,
+					contentItem.Metadata.EditionID,
+					strconv.Itoa(contentItem.Metadata.VersionID),
+				)
+
+				alarmFields := []slack.Field{
+					{Title: "Bundle ID", Value: bundle.ID},
+					{Title: "Bundle Title", Value: bundle.Title},
+					{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
+					{Title: "Edition", Value: contentItem.Metadata.EditionID},
+					{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
+					{Title: "Preview Link", Value: previewURL},
+				}
+
+				_, alarmErr := stateMachineBundleAPI.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to publish", err, alarmFields)
+				if alarmErr != nil {
+					log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
+				}
+
+				log.Info(ctx, "sending slack alarm for content item failure", log.Data{
+					"bundle-id":       bundle.ID,
+					"content-item-id": contentItem.ID,
+					"alarm_fields":    alarmFields,
+				})
+
+				hadContentItemFailures = true
 				continue
 			}
 		}
@@ -170,7 +203,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 
 	updatedBundle, err := stateMachineBundleAPI.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
 	if err != nil {
-		return nil, err
+		return nil, hadContentItemFailures, err
 	}
 
 	identityType := log.USER
@@ -181,11 +214,11 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 
 	if err = stateMachineBundleAPI.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
-		return nil, err
+		return nil, hadContentItemFailures, err
 	}
 	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
-	return updatedBundle, nil
+	return updatedBundle, hadContentItemFailures, nil
 }
 
 func (*StateMachine) transitionContentItem(ctx context.Context, contentItem *models.ContentItem, stateMachineBundleAPI *StateMachineBundleAPI, targetState *models.BundleState, authEntityData *models.AuthEntityData) error {

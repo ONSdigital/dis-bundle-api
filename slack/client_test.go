@@ -191,7 +191,7 @@ func TestClient_DoSendMessage(t *testing.T) {
 	})
 }
 
-// This test covers the doUpdateMessage method indirectly through UpdatePublishLog.
+// This test covers the doUpdateMessage method indirectly through UpdatePublishLog and UpdatePublishLogAsAlarm.
 // It verifies that message updates can be sent to Slack without errors and uses a mock HTTP server to simulate Slack's API.
 func TestClient_DoUpdateMessage(t *testing.T) {
 	Convey("Given a mock Slack Client and valid parameters", t, func() {
@@ -213,6 +213,17 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 
 		Convey("When doUpdateMessage is called through UpdatePublishLog", func() {
 			updatedRef, err := client.UpdatePublishLog(context.Background(), ref, "Updated Summary", []Field{{Title: "key", Value: "value"}})
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+				So(updatedRef, ShouldNotBeNil)
+				So(updatedRef.ChannelID, ShouldEqual, "test-channel")
+				So(updatedRef.Timestamp, ShouldEqual, "1234.5678")
+			})
+		})
+
+		Convey("When doUpdateMessage is called through UpdatePublishLogAsAlarm", func() {
+			updatedRef, err := client.UpdatePublishLogAsAlarm(context.Background(), ref, "Updated Summary", []Field{{Title: "key", Value: "value"}})
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -252,6 +263,16 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 				So(err.Error(), ShouldContainSubstring, "failed to update message in Slack channel")
 			})
 		})
+
+		Convey("When UpdatePublishLogAsAlarm is called", func() {
+			updatedRef, err := client.UpdatePublishLogAsAlarm(context.Background(), ref, "Updated Summary", nil)
+
+			Convey("Then a wrapped error is returned", func() {
+				So(updatedRef, ShouldBeNil)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "failed to update message in Slack channel")
+			})
+		})
 	})
 
 	Convey("Given invalid message references", t, func() {
@@ -277,6 +298,33 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 
 		Convey("When UpdatePublishLog is called with an empty timestamp", func() {
 			updatedRef, err := client.UpdatePublishLog(context.Background(), &MessageRef{ChannelID: "test-channel"}, "Updated Summary", nil)
+
+			Convey("Then a missing timestamp error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRefTimestamp)
+				So(updatedRef, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdatePublishLogAsAlarm is called with a nil ref", func() {
+			updatedRef, err := client.UpdatePublishLogAsAlarm(context.Background(), nil, "Updated Summary", nil)
+
+			Convey("Then a missing ref error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRef)
+				So(updatedRef, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdatePublishLogAsAlarm is called with an empty channel", func() {
+			updatedRef, err := client.UpdatePublishLogAsAlarm(context.Background(), &MessageRef{Timestamp: "1234.5678"}, "Updated Summary", nil)
+
+			Convey("Then a missing channel error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRefChannel)
+				So(updatedRef, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdatePublishLogAsAlarm is called with an empty timestamp", func() {
+			updatedRef, err := client.UpdatePublishLogAsAlarm(context.Background(), &MessageRef{ChannelID: "test-channel"}, "Updated Summary", nil)
 
 			Convey("Then a missing timestamp error is returned", func() {
 				So(err, ShouldEqual, errMissingMessageRefTimestamp)

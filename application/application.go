@@ -28,15 +28,17 @@ type StateMachineBundleAPI struct {
 	DatasetAPIClient      datasetAPISDK.Clienter
 	PermissionsAPIClient  permissionsAPISDK.Clienter
 	DataBundleSlackClient slack.Clienter
+	PreviewServiceURL     string
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL string) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:             datastore,
 		StateMachine:          stateMachine,
 		DatasetAPIClient:      datasetAPIClient,
 		PermissionsAPIClient:  permissionsAPIClient,
 		DataBundleSlackClient: dataBundleSlackClient,
+		PreviewServiceURL:     previewServiceURL,
 	}
 }
 
@@ -176,7 +178,7 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		}
 	}
 
-	updatedBundle, err := s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
+	updatedBundle, hadContentItemFailures, err := s.StateMachine.TransitionBundle(ctx, s, bundle, &targetState, authEntityData)
 	if err != nil {
 		if isPublishTransition {
 			_, err := s.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, publishLogFields)
@@ -195,10 +197,18 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		)
 		logData["slack_fields"] = publishLogFields
 
-		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-		_, err := s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-		if err != nil {
-			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+		if hadContentItemFailures {
+			log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
+			_, err = s.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
+			if err != nil {
+				log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
+			}
+		} else {
+			log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
+			_, err = s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+			if err != nil {
+				log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+			}
 		}
 	}
 
