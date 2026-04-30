@@ -165,12 +165,7 @@ func (sm *StateMachine) TransitionBundle(ctx context.Context, stateMachineBundle
 			if err != nil {
 				log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": bundle.ID, "content-item-id": contentItem.ID})
 
-				previewURL := fmt.Sprintf("%s/datasets/%s/editions/%s/versions/%s",
-					stateMachineBundleAPI.PreviewServiceURL,
-					contentItem.Metadata.DatasetID,
-					contentItem.Metadata.EditionID,
-					strconv.Itoa(contentItem.Metadata.VersionID),
-				)
+				previewURL := stateMachineBundleAPI.PreviewServiceURL + contentItem.Links.Preview
 
 				alarmFields := []slack.Field{
 					{Title: "Bundle ID", Value: bundle.ID},

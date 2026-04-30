@@ -897,6 +897,10 @@ func TestTransitionBundle_Failure(t *testing.T) {
 			mockContentItems[index].State = &state
 		}
 
+		mockContentItems[0].Links = models.Links{
+			Preview: "/economy/datasets/dataset-id-1/editions/edition-id-1/versions/1",
+		}
+
 		mockedDatastore.GetBundleContentsForBundleFunc = getBundleContentsFunc
 		mockedDatastore.UpdateBundleFunc = updateBundleFunc
 		mockedDatastore.CreateEventFunc = createEventFunc
