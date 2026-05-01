@@ -56,7 +56,7 @@ func GetListTransitions() []application.Transition {
 	inReviewTransition := application.Transition{
 		Label:               "IN_REVIEW",
 		TargetState:         application.InReview,
-		AllowedSourceStates: []string{"DRAFT", "APPROVED"},
+		AllowedSourceStates: []string{"DRAFT", "APPROVED", "IN_REVIEW"},
 	}
 
 	approvedTransition := application.Transition{

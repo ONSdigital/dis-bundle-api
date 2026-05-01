@@ -21,54 +21,48 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bundleID := vars["bundle-id"]
 
-	logdata := log.Data{"bundle_id": bundleID}
+	logData := log.Data{"bundle_id": bundleID}
 
 	authEntityData, err := api.GetAuthEntityData(r)
 	if err != nil {
-		handleErr(ctx, w, r, err, logdata, RouteNamePutBundle)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
 		return
 	}
 
-	ifMatchHeader := r.Header.Get("If-Match")
-	if ifMatchHeader == "" {
-		log.Error(ctx, "putBundle endpoint: missing If-Match header", nil, logdata)
-		code := models.CodeMissingParameters
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionMissingIfMatchHeader,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-		return
-	}
-
-	currentBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
+	etag, err := utils.GetETag(r)
 	if err != nil {
-		api.handleGetBundleError(ctx, w, r, err, logdata)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
 		return
 	}
 
-	if currentBundle.ETag != ifMatchHeader {
-		log.Error(ctx, "putBundle endpoint: ETag mismatch", nil, logdata)
-		code := models.CodeConflict
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionConflict,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
-		return
-	}
+	// currentBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
+	// if err != nil {
+	// 	api.handleGetBundleError(ctx, w, r, err, logdata)
+	// 	return
+	// }
 
-	bundleUpdate, validationErrors, err := api.CreateAndValidateBundleUpdate(r, bundleID, currentBundle, authEntityData.GetUserID())
+	// if currentBundle.ETag != ifMatchHeader {
+	// 	log.Error(ctx, "putBundle endpoint: ETag mismatch", nil, logdata)
+	// 	code := models.CodeConflict
+	// 	errInfo := &models.Error{
+	// 		Code:        &code,
+	// 		Description: apierrors.ErrorDescriptionConflict,
+	// 	}
+	// 	utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
+	// 	return
+	// }
+
+	bundleUpdate, validationErrors, err := api.CreateAndValidateBundleUpdate(r, bundleID, authEntityData.GetUserID())
 	if err != nil {
-		api.handleBadRequestError(ctx, w, r, "bundle creation or validation failed", err, logdata)
+		api.handleBadRequestError(ctx, w, r, "bundle creation or validation failed", err, logData)
 		return
 	}
 
 	var allValidationErrors []*models.Error
 	allValidationErrors = append(allValidationErrors, validationErrors...)
 
-	validationErrs := api.stateMachineBundleAPI.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
-	allValidationErrors = append(allValidationErrors, validationErrs...)
+	//validationErrs := api.stateMachineBundleAPI.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
+	//allValidationErrors = append(allValidationErrors, validationErrs...)
 
 	// if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
 	// 	err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
@@ -89,8 +83,8 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	if len(allValidationErrors) > 0 {
-		logdata["validation_errors"] = allValidationErrors
-		log.Error(ctx, "putBundle endpoint: bundle validation failed", nil, logdata)
+		logData["validation_errors"] = allValidationErrors
+		log.Error(ctx, "putBundle endpoint: bundle validation failed", nil, logData)
 		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, allValidationErrors...)
 		return
 	}
@@ -99,39 +93,40 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	// NOTE: This does not currently handle the case where existing preview teams are removed.
 	// If a preview team is removed from the bundle, their policies will still exist.
 	if err := api.stateMachineBundleAPI.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
-		api.handleInternalError(ctx, w, r, "failed to create bundle policies", err, logdata)
+		api.handleInternalError(ctx, w, r, "failed to create bundle policies", err, logData)
 		return
 	}
 
-	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, currentBundle, authEntityData)
+	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, authEntityData, *etag)
 	if err != nil {
-		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logdata)
-		switch err {
-		case apierrors.ErrInvalidTransition:
-			code := models.CodeInvalidParameters
-			errInfo := &models.Error{
-				Code:        &code,
-				Description: apierrors.ErrorDescriptionMalformedRequest,
-				Source:      &models.Source{Field: "/state"},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
-		case apierrors.ErrNotFound:
-			code := models.CodeNotFound
-			errInfo := &models.Error{
-				Code:        &code,
-				Description: apierrors.ErrorDescriptionNotFound,
-				Source:      &models.Source{Field: "/dataset_id"},
-			}
-			utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
-		default:
-			api.handleInternalError(ctx, w, r, "bundle update failed", err, logdata)
-		}
+		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logData)
+		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+		// switch err {
+		// case apierrors.ErrInvalidTransition:
+		// 	code := models.CodeInvalidParameters
+		// 	errInfo := &models.Error{
+		// 		Code:        &code,
+		// 		Description: apierrors.ErrorDescriptionMalformedRequest,
+		// 		Source:      &models.Source{Field: "/state"},
+		// 	}
+		// 	utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
+		// case apierrors.ErrNotFound:
+		// 	code := models.CodeNotFound
+		// 	errInfo := &models.Error{
+		// 		Code:        &code,
+		// 		Description: apierrors.ErrorDescriptionNotFound,
+		// 		Source:      &models.Source{Field: "/dataset_id"},
+		// 	}
+		// 	utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
+		// default:
+		// 	api.handleInternalError(ctx, w, r, "bundle update failed", err, logData)
+		// }
 		return
 	}
 
 	bundleJSON, err := json.Marshal(updatedBundle)
 	if err != nil {
-		api.handleInternalError(ctx, w, r, "failed to marshal bundle to JSON", err, logdata)
+		api.handleInternalError(ctx, w, r, "failed to marshal bundle to JSON", err, logData)
 		return
 	}
 
@@ -141,7 +136,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if _, err := w.Write(bundleJSON); err != nil {
-		log.Error(ctx, "putBundle endpoint: error writing response body", err, logdata)
+		log.Error(ctx, "putBundle endpoint: error writing response body", err, logData)
 	}
 }
 
@@ -180,15 +175,15 @@ func (api *BundleAPI) handleGetBundleError(ctx context.Context, w http.ResponseW
 }
 
 // Helper function to create and validate bundle update
-func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID string, currentBundle *models.Bundle, email string) (*models.Bundle, []*models.Error, error) {
+func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID string, email string) (*models.Bundle, []*models.Error, error) {
 	bundleUpdate, err := models.CreateBundle(r.Body, email)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	bundleUpdate.ID = bundleID
-	bundleUpdate.CreatedAt = currentBundle.CreatedAt
-	bundleUpdate.CreatedBy = currentBundle.CreatedBy
+	// bundleUpdate.CreatedAt = currentBundle.CreatedAt
+	// bundleUpdate.CreatedBy = currentBundle.CreatedBy
 
 	models.CleanBundle(bundleUpdate)
 

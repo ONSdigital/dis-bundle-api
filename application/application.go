@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
+	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
@@ -146,13 +148,7 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 
 	updatedBundle, err := s.StateMachine.Transition(ctx, s, bundle, targetState, *authEntityData)
 	if err != nil {
-		// send slack notification only when there is an error going from approved to published
-		if bundle.State.String() == models.BundleStateApproved.String() && targetState.String() == models.BundleStatePublished.String() {
-			err := s.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, map[string]interface{}{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
-			if err != nil {
-				log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title})
-			}
-		}
+		//log something here
 		return nil, err
 	}
 
@@ -188,16 +184,6 @@ func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Con
 }
 
 func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models.Bundle, authEntityData *models.AuthEntityData) (int, *models.Bundle, *models.Error, error) {
-	// _, err := s.StateMachine.Transition(ctx, s, nil, bundle)
-	// if err != nil {
-	// 	log.Error(ctx, "failed to transition bundle state", err)
-	// 	code := models.CodeBadRequest
-	// 	e := &models.Error{
-	// 		Code:        &code,
-	// 		Description: errs.ErrorDescriptionStateNotAllowedToTransition,
-	// 	}
-	// 	return http.StatusBadRequest, nil, e, err
-	// }
 
 	bundleExists, err := s.CheckBundleExistsByTitle(ctx, bundle.Title)
 	if err != nil {
@@ -404,8 +390,8 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 	return contentResults, totalCount, nil
 }
 
-func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate, currentBundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
-	logdata := log.Data{"bundle_id": bundleID}
+func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate *models.Bundle, authEntityData *models.AuthEntityData, eTag string) (*models.Bundle, error) {
+	logData := log.Data{"bundle_id": bundleID}
 	userID := authEntityData.GetUserID()
 
 	// stateChangingToPublished, err := s.handleStateTransition(ctx, bundleUpdate, currentBundle)
@@ -413,35 +399,73 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	// 	log.Error(ctx, "putBundle endpoint: invalid state transition", err, logdata)
 	// 	return nil, err
 	// }
+	originalBundle, err := s.GetBundleAndValidateETag(ctx, bundleID, eTag)
+	if err != nil {
+		fmt.Println("ETAG VALIDATION FAILED", err)
+		return nil, err
+	}
 
-	if bundleUpdate.State == "PUBLISHED" {
-		err := s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authEntityData.Headers)
+	fmt.Println("ORIGINAL BUNDLE IS", originalBundle)
+	if bundleUpdate.Title != originalBundle.Title {
+		fmt.Println("IN THE TITLES DON'T MATCH")
+		exists, err := s.CheckBundleExistsByTitleUpdate(ctx, bundleUpdate.Title, bundleUpdate.ID)
 		if err != nil {
-			log.Error(ctx, "failed to validate/update content items with dataset info", err, logdata)
+			log.Error(ctx, "failed to check bundle title uniqueness", err)
 			return nil, err
+			// code := models.CodeInternalError
+			// validationErrors = append(validationErrors, &models.Error{
+			// 	Code:        &code,
+			// 	Description: errs.ErrorDescriptionInternalError,
+			// })
+			// return validationErrors
+		}
+		if exists {
+
+			//code := models.CodeInvalidParameters
+			log.Error(ctx, "bundle title already exists", err, logData)
+			return nil, apierrors.ErrBundleTitleAlreadyExists
+			//validationErrors = append(validationErrors, createValidationError(code, "/title"))
 		}
 	}
+	// Need to do the validation bits about titles and stuff here
+
+	// if bundleUpdate.State == "PUBLISHED" {
+	// 	err := s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authEntityData.Headers)
+	// 	if err != nil {
+	// 		log.Error(ctx, "failed to validate/update content items with dataset info", err, logdata)
+	// 		return nil, err
+	// 	}
+	// }
 
 	now := time.Now()
 	bundleUpdate.UpdatedAt = &now
 	bundleUpdate.LastUpdatedBy = &models.User{Email: userID}
 
-	_, err := s.UpdateBundle(ctx, bundleID, bundleUpdate)
+	updatedBundle, err := s.StateMachine.Transition(ctx, s, bundleUpdate, bundleUpdate.State, *authEntityData)
 	if err != nil {
-		log.Error(ctx, "failed to update bundle in database", err, logdata)
+		//log something here
+		log.Error(ctx, "transition failed", err, logData)
 		return nil, err
 	}
 
-	updatedBundle, err := s.UpdateBundleETag(ctx, bundleID, userID)
-	if err != nil {
-		log.Error(ctx, "failed to update bundle ETag", err, logdata)
-		return nil, err
-	}
+	return updatedBundle, nil
 
-	if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
-		log.Error(ctx, "failed to create event", err, logdata)
-		return nil, err
-	}
+	// updatedBundle, err := s.UpdateBundle(ctx, bundleID, bundleUpdate)
+	// if err != nil {
+	// 	log.Error(ctx, "failed to update bundle in database", err, logdata)
+	// 	return nil, err
+	// }
+
+	// updatedBundle, err = s.UpdateBundleETag(ctx, bundleID, userID)
+	// if err != nil {
+	// 	log.Error(ctx, "failed to update bundle ETag", err, logdata)
+	// 	return nil, err
+	// }
+
+	// if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+	// 	log.Error(ctx, "failed to create event", err, logdata)
+	// 	return nil, err
+	// }
 
 	return updatedBundle, nil
 }
@@ -577,17 +601,18 @@ func createValidationError(code models.Code, field string) *models.Error {
 	}
 }
 
-func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup) error {
+func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state string) error {
 	defer wg.Done()
 
 	fmt.Println("Starting put version state for edition ", contentItem.Metadata.EditionID)
 	fmt.Println(time.Now().String())
 	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), "published"); err != nil {
+		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
 		return err
 	}
 	fmt.Println("Ending put version state for edition ", contentItem.Metadata.EditionID)
 
-	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, "PUBLISHED"); err != nil {
+	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, state); err != nil {
 		return err
 	}
 
@@ -600,16 +625,50 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 	return nil
 }
 
+func startSlackNotification(ctx context.Context, smBundle StateMachineBundleAPI, publishLogFields []slack.Field, logData log.Data) *slack.MessageRef {
+	log.Info(ctx, "sending slack notification: Bundle publish started", logData)
+	slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
+	if err != nil {
+		log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logData)
+		return nil
+	}
+
+	return slackMessageRef
+}
+
 func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 
+	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
 	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	if contents == nil || len(*contents) == 0 {
-		return nil, fmt.Errorf("no content items")
+		return nil, apierrors.ErrBundleHasNoContentItems
 	}
+
+	publishStartTime := time.Now()
+	publishLogFields := []slack.Field{
+		{Title: "Bundle ID", Value: bundle.ID},
+		{Title: "Title", Value: bundle.Title},
+		{Title: "Type", Value: bundle.BundleType.String()},
+		{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))},
+		{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
+	}
+	logData["slack_fields"] = publishLogFields
+
+	c1 := make(chan *slack.MessageRef)
+	go func() {
+		log.Info(ctx, "sending slack notification: Bundle publish started", logData)
+		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logData)
+		}
+		c1 <- slackMessageRef
+	}()
+
+	slackMessageRef := <-c1
 
 	var wg sync.WaitGroup
 	ch := make(chan string, len(*contents))
@@ -617,7 +676,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg)
+		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, string(models.BundleStatePublished))
 	}
 
 	wg.Wait()
@@ -627,20 +686,148 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
 	if err != nil {
+		_, err := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, logData)
+		}
 		return nil, err
 	}
+
+	publishEndTime := time.Now()
+	publishLogFields = append(publishLogFields,
+		slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
+		slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+	)
+	logData["slack_fields"] = publishLogFields
+
+	log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
+	_, err = smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+	if err != nil {
+		log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+	}
+
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
+	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+		return nil, err
+	}
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
 	return updatedBundle, nil
 }
 
 func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
-	return nil, nil
+	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
+	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if contents == nil || len(*contents) == 0 {
+		return nil, apierrors.ErrBundleHasNoContentItems
+	}
+
+	var wg sync.WaitGroup
+	ch := make(chan string, len(*contents))
+
+	for index := range *contents {
+		contentItem := &(*contents)[index]
+		wg.Add(1)
+		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStateApproved.String())
+	}
+
+	wg.Wait()
+
+	bundle.State = models.BundleStateApproved
+	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
+
+	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info(ctx, "Approve bundle completed", logData)
+
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
+	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+		return nil, err
+	}
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+
+	return updatedBundle, nil
 }
 
 func ReviewBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
-	return nil, nil
+	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
+	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if contents == nil || len(*contents) == 0 {
+		return nil, apierrors.ErrBundleHasNoContentItems
+	}
+
+	bundle.State = models.BundleStateInReview
+	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
+
+	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info(ctx, "Review transition bundle completed", logData)
+
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
+	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+		return nil, err
+	}
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+
+	return updatedBundle, nil
 }
 
 func DraftBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
-	return nil, nil
+	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
+
+	bundle.State = models.BundleStateDraft
+	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
+
+	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info(ctx, "Review transition bundle completed", logData)
+
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
+
+	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+		return nil, err
+	}
+	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
+
+	return updatedBundle, nil
 }

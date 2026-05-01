@@ -14,13 +14,15 @@ import (
 var (
 	validSlackConfig = &SlackConfig{
 		Channels: Channels{
-			InfoChannel:    "info-channel",
-			WarningChannel: "warning-channel",
-			AlarmChannel:   "alarm-channel",
+			InfoChannel:       "info-channel",
+			WarningChannel:    "warning-channel",
+			AlarmChannel:      "alarm-channel",
+			PublishLogChannel: "publish-log-channel",
 		},
 	}
-	validAPIToken      = "valid-api-token"
-	postMessageAPIPath = "/api/chat.postMessage"
+	validAPIToken        = "valid-api-token"
+	postMessageAPIPath   = "/api/chat.postMessage"
+	updateMessageAPIPath = "/api/chat.update"
 )
 
 func getMockHTTPServer(expectedPath string) *httptest.Server {
@@ -31,7 +33,7 @@ func getMockHTTPServer(expectedPath string) *httptest.Server {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok": true}`))
+		w.Write([]byte(`{"ok": true, "channel": "test-channel", "ts": "1234.5678"}`))
 	}))
 	return testServer
 }
@@ -96,7 +98,7 @@ func TestNew(t *testing.T) {
 	})
 }
 
-// This test covers the doSendMessage method indirectly through SendInfo, SendWarning, and SendAlarm.
+// This test covers the doSendMessage method indirectly through SendInfo, SendWarning, SendAlarm and SendPublishLog.
 // It verifies that messages can be sent to Slack without errors and uses a mock HTTP server to simulate Slack's API.
 func TestClient_DoSendMessage(t *testing.T) {
 	Convey("Given a mock Slack Client and valid parameters", t, func() {
@@ -115,40 +117,184 @@ func TestClient_DoSendMessage(t *testing.T) {
 		}
 
 		Convey("When doSendMessage is called through SendInfo", func() {
-			err := client.SendInfo(context.Background(), "Test Summary", map[string]interface{}{"key": "value"})
+			ref, err := client.SendInfo(context.Background(), "Test Summary", []Field{{Title: "key", Value: "value"}})
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
+				So(ref, ShouldNotBeNil)
+				So(ref.ChannelID, ShouldEqual, "test-channel")
+				So(ref.Timestamp, ShouldEqual, "1234.5678")
 			})
 		})
 
 		Convey("When doSendMessage is called through SendWarning", func() {
-			err := client.SendWarning(context.Background(), "Test Summary", map[string]interface{}{"key": "value"})
+			ref, err := client.SendWarning(context.Background(), "Test Summary", []Field{{Title: "key", Value: "value"}})
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
+				So(ref, ShouldNotBeNil)
+				So(ref.ChannelID, ShouldEqual, "test-channel")
+				So(ref.Timestamp, ShouldEqual, "1234.5678")
 			})
 		})
 
 		Convey("When doSendMessage is called through SendAlarm", func() {
-			err := client.SendAlarm(context.Background(), "Test Summary", errors.New("test error"), map[string]interface{}{"key": "value"})
+			ref, err := client.SendAlarm(context.Background(), "Test Summary", errors.New("test error"), []Field{{Title: "key", Value: "value"}})
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
+				So(ref, ShouldNotBeNil)
+				So(ref.ChannelID, ShouldEqual, "test-channel")
+				So(ref.Timestamp, ShouldEqual, "1234.5678")
+			})
+		})
+
+		Convey("When doSendMessage is called through SendPublishLog", func() {
+			ref, err := client.SendPublishLog(context.Background(), "Test Summary", []Field{{Title: "key", Value: "value"}})
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+				So(ref, ShouldNotBeNil)
+				So(ref.ChannelID, ShouldEqual, "test-channel")
+				So(ref.Timestamp, ShouldEqual, "1234.5678")
+			})
+		})
+	})
+
+	Convey("Given a Slack Client that returns an error", t, func() {
+		testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"ok": false, "error": "server_error"}`))
+		}))
+		defer testServer.Close()
+
+		slackClient := slack.New(
+			validAPIToken,
+			slack.OptionHTTPClient(testServer.Client()),
+			slack.OptionAPIURL(testServer.URL+"/api/"),
+		)
+
+		client := &Client{
+			client:   slackClient,
+			channels: validSlackConfig.Channels,
+		}
+
+		Convey("When SendInfo is called", func() {
+			ref, err := client.SendInfo(context.Background(), "Test Summary", nil)
+
+			Convey("Then a wrapped error is returned", func() {
+				So(ref, ShouldBeNil)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "failed to send message to Slack channel")
+			})
+		})
+	})
+}
+
+// This test covers the doUpdateMessage method indirectly through UpdatePublishLog.
+// It verifies that message updates can be sent to Slack without errors and uses a mock HTTP server to simulate Slack's API.
+func TestClient_DoUpdateMessage(t *testing.T) {
+	Convey("Given a mock Slack Client and valid parameters", t, func() {
+		testServer := getMockHTTPServer(updateMessageAPIPath)
+		defer testServer.Close()
+
+		slackClient := slack.New(
+			validAPIToken,
+			slack.OptionHTTPClient(testServer.Client()),
+			slack.OptionAPIURL(testServer.URL+"/api/"),
+		)
+
+		client := &Client{
+			client:   slackClient,
+			channels: validSlackConfig.Channels,
+		}
+
+		ref := &MessageRef{ChannelID: "test-channel", Timestamp: "1234.5678"}
+
+		Convey("When doUpdateMessage is called through UpdatePublishLog", func() {
+			updatedRef, err := client.UpdatePublishLog(context.Background(), ref, "Updated Summary", []Field{{Title: "key", Value: "value"}})
+
+			Convey("Then no error is returned", func() {
+				So(err, ShouldBeNil)
+				So(updatedRef, ShouldNotBeNil)
+				So(updatedRef.ChannelID, ShouldEqual, "test-channel")
+				So(updatedRef.Timestamp, ShouldEqual, "1234.5678")
+			})
+		})
+	})
+
+	Convey("Given a Slack Client that returns an error", t, func() {
+		testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"ok": false, "error": "server_error"}`))
+		}))
+		defer testServer.Close()
+
+		slackClient := slack.New(
+			validAPIToken,
+			slack.OptionHTTPClient(testServer.Client()),
+			slack.OptionAPIURL(testServer.URL+"/api/"),
+		)
+
+		client := &Client{
+			client:   slackClient,
+			channels: validSlackConfig.Channels,
+		}
+
+		ref := &MessageRef{ChannelID: "test-channel", Timestamp: "1234.5678"}
+
+		Convey("When UpdatePublishLog is called", func() {
+			updatedRef, err := client.UpdatePublishLog(context.Background(), ref, "Updated Summary", nil)
+
+			Convey("Then a wrapped error is returned", func() {
+				So(updatedRef, ShouldBeNil)
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "failed to update message in Slack channel")
+			})
+		})
+	})
+
+	Convey("Given invalid message references", t, func() {
+		client := &Client{}
+
+		Convey("When UpdatePublishLog is called with a nil ref", func() {
+			updatedRef, err := client.UpdatePublishLog(context.Background(), nil, "Updated Summary", nil)
+
+			Convey("Then a missing ref error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRef)
+				So(updatedRef, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdatePublishLog is called with an empty channel", func() {
+			updatedRef, err := client.UpdatePublishLog(context.Background(), &MessageRef{Timestamp: "1234.5678"}, "Updated Summary", nil)
+
+			Convey("Then a missing channel error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRefChannel)
+				So(updatedRef, ShouldBeNil)
+			})
+		})
+
+		Convey("When UpdatePublishLog is called with an empty timestamp", func() {
+			updatedRef, err := client.UpdatePublishLog(context.Background(), &MessageRef{ChannelID: "test-channel"}, "Updated Summary", nil)
+
+			Convey("Then a missing timestamp error is returned", func() {
+				So(err, ShouldEqual, errMissingMessageRefTimestamp)
+				So(updatedRef, ShouldBeNil)
 			})
 		})
 	})
 }
 
 func TestBuildAttachmentFields(t *testing.T) {
-	Convey("Given an error and details", t, func() {
+	Convey("Given an error and fields", t, func() {
 		err := errors.New("example error")
-		details := map[string]interface{}{
-			"key1": "value1",
+		fields := []Field{
+			{Title: "key1", Value: "value1"},
 		}
 
 		Convey("When buildAttachmentFields is called", func() {
-			fields := buildAttachmentFields(err, details)
+			fields := buildAttachmentFields(err, fields)
 
 			Convey("Then the returned fields contain the error and details", func() {
 				So(len(fields), ShouldEqual, 2)
@@ -160,13 +306,13 @@ func TestBuildAttachmentFields(t *testing.T) {
 		})
 	})
 
-	Convey("Given no error and details", t, func() {
-		details := map[string]interface{}{
-			"key1": 1,
+	Convey("Given no error and fields", t, func() {
+		fields := []Field{
+			{Title: "key1", Value: "1"},
 		}
 
 		Convey("When buildAttachmentFields is called", func() {
-			fields := buildAttachmentFields(nil, details)
+			fields := buildAttachmentFields(nil, fields)
 
 			Convey("Then the returned fields contain only the details", func() {
 				So(len(fields), ShouldEqual, 1)
@@ -176,7 +322,7 @@ func TestBuildAttachmentFields(t *testing.T) {
 		})
 	})
 
-	Convey("Given an error and no details", t, func() {
+	Convey("Given an error and no fields", t, func() {
 		err := errors.New("example error")
 
 		Convey("When buildAttachmentFields is called", func() {
@@ -190,7 +336,7 @@ func TestBuildAttachmentFields(t *testing.T) {
 		})
 	})
 
-	Convey("Given no error and no details", t, func() {
+	Convey("Given no error and no fields", t, func() {
 		Convey("When buildAttachmentFields is called", func() {
 			fields := buildAttachmentFields(nil, nil)
 

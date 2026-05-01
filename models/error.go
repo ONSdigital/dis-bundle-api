@@ -44,6 +44,7 @@ func CreateError(reader io.Reader) (*Error, error) {
 }
 
 func CreateModelError(code Code, description string) *Error {
+	fmt.Println("CREATING THE MODEL ERROR")
 	return &Error{
 		Code:        &code,
 		Description: description,
@@ -130,6 +131,9 @@ var ErrorToModelErrorMap = map[error]*Error{
 	errs.ErrMissingIfMatchHeader: CreateModelError(CodeBadRequest, errs.ErrorDescriptionMissingIfMatchHeader),
 	errs.ErrInvalidIfMatchHeader: CreateModelError(CodeConflict, errs.ErrorDescriptionInvalidIfMatchHeader),
 
+	// Validation - Title already exists
+	errs.ErrBundleTitleAlreadyExists: CreateModelError(CodeBadRequest, errs.ErrorDescriptionBundleTitleAlreadyExist),
+
 	// Validation - State
 	errs.ErrInvalidBundleState: invalidTransitionError,
 	errs.ErrInvalidTransition:  invalidTransitionError,
@@ -145,6 +149,8 @@ var ErrorToModelErrorMap = map[error]*Error{
 }
 
 func GetMatchingModelError(err error) *Error {
+	fmt.Println("TRYING TO MATCH ERROR")
+	fmt.Println(err)
 	modelError, exists := ErrorToModelErrorMap[err]
 	if exists {
 		return modelError

@@ -112,6 +112,7 @@ func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) {
 	bundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, bundleID, *etag, stateRequest.State, authEntityData)
 
 	if err != nil {
+		fmt.Println("THE ERROR CAME BACK")
 		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}
@@ -276,6 +277,21 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 			bundleErrs = append(bundleErrs, e)
 		}
 	}
+
+	if bundle.State != models.BundleStateDraft {
+		// below matches what was returned from the state machine previously
+		log.Error(ctx, "createBundle: bundle state must be DRAFT when creating a new bundle", err)
+		code := models.CodeBadRequest
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionStateNotAllowedToTransition,
+			Source: &models.Source{
+				Field: "/state",
+			},
+		}
+		bundleErrs = append(bundleErrs, e)
+	}
+
 	if len(bundleErrs) > 0 {
 		log.Error(ctx, "createBundle: failed to validate bundle", nil, log.Data{"errors": bundleErrs})
 		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, bundleErrs...)

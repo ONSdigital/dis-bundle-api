@@ -51,13 +51,26 @@ func TestValidateSlackConfig(t *testing.T) {
 				expectErr: errMissingAlarmChannel,
 			},
 			{
-				name:     "a valid config",
+				name:     "missing a PublishLogChannel",
 				apiToken: validAPIToken,
 				config: &SlackConfig{
 					Channels: Channels{
 						InfoChannel:    "info-channel",
 						WarningChannel: "warning-channel",
 						AlarmChannel:   "alarm-channel",
+					},
+				},
+				expectErr: errMissingPublishLogChannel,
+			},
+			{
+				name:     "a valid config",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
+					Channels: Channels{
+						InfoChannel:       "info-channel",
+						WarningChannel:    "warning-channel",
+						AlarmChannel:      "alarm-channel",
+						PublishLogChannel: "publish-log-channel",
 					},
 				},
 				expectErr: nil,
