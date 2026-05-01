@@ -64,7 +64,7 @@ parameters:
     in: path
   if_match:
     description: |
-      The RFC9110 `If-Match` header requires the provided entity-tag (`ETag` header value from the previous read request) to match the resources current entity-tag. This prevents the changes from being applied if there have been any changes to the resource since the client last read the resource. If the header value does not match a `412 Precondition Failed` error will be returned.
+      The RFC9110 `If-Match` header requires the provided entity-tag (`ETag` header value from the previous read request) to match the resources current entity-tag. This prevents the changes from being applied if there have been any changes to the resource since the client last read the resource. If the header value does not match a `409 Conflict` error will be returned.
     name: If-Match
     in: header
     required: true
@@ -181,6 +181,8 @@ paths:
           $ref: "#/responses/UnauthorisedError"
         403:
           $ref: "#/responses/ForbiddenError"
+        409:
+          $ref: "#/responses/Conflict"
         500:
           $ref: "#/responses/InternalError"
   /bundles/{id}:
@@ -249,8 +251,6 @@ paths:
           $ref: "#/responses/NotFound"
         409:
           $ref: "#/responses/Conflict"
-        412:
-          $ref: "#/responses/PreconditionFailed"
         500:
           $ref: "#/responses/InternalError"
     delete:
@@ -388,9 +388,6 @@ paths:
         200:
           description: "The state of the bundle that has been updated"
           headers:
-            Content-Location:
-              description: The RFC2616 `Content-Location` header indicating that the returned resource representation is actually located at a different location and that subsequent requests for the resource should be made to that location instead.
-              type: string
             ETag:
               description: The RFC9110 ETag header field. Defines the unique entity tag for the current state of the resource. This is used for setting the `If-Match` and `If-None-Match` headers on subsequent requests.
               type: string
@@ -480,33 +477,20 @@ responses:
       $ref: "#/definitions/ErrorList"
   ForbiddenError:
     description: "Access denied."
-    schema:
-      $ref: "#/definitions/ErrorList"
   InternalError:
     description: "Failed to process the request due to an internal error."
-    schema:
-      $ref: "#/definitions/ErrorList"
   InvalidRequest:
     description: "Unable to process request due to a malformed or invalid request body or query parameter."
     schema:
       $ref: "#/definitions/ErrorList"
   MethodNotSupported:
     description: "Attempted to call an endpoint that is not supported for this API."
-    schema:
-      $ref: "#/definitions/ErrorList"
   NotFound:
     description: "The requested resource does not exist."
     schema:
       $ref: "#/definitions/ErrorList"
-  PreconditionFailed:
-    description: |
-      Change rejected due to condition not being met. This is typically because the entity-tag in the `If-Match` request header does not match the current entity-tag of the resource.
-    schema:
-      $ref: "#/definitions/ErrorList"
   UnauthorisedError:
     description: "Authentication information is missing or invalid."
-    schema:
-      $ref: "#/definitions/ErrorList"
 definitions:
   Bundles:
     description: "A list of bundles"
@@ -574,7 +558,6 @@ definitions:
       preview_teams:
         description: "A list of teams who have permissions to view the dataset series in the bundle."
         type: array
-        minLength: 0
         items:
           type: object
           required:
@@ -750,7 +733,7 @@ definitions:
     type: object
     readOnly: true
     required:
-      - user_id
+      - requested_by
       - action
       - resource
     properties:
