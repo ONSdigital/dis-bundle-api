@@ -35,23 +35,6 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// currentBundle, err := api.stateMachineBundleAPI.GetBundle(ctx, bundleID)
-	// if err != nil {
-	// 	api.handleGetBundleError(ctx, w, r, err, logdata)
-	// 	return
-	// }
-
-	// if currentBundle.ETag != ifMatchHeader {
-	// 	log.Error(ctx, "putBundle endpoint: ETag mismatch", nil, logdata)
-	// 	code := models.CodeConflict
-	// 	errInfo := &models.Error{
-	// 		Code:        &code,
-	// 		Description: apierrors.ErrorDescriptionConflict,
-	// 	}
-	// 	utils.HandleBundleAPIErr(w, r, http.StatusConflict, errInfo)
-	// 	return
-	// }
-
 	bundleUpdate, validationErrors, err := api.CreateAndValidateBundleUpdate(r, bundleID, authEntityData.GetUserID())
 	if err != nil {
 		api.handleBadRequestError(ctx, w, r, "bundle creation or validation failed", err, logData)

@@ -230,6 +230,36 @@ func ValidateBundle(bundle *Bundle) []*Error {
 		})
 	}
 
+	if bundle.BundleType == BundleTypeScheduled && bundle.ScheduledAt == nil {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+			Code:        &codeInvalidParameters,
+			Description: errs.ErrorDescriptionScheduledAtIsRequired,
+			Source: &Source{
+				Field: "/scheduled_at",
+			},
+		})
+	}
+
+	if bundle.BundleType == BundleTypeManual && bundle.ScheduledAt != nil {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+			Code:        &codeInvalidParameters,
+			Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
+			Source: &Source{
+				Field: "/scheduled_at",
+			},
+		})
+	}
+
+	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+			Code:        &codeInvalidParameters,
+			Description: errs.ErrorDescriptionScheduledAtIsInPast,
+			Source: &Source{
+				Field: "/scheduled_at",
+			},
+		})
+	}
+
 	if len(invalidOrMissingFields) > 0 {
 		return invalidOrMissingFields
 	}
