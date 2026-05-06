@@ -33,6 +33,7 @@ type Config struct {
 	EnablePermissionsAuth      bool          `envconfig:"ENABLE_PERMISSIONS_AUTH"`
 	ZebedeeURL                 string        `envconfig:"ZEBEDEE_URL"`
 	ZebedeeClientTimeout       time.Duration `envconfig:"ZEBEDEE_CLIENT_TIMEOUT"`
+	PreviewServiceURL          string        `envconfig:"PREVIEW_SERVICE_URL"`
 	MongoConfig
 	AuthConfig                                *authorisation.Config
 	DataBundlePublicationServiceSlackEnabled  bool   `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_ENABLED"`
@@ -70,6 +71,7 @@ func Get() (*Config, error) {
 		DefaultOffset:              0,
 		ZebedeeURL:                 "http://localhost:8082",
 		ZebedeeClientTimeout:       30 * time.Second,
+		PreviewServiceURL:          "",
 		MongoConfig: MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
 				ClusterEndpoint:               "localhost:27017",

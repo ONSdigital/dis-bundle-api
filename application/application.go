@@ -29,15 +29,17 @@ type StateMachineBundleAPI struct {
 	DatasetAPIClient      datasetAPISDK.Clienter
 	PermissionsAPIClient  permissionsAPISDK.Clienter
 	DataBundleSlackClient slack.Clienter
+	PreviewServiceURL     string
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL string) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:             datastore,
 		StateMachine:          stateMachine,
 		DatasetAPIClient:      datasetAPIClient,
 		PermissionsAPIClient:  permissionsAPIClient,
 		DataBundleSlackClient: dataBundleSlackClient,
+		PreviewServiceURL:     previewServiceURL,
 	}
 }
 
@@ -441,7 +443,14 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	bundleUpdate.UpdatedAt = &now
 	bundleUpdate.LastUpdatedBy = &models.User{Email: userID}
 
-	updatedBundle, err := s.StateMachine.Transition(ctx, s, bundleUpdate, bundleUpdate.State, *authEntityData)
+	// Store the state to move to incase this has changes
+	nextState := bundleUpdate.State
+
+	// Set the state to be the previous state to check for the state transition but holds all other updates to the record
+	// the new state is applied in the enter function
+	bundleUpdate.State = originalBundle.State
+
+	updatedBundle, err := s.StateMachine.Transition(ctx, s, bundleUpdate, nextState, *authEntityData)
 	if err != nil {
 		//log something here
 		log.Error(ctx, "transition failed", err, logData)
@@ -601,13 +610,34 @@ func createValidationError(code models.Code, field string) *models.Error {
 	}
 }
 
-func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state string) error {
+func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state string, bundleTitle string) error {
 	defer wg.Done()
 
 	fmt.Println("Starting put version state for edition ", contentItem.Metadata.EditionID)
 	fmt.Println(time.Now().String())
-	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), "published"); err != nil {
+	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state)); err != nil {
 		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+		previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
+
+		alarmFields := []slack.Field{
+			{Title: "Bundle ID", Value: contentItem.BundleID},
+			{Title: "Bundle Title", Value: bundleTitle},
+			{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
+			{Title: "Edition", Value: contentItem.Metadata.EditionID},
+			{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
+			{Title: "Preview Link", Value: previewURL},
+		}
+
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
+		if alarmErr != nil {
+			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+		}
+
+		log.Info(ctx, "sending slack alarm for content item failure", log.Data{
+			"bundle-id":       contentItem.BundleID,
+			"content-item-id": contentItem.ID,
+			"alarm_fields":    alarmFields,
+		})
 		return err
 	}
 	fmt.Println("Ending put version state for edition ", contentItem.Metadata.EditionID)
@@ -676,7 +706,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, string(models.BundleStatePublished))
+		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStatePublished.String(), bundle.Title)
 	}
 
 	wg.Wait()
@@ -738,7 +768,7 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStateApproved.String())
+		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStateApproved.String(), bundle.Title)
 	}
 
 	wg.Wait()
