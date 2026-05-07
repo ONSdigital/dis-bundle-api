@@ -74,6 +74,7 @@ func TestPutBundle_Success(t *testing.T) {
 			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
 				if bundleID == bundle1 {
 					bundle.ID = bundleID
+					bundle.ETag = newEtag
 					return bundle, nil
 				}
 				return nil, errors.New("failed to update bundle")
@@ -218,6 +219,7 @@ func TestPutBundleNoPreviewTeam_Success(t *testing.T) {
 			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
 				if bundleID == bundle1 {
 					bundle.ID = bundleID
+					bundle.ETag = newEtag
 					return bundle, nil
 				}
 				return nil, errors.New("failed to update bundle")
@@ -368,7 +370,7 @@ func TestPutBundle_ETagMismatch_Failure(t *testing.T) {
 					Errors: []*models.Error{
 						{
 							Code:        &codeConflict,
-							Description: apierrors.ErrorDescriptionConflict,
+							Description: apierrors.ErrorDescriptionInvalidIfMatchHeader,
 						},
 					},
 				}

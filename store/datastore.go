@@ -29,8 +29,10 @@ type dataMongoDB interface {
 	UpdateBundleETag(ctx context.Context, bundleID, email string) (*models.Bundle, error)
 	CheckBundleExists(ctx context.Context, bundleID string) (bool, error)
 	UpdateBundle(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error)
+	GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error)
 
 	// Content items
+	CountBundleContents(ctx context.Context, bundleID string) (int, error)
 	ListBundleContents(ctx context.Context, bundleID string, offset, limit int) ([]*models.ContentItem, int, error)
 	ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) (contents []*models.ContentItem, err error)
 	GetContentItemByBundleIDAndContentItemID(ctx context.Context, bundleID, contentItemID string) (*models.ContentItem, error)
@@ -148,4 +150,8 @@ func (ds *Datastore) ListBundleContents(ctx context.Context, bundleID string, of
 
 func (ds *Datastore) ListBundleContentIDsWithoutLimit(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
 	return ds.Backend.ListBundleContentIDsWithoutLimit(ctx, bundleID)
+}
+
+func (ds *Datastore) GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+	return ds.Backend.GetBundlesByPreviewTeamID(ctx, teamID)
 }

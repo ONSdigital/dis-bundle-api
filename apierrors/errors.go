@@ -100,6 +100,11 @@ var (
 	// Role errors
 	ErrInvalidRole = errors.New("invalid role provided")
 
+	// Bundle policy errors
+	ErrBundlePolicyFailedToCreate             = errors.New("failed to create bundle policies")
+	ErrBundleFailedToAddPolicyPreviewTeams    = errors.New("failed to add policy conditions for added preview teams")
+	ErrBundleFailedToRemovePolicyPreviewTeams = errors.New("failed to remove policy conditions for removed preview teams")
+
 	// Other errors
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 )

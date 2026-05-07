@@ -397,6 +397,27 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		}
 	}
 
+	// Create policies for any preview teams added in the update.
+	// NOTE: This does not currently handle the case where existing preview teams are removed.
+	// If a preview team is removed from the bundle, their policies will still exist.
+	if err := s.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
+		log.Error(ctx, "failed to create bundle policies", err, logData)
+		//api.handleInternalError(ctx, w, r, "failed to create bundle policies", err, logData)
+		return nil, apierrors.ErrBundlePolicyFailedToCreate
+	}
+
+	// Add policy conditions for newly added teams for existing content items.
+	if err := s.AddPolicyConditionsForAddedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, originalBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
+		log.Error(ctx, "failed to add policy conditions for added preview teams", err, logData)
+		return nil, apierrors.ErrBundleFailedToAddPolicyPreviewTeams
+	}
+
+	// Remove policy conditions for any preview teams removed in the update.
+	if err := s.RemovePolicyConditionsForRemovedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, originalBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
+		log.Error(ctx, "failed to remove policy conditions for removed preview teams", err, logData)
+		return nil, apierrors.ErrBundleFailedToRemovePolicyPreviewTeams
+	}
+
 	now := time.Now()
 	bundleUpdate.UpdatedAt = &now
 	bundleUpdate.LastUpdatedBy = &models.User{Email: userID}

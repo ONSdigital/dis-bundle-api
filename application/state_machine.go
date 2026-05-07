@@ -34,21 +34,6 @@ func (s State) String() string {
 	return s.Name
 }
 
-// func getStateByName(stateName string) (*State, bool) {
-// 	switch stateName {
-// 	case "DRAFT":
-// 		return &Draft, true
-// 	case "IN_REVIEW":
-// 		return &InReview, true
-// 	case "APPROVED":
-// 		return &Approved, true
-// 	case "PUBLISHED":
-// 		return &Published, true
-// 	default:
-// 		return nil, false
-// 	}
-// }
-
 func NewStateMachine(ctx context.Context, states []State, transitions []Transition, datastore store.Datastore, datasetAPIClient datasetAPISDK.Clienter) *StateMachine {
 	statesMap := make(map[string]State)
 	for _, state := range states {
@@ -119,9 +104,6 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 		return nil, err
 	}
 	return updatedBundle, nil
-	// if !match {
-	// 	return apierrors.ErrInvalidTransition
-	// }
 }
 
 // IsValidTransition validates whether the sourceState can transition to the targetState. If not, an error is returned

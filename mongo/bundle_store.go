@@ -206,3 +206,19 @@ func (m *Mongo) CheckBundleExistsByTitle(ctx context.Context, title string) (boo
 
 	return count > 0, nil
 }
+
+func (m *Mongo) GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error) {
+	filter := bson.M{
+		"preview_teams": bson.M{
+			"$elemMatch": bson.M{"id": teamID},
+		},
+	}
+
+	results := []*models.Bundle{}
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundlesCollection)).Find(ctx, filter, &results)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}

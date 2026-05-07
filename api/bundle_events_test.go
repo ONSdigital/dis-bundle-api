@@ -35,7 +35,7 @@ func TestGetBundleEvents_Success(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -69,7 +69,7 @@ func TestGetBundleEvents_WithBundleFilter(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -110,7 +110,7 @@ func TestGetBundleEvents_WithDateFilter(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -138,7 +138,7 @@ func TestGetBundleEvents_InvalidDateFormat(t *testing.T) {
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{}
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -166,7 +166,7 @@ func TestGetBundleEvents_UnknownParameter(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -199,7 +199,7 @@ func TestGetBundleEvents_InternalError(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,
@@ -233,7 +233,7 @@ func TestGetBundleEvents_NoResults(t *testing.T) {
 		mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
 		mockSlackClient := &slackMock.ClienterMock{}
 		stateMachine := &application.StateMachine{}
-		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient)
+		stateMachineBundleAPI := application.Setup(store.Datastore{Backend: mockDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
 
 		api := &BundleAPI{
 			stateMachineBundleAPI: stateMachineBundleAPI,

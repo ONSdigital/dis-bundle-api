@@ -82,7 +82,7 @@ func TestGetContentItemByBundleIDAndContentItemID_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -106,7 +106,7 @@ func TestGetContentItemByBundleIDAndContentItemID_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -155,7 +155,7 @@ func TestCreateContentItem_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -193,19 +193,17 @@ func TestCreateContentItem_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, minServer, err := getTestMongoDB(ctx)
-		So(err, ShouldBeNil)
-
-		err = SetupIndexes(ctx, minServer)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
 		So(err, ShouldBeNil)
 
-		Convey("When CreateContentItem is called with an existing ID", func() {
+		Convey("When CreateContentItem is called and the connection fails", func() {
+			mongodb.Connection.Close(ctx)
 			stateApproved := models.StateApproved
 			contentItem := &models.ContentItem{
-				ID:          "f3ee8348-9956-44e1-9c83-55fd2d7b2fb1",
+				ID:          "12345678-1234-5678-1234-567812345678",
 				BundleID:    "bundle3",
 				ContentType: models.ContentTypeDataset,
 				Metadata: models.Metadata{
@@ -225,7 +223,7 @@ func TestCreateContentItem_Failure(t *testing.T) {
 
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)
-				So(err.Error(), ShouldContainSubstring, "duplicate key error")
+				So(err.Error(), ShouldContainSubstring, "client is disconnected")
 			})
 		})
 	})
@@ -235,7 +233,7 @@ func TestCheckAllBundleContentsAreApproved_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -265,7 +263,7 @@ func TestCheckAllBundleContentsAreApproved_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -287,7 +285,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -317,7 +315,7 @@ func TestCheckContentItemExistsByDatasetEditionVersion_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -339,7 +337,7 @@ func TestDeleteContentItem_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -366,7 +364,7 @@ func TestDeleteContentItem_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -399,7 +397,7 @@ func TestUpdateContentItemState_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -428,7 +426,7 @@ func TestUpdateContentItemState_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -439,8 +437,9 @@ func TestUpdateContentItemState_Failure(t *testing.T) {
 
 			err := mongodb.UpdateContentItemState(ctx, "some-other-content-item-id", state.String())
 
-			Convey("Then an error should be returned", func() {
+			Convey("Then a content item not found error should be returned", func() {
 				So(err, ShouldNotBeNil)
+				So(err, ShouldEqual, apierrors.ErrContentItemNotFound)
 			})
 		})
 	})
@@ -450,7 +449,7 @@ func TestGetBundleContentsForBundle(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -485,7 +484,7 @@ func TestListBundleContentIDsWithoutLimit_Success(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -509,7 +508,7 @@ func TestListBundleContentIDsWithoutLimit_Failure(t *testing.T) {
 	ctx := context.Background()
 
 	Convey("Given the db connection is initialized correctly", t, func() {
-		mongodb, _, err := getTestMongoDB(ctx)
+		mongodb, err := getTestMongoDB(ctx, t)
 		So(err, ShouldBeNil)
 
 		err = setupBundleContentsTestData(ctx, mongodb)
@@ -530,6 +529,76 @@ func TestListBundleContentIDsWithoutLimit_Failure(t *testing.T) {
 			mongodb.Connection.Close(ctx)
 			bundleID := "bundle1"
 			_, err := mongodb.ListBundleContentIDsWithoutLimit(ctx, bundleID)
+
+			Convey("Then it returns an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "client is disconnected")
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemState_Idempotent(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx, t)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateContentItemState is called with the same state the content item already has", func() {
+			contentItemID := contentsTestData[0].ID
+			state := models.StateApproved
+
+			err := mongodb.UpdateContentItemState(ctx, contentItemID, state.String())
+
+			Convey("Then it succeeds without error (idempotent)", func() {
+				So(err, ShouldBeNil)
+
+				contentItem, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, contentsTestData[0].BundleID, contentItemID)
+				So(err, ShouldBeNil)
+				So(contentItem.State.String(), ShouldEqual, state.String())
+			})
+		})
+	})
+}
+
+func TestCountBundleContents(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx, t)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When CountBundleContents is called with a valid bundle ID", func() {
+			bundleID := Bundle1ID
+			count, err := mongodb.CountBundleContents(ctx, bundleID)
+
+			Convey("Then it returns the correct count without error", func() {
+				So(err, ShouldBeNil)
+				So(count, ShouldEqual, 2)
+			})
+		})
+
+		Convey("When CountBundleContents is called with a non-existent bundle ID", func() {
+			bundleID := "non-existent-bundle-id"
+			count, err := mongodb.CountBundleContents(ctx, bundleID)
+
+			Convey("Then it returns zero count without error", func() {
+				So(err, ShouldBeNil)
+				So(count, ShouldEqual, 0)
+			})
+		})
+
+		Convey("When CountBundleContents is called and the connection is closed", func() {
+			mongodb.Connection.Close(ctx)
+			bundleID := Bundle1ID
+			_, err := mongodb.CountBundleContents(ctx, bundleID)
 
 			Convey("Then it returns an error", func() {
 				So(err, ShouldNotBeNil)
