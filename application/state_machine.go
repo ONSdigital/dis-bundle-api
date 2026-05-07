@@ -93,21 +93,6 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 	var nextState *State
 	var ok bool
 
-	// if currentBundle == nil {
-	// 	if bundleUpdate.State.String() == models.BundleStateDraft.String() {
-	// 		return nil
-	// 	} else {
-	// 		return errors.New("bundle state must be DRAFT when creating a new bundle")
-	// 	}
-	// }
-
-	// if bundleUpdate == nil {
-	// 	if currentBundle.State.String() == models.BundleStatePublished.String() {
-	// 		return errors.New("cannot update a published bundle")
-	// 	}
-	// 	return nil
-	// }
-
 	for state, transitions := range sm.transitions {
 		if state == targetState.String() {
 			for i := range transitions {
@@ -121,31 +106,12 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 					}
 					break
 				}
-
-				// _, valid = getStateByName(state)
-				// if !valid {
-				// 	return errors.New("incorrect state value")
-				// }
-
-				// if currentBundle.State.String() == InReview.String() && bundleUpdate.State.String() == Approved.String() {
-				// 	allBundleContentsApproved, err := stateMachineBundleAPI.CheckAllBundleContentsAreApproved(ctx, currentBundle.ID)
-				// 	if err != nil {
-				// 		log.Error(ctx, "error checking if all bundle contents are approved", err, log.Data{"bundle_id": currentBundle.ID})
-				// 		return err
-				// 	}
-
-				// 	if !allBundleContentsApproved {
-				// 		return errors.New("not all bundle contents are approved")
-				// 	}
-				// }
-				//break
 			}
 		}
 	}
 
 	if !match {
-
-		return nil, errors.New("state not allowed to transition")
+		return nil, apierrors.ErrInvalidTransition
 	}
 
 	updatedBundle, err := nextState.EnterFunc(ctx, *stateMachineBundleAPI, currentBundle, &authEntityData)

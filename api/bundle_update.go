@@ -29,9 +29,15 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	etag, err := utils.GetETag(r)
-	if err != nil {
-		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
+	ifMatchHeader := r.Header.Get("If-Match")
+	if ifMatchHeader == "" {
+		log.Error(ctx, "putBundle endpoint: missing If-Match header", nil, logData)
+		code := models.CodeMissingParameters
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionMissingIfMatchHeader,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
 		return
 	}
 
@@ -43,27 +49,6 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 
 	var allValidationErrors []*models.Error
 	allValidationErrors = append(allValidationErrors, validationErrors...)
-
-	//validationErrs := api.stateMachineBundleAPI.ValidateBundleRules(ctx, bundleUpdate, currentBundle)
-	//allValidationErrors = append(allValidationErrors, validationErrs...)
-
-	// if bundleUpdate.State != "" && bundleUpdate.State.IsValid() && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
-	// 	err := api.stateMachineBundleAPI.StateMachine.Transition(context.Background(), api.stateMachineBundleAPI, currentBundle, bundleUpdate)
-	// 	if err != nil {
-	// 		if err == apierrors.ErrInvalidTransition {
-	// 			code := models.CodeInvalidParameters
-	// 			stateError := &models.Error{
-	// 				Code:        &code,
-	// 				Description: apierrors.ErrorDescriptionMalformedRequest,
-	// 				Source:      &models.Source{Field: "/state"},
-	// 			}
-	// 			allValidationErrors = append(allValidationErrors, stateError)
-	// 		} else {
-	// 			api.handleInternalError(ctx, w, r, "state transition validation failed", err, logdata)
-	// 			return
-	// 		}
-	// 	}
-	// }
 
 	if len(allValidationErrors) > 0 {
 		logData["validation_errors"] = allValidationErrors
@@ -80,19 +65,33 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, authEntityData, *etag)
+	updatedBundle, err := api.stateMachineBundleAPI.PutBundle(ctx, bundleID, bundleUpdate, authEntityData, ifMatchHeader)
 	if err != nil {
 		log.Error(ctx, "putBundle endpoint: bundle update failed", err, logData)
+
+		if err == apierrors.ErrBundleTitleAlreadyExists {
+			code := models.CodeInvalidParameters
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionMalformedRequest,
+				Source:      &models.Source{Field: "/title"},
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
+			return
+		}
+		if err == apierrors.ErrInvalidTransition {
+			code := models.CodeInvalidParameters
+			errInfo := &models.Error{
+				Code:        &code,
+				Description: apierrors.ErrorDescriptionInvalidStateTransition,
+				Source:      &models.Source{Field: "/state"},
+			}
+			utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
+			return
+		}
 		handleErr(ctx, w, r, err, logData, RouteNamePutBundle)
 		// switch err {
-		// case apierrors.ErrInvalidTransition:
-		// 	code := models.CodeInvalidParameters
-		// 	errInfo := &models.Error{
-		// 		Code:        &code,
-		// 		Description: apierrors.ErrorDescriptionMalformedRequest,
-		// 		Source:      &models.Source{Field: "/state"},
-		// 	}
-		// 	utils.HandleBundleAPIErr(w, r, http.StatusBadRequest, errInfo)
+		// case
 		// case apierrors.ErrNotFound:
 		// 	code := models.CodeNotFound
 		// 	errInfo := &models.Error{
@@ -165,8 +164,6 @@ func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID str
 	}
 
 	bundleUpdate.ID = bundleID
-	// bundleUpdate.CreatedAt = currentBundle.CreatedAt
-	// bundleUpdate.CreatedBy = currentBundle.CreatedBy
 
 	models.CleanBundle(bundleUpdate)
 

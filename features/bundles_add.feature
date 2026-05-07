@@ -498,7 +498,10 @@ Feature: Create bundle - POST /Bundles
                     "errors": [
                         {
                             "code": "BadRequest",
-                            "description": "state not allowed to transition."
+                            "description": "state not allowed to transition.",
+                            "source": {
+                                "field": "/state"
+                            }
                         }
                     ]
                 }

@@ -3,6 +3,10 @@ package steps
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,10 +19,12 @@ import (
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
 	mongodriver "github.com/ONSdigital/dp-mongodb/v3/mongodb"
 	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
+	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/cucumber/godog"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
@@ -68,6 +74,123 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 	// Policy assertions (permissions API)
 	ctx.Step(`I have these policies:$`, c.iHaveThesePolicies)
 	ctx.Step(`the following policies should exist:$`, c.theFollowingPoliciesShouldExist)
+
+	// Preview user auth/permissions (dp-authorisation via fake permissions API)
+	ctx.Step(`^I am a preview user$`, c.previewUserJWTToken)
+	ctx.Step(`^I have preview access to these dataset editions:$`, c.previewUserHasAccessToDatasetEditions)
+}
+
+func (c *BundleComponent) previewUserJWTToken() error {
+	token, err := c.generatePreviewAccessToken("previewer@ons.gov.uk", []string{"team-preview-1"})
+	if err != nil {
+		return err
+	}
+	return c.apiFeature.ISetTheHeaderTo("Authorization", "Bearer "+token)
+}
+
+func (c *BundleComponent) ensurePreviewKeys() error {
+	if c.viewerPrivKey != nil && c.viewerKID != "" {
+		return nil
+	}
+
+	// Generate RSA keypair for signing preview-user JWTs.
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("generate preview-user RSA key: %w", err)
+	}
+	if err := priv.Validate(); err != nil {
+		return fmt.Errorf("validate preview-user RSA key: %w", err)
+	}
+
+	kid := uuid.New().String()
+	pubDER, err := x509.MarshalPKIXPublicKey(&priv.PublicKey)
+	if err != nil {
+		return fmt.Errorf("marshal preview-user public key: %w", err)
+	}
+
+	if c.Config.AuthConfig.JWTVerificationPublicKeys == nil {
+		c.Config.AuthConfig.JWTVerificationPublicKeys = map[string]string{}
+	}
+	c.Config.AuthConfig.JWTVerificationPublicKeys[kid] = base64.StdEncoding.EncodeToString(pubDER)
+
+	c.viewerPrivKey = priv
+	c.viewerKID = kid
+	return nil
+}
+
+func (c *BundleComponent) generatePreviewAccessToken(email string, groups []string) (string, error) {
+	if err := c.ensurePreviewKeys(); err != nil {
+		return "", err
+	}
+
+	now := time.Now().Unix()
+	claims := jwt.MapClaims{
+		"sub":            "preview-user-sub",
+		"token_use":      "access",
+		"auth_time":      now,
+		"iss":            "https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_component",
+		"exp":            now + 3600,
+		"iat":            now,
+		"client_id":      "component-test-client",
+		"username":       email,
+		"cognito:groups": groups,
+	}
+
+	t := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	t.Header["kid"] = c.viewerKID
+	return t.SignedString(c.viewerPrivKey)
+}
+
+func (c *BundleComponent) previewUserHasAccessToDatasetEditions(editionsJSON *godog.DocString) error {
+	if err := c.previewUserJWTToken(); err != nil {
+		return err
+	}
+	if c.fakePermissionsAPI == nil {
+		return fmt.Errorf("fake permissions API is not initialised")
+	}
+
+	var editions []string
+	if err := json.Unmarshal([]byte(editionsJSON.Content), &editions); err != nil {
+		return fmt.Errorf("failed to unmarshal dataset editions: %w", err)
+	}
+
+	// Build condition values list including both dataset and dataset/edition values.
+	valuesSet := map[string]bool{}
+	for _, de := range editions {
+		de = strings.TrimSpace(de)
+		if de == "" {
+			continue
+		}
+		valuesSet[de] = true
+		if parts := strings.SplitN(de, "/", 2); len(parts) == 2 && parts[0] != "" {
+			valuesSet[parts[0]] = true
+		}
+	}
+	values := []string{}
+	for v := range valuesSet {
+		values = append(values, v)
+	}
+
+	bundle := getPermissionsBundle()
+	if (*bundle)["bundles:read"] == nil {
+		(*bundle)["bundles:read"] = map[string][]permissionsAPISDK.Policy{}
+	}
+	(*bundle)["bundles:read"]["groups/team-preview-1"] = []permissionsAPISDK.Policy{
+		{
+			ID: "preview-bundles-read-policy",
+			Condition: permissionsAPISDK.Condition{
+				Attribute: "dataset_edition",
+				Operator:  "StringEquals",
+				Values:    values,
+			},
+		},
+	}
+
+	c.fakePermissionsAPI.Reset()
+	if err := c.fakePermissionsAPI.UpdatePermissionsBundleResponse(bundle); err != nil {
+		return fmt.Errorf("failed to update permissions bundle response: %w", err)
+	}
+	return nil
 }
 
 func (c *BundleComponent) iHaveTheseBundles(bundlesJSON *godog.DocString) error {
@@ -158,39 +281,27 @@ func (c *BundleComponent) theResponseBodyShouldBeEmpty() error {
 
 func (c *BundleComponent) iHaveTheseBundleEvents(eventsJSON *godog.DocString) error {
 	ctx := context.Background()
+	events := []models.Event{}
 
-	var mapEvents []map[string]interface{}
-	err := json.Unmarshal([]byte(eventsJSON.Content), &mapEvents)
+	err := json.Unmarshal([]byte(eventsJSON.Content), &events)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal events JSON: %w", err)
 	}
 
 	bundleEventsCollection := c.MongoClient.ActualCollectionName("BundleEventsCollection")
 
-	for _, event := range mapEvents {
-		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, event); err != nil {
+	for event := range events {
+		if err := c.putBundleEventInDatabase(ctx, bundleEventsCollection, events[event]); err != nil {
 			return fmt.Errorf("failed to insert event: %w", err)
 		}
 	}
 	return nil
 }
 
-func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event map[string]interface{}) error {
-	if event["_id"] == nil {
-		event["_id"] = primitive.NewObjectID()
-	}
-
-	if createdAtStr, ok := event["created_at"].(string); ok {
-		parsedTime, err := time.Parse(time.RFC3339, createdAtStr)
-		if err != nil {
-			return fmt.Errorf("failed to parse created_at: %w", err)
-		}
-		event["created_at"] = parsedTime
-	}
-
+func (c *BundleComponent) putBundleEventInDatabase(ctx context.Context, collectionName string, event models.Event) error {
 	_, err := c.MongoClient.Connection.Collection(collectionName).InsertOne(ctx, event)
 	if err != nil {
-		return fmt.Errorf("failed to insert event: %w", err)
+		return err
 	}
 
 	return nil

@@ -160,24 +160,6 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 func (s *StateMachineBundleAPI) updateVersionStateForContentItem(ctx context.Context, contentItem *models.ContentItem, targetState *models.BundleState, headers datasetAPISDK.Headers) error {
 	versionID := strconv.Itoa(contentItem.Metadata.VersionID)
 
-	// fmt.Println("GETTING VERSION STATE FOR CONTENT ITEM")
-	// version, err := s.DatasetAPIClient.GetVersion(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // TODO: remove this if condition once we know if approved or published versions can be added to bundles
-	// // If the version state is the same as the target state or if it is already published then do not update the version state
-	// if strings.EqualFold(version.State, targetState.String()) || strings.EqualFold(version.State, models.StatePublished.String()) {
-	// 	return nil
-	// }
-
-	// if targetState.String() == models.StatePublished.String() && !strings.EqualFold(version.State, models.StateApproved.String()) {
-	// 	log.Warn(ctx, "Version state is not approved", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "target-state": targetState.String()})
-	// 	return errs.ErrVersionStateNotApproved
-	// }
-
-	fmt.Println("ABOUT TO EXECUTE PUT DATASET STUFF")
 	if err := s.DatasetAPIClient.PutVersionState(ctx, headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID, strings.ToLower(targetState.String())); err != nil {
 		return err
 	}
@@ -261,18 +243,17 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		}
 	}
 
-	// err = s.StateMachine.Transition(ctx, s, bundle, nil)
-	// if err != nil {
-	// 	code := models.CodeConflict
-	// 	e := &models.Error{
-	// 		Code:        &code,
-	// 		Description: errs.ErrorDescriptionConflict,
-	// 	}
-	// 	return http.StatusConflict, e, err
-	// }
+	if bundle.State == models.BundleStatePublished {
+		code := models.CodeConflict
+		err := errs.ErrDeleteBundleForbidden
+		e := &models.Error{
+			Code:        &code,
+			Description: errs.ErrorDescriptionConflict,
+		}
+		return http.StatusConflict, e, err
+	}
 
 	bundleContents, err := s.Datastore.ListBundleContentIDsWithoutLimit(ctx, bundleID)
-
 	if err != nil {
 		code := models.CodeInternalError
 		e := &models.Error{
@@ -396,11 +377,6 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	logData := log.Data{"bundle_id": bundleID}
 	userID := authEntityData.GetUserID()
 
-	// stateChangingToPublished, err := s.handleStateTransition(ctx, bundleUpdate, currentBundle)
-	// if err != nil {
-	// 	log.Error(ctx, "putBundle endpoint: invalid state transition", err, logdata)
-	// 	return nil, err
-	// }
 	originalBundle, err := s.GetBundleAndValidateETag(ctx, bundleID, eTag)
 	if err != nil {
 		fmt.Println("ETAG VALIDATION FAILED", err)
@@ -414,34 +390,19 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		if err != nil {
 			log.Error(ctx, "failed to check bundle title uniqueness", err)
 			return nil, err
-			// code := models.CodeInternalError
-			// validationErrors = append(validationErrors, &models.Error{
-			// 	Code:        &code,
-			// 	Description: errs.ErrorDescriptionInternalError,
-			// })
-			// return validationErrors
 		}
 		if exists {
-
-			//code := models.CodeInvalidParameters
 			log.Error(ctx, "bundle title already exists", err, logData)
 			return nil, apierrors.ErrBundleTitleAlreadyExists
-			//validationErrors = append(validationErrors, createValidationError(code, "/title"))
 		}
 	}
-	// Need to do the validation bits about titles and stuff here
-
-	// if bundleUpdate.State == "PUBLISHED" {
-	// 	err := s.UpdateContentItemsWithDatasetInfo(ctx, bundleID, authEntityData.Headers)
-	// 	if err != nil {
-	// 		log.Error(ctx, "failed to validate/update content items with dataset info", err, logdata)
-	// 		return nil, err
-	// 	}
-	// }
 
 	now := time.Now()
 	bundleUpdate.UpdatedAt = &now
 	bundleUpdate.LastUpdatedBy = &models.User{Email: userID}
+
+	bundleUpdate.CreatedAt = originalBundle.CreatedAt
+	bundleUpdate.CreatedBy = originalBundle.CreatedBy
 
 	// Store the state to move to incase this has changes
 	nextState := bundleUpdate.State
@@ -458,45 +419,7 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	}
 
 	return updatedBundle, nil
-
-	// updatedBundle, err := s.UpdateBundle(ctx, bundleID, bundleUpdate)
-	// if err != nil {
-	// 	log.Error(ctx, "failed to update bundle in database", err, logdata)
-	// 	return nil, err
-	// }
-
-	// updatedBundle, err = s.UpdateBundleETag(ctx, bundleID, userID)
-	// if err != nil {
-	// 	log.Error(ctx, "failed to update bundle ETag", err, logdata)
-	// 	return nil, err
-	// }
-
-	// if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
-	// 	log.Error(ctx, "failed to create event", err, logdata)
-	// 	return nil, err
-	// }
-
-	return updatedBundle, nil
 }
-
-// func (s *StateMachineBundleAPI) handleStateTransition(ctx context.Context, bundleUpdate, currentBundle *models.Bundle) (bool, error) {
-// 	stateChangingToPublished := bundleUpdate.State != "" && currentBundle.State != "" &&
-// 		bundleUpdate.State == models.BundleStatePublished && currentBundle.State != models.BundleStatePublished
-
-// 	if bundleUpdate.State != "" && currentBundle.State != "" && bundleUpdate.State != currentBundle.State {
-// 		err := s.StateMachine.Transition(ctx, s, currentBundle, bundleUpdate.State)
-// 		if err != nil {
-// 			if strings.Contains(err.Error(), "state not allowed to transition") ||
-// 				strings.Contains(err.Error(), "not all bundle contents are approved") ||
-// 				strings.Contains(err.Error(), "incorrect state value") {
-// 				return false, errs.ErrInvalidTransition
-// 			}
-// 			return false, err
-// 		}
-// 	}
-
-// 	return stateChangingToPublished, nil
-// }
 
 // ValidateBundleRules validates the rules for bundle updates
 func (s *StateMachineBundleAPI) ValidateBundleRules(ctx context.Context, bundleUpdate, currentBundle *models.Bundle) []*models.Error {
@@ -674,10 +597,6 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		return nil, err
 	}
 
-	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
-	}
-
 	publishStartTime := time.Now()
 	publishLogFields := []slack.Field{
 		{Title: "Bundle ID", Value: bundle.ID},
@@ -758,10 +677,6 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		return nil, err
 	}
 
-	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
-	}
-
 	var wg sync.WaitGroup
 	ch := make(chan string, len(*contents))
 
@@ -800,14 +715,6 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 func ReviewBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
-	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
-	}
 
 	bundle.State = models.BundleStateInReview
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()

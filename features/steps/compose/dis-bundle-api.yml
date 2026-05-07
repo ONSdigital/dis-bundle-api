@@ -13,6 +13,7 @@ services:
       - -component
     volumes:
       - ../../../:/dis-bundle-api
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - 26300:26300
     environment:
@@ -20,4 +21,3 @@ services:
       SERVICE_AUTH_TOKEN: "testToken"
       COMPONENT_TEST_USE_LOG_FILE: "${COMPONENT_TEST_USE_LOG_FILE-false}"
       GOTOOLCHAIN: auto
-      

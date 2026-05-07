@@ -144,6 +144,22 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "title": "bundle-10",
                     "updated_at": "2025-04-05T13:40:00Z",
                     "managed_by": "WAGTAIL"
+                },
+                {
+                    "id": "bundle-11",
+                    "bundle_type": "MANUAL",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "preview_teams": [],
+                    "state": "APPROVED",
+                    "title": "bundle-11",
+                    "updated_at": "2025-04-05T13:40:00Z",
+                    "managed_by": "WAGTAIL"
                 }
             ]
             """
@@ -295,6 +311,38 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                         "edition_id": "edition10",
                         "version_id": 7,
                         "title": "Test Dataset 11"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    },
+                    "state": "APPROVED"
+                },
+                {
+                    "id": "content-item-19",
+                    "bundle_id": "bundle-11",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset4",
+                        "edition_id": "edition4",
+                        "version_id": 1,
+                        "title": "Test Dataset 4"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    },
+                    "state": "APPROVED"
+                },
+                {
+                    "id": "content-item-20",
+                    "bundle_id": "bundle-11",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset-missing",
+                        "edition_id": "edition-missing",
+                        "version_id": 11,
+                        "title": "Missing Dataset"
                     },
                     "links": {
                         "edit": "edit/link",
@@ -581,30 +629,6 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     ]
                 }
             """
-            
-    Scenario: PUT /bundles/{id}/state with a bundle with no content items
-        Given I am an admin user
-        And I set the "If-Match" header to "etag-bundle-6"
-        When I PUT "/bundles/bundle-6/state"
-            """
-                {
-                    "state": "PUBLISHED"
-                }
-            """
-        Then the HTTP status code should be "404"
-        And I should receive the following JSON response:
-            """
-                {
-                    "errors":[
-                        {
-                            "code": "NotFound",
-                            "description": "The requested resource does not exist."
-                        }
-                    ]
-                }
-            """
-        And bundle "bundle-6" should have state "APPROVED"
-        And bundle "bundle-6" should have this etag "etag-bundle-6"
 
     Scenario: PUT /bundles/{id}/state with a bundle with a missing version
         Given I am an admin user
@@ -615,10 +639,38 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "state": "APPROVED"
                 }
             """
-        Then the HTTP status code should be "500"
-        And bundle "bundle-10" should have state "IN_REVIEW"
-        And bundle "bundle-10" should have this etag "etag-bundle-10"
+        Then the HTTP status code should be "200"
+        And bundle "bundle-10" should have state "APPROVED"
+        And bundle "bundle-10" should not have this etag "etag-bundle-10"
 
+    Scenario: PUT /bundles/{id}/state where one content item fails but the remaining content item is still processed
+        Given I am an admin user
+        And I set the "If-Match" header to "etag-bundle-11"
+        When I PUT "/bundles/bundle-11/state"
+            """
+                {
+                    "state": "PUBLISHED"
+                }
+            """
+        Then the HTTP status code should be "200"
+        And bundle "bundle-11" should have state "PUBLISHED"
+        And bundle "bundle-11" should not have this etag "etag-bundle-11"
+        And these content item states should match:
+            """
+            [
+                {
+                    "id": "content-item-19",
+                    "state": "PUBLISHED"
+                },
+                {
+                    "id": "content-item-20",
+                    "state": "APPROVED"
+                }
+            ]
+            """
+        And the total number of events should be 2
+        And the number of events with action "UPDATE" and datatype "bundle" should be 1
+        And the number of events with action "UPDATE" and datatype "content_item" should be 1
 
     Scenario: PUT /bundles/{id}/state with valid arguments for 'IN_REVIEW' -> 'APPROVED'
         Given I am an admin user

@@ -250,7 +250,7 @@ func ValidateBundle(bundle *Bundle) []*Error {
 		})
 	}
 
-	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
+	if bundle.BundleType == BundleTypeScheduled && bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
 		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 			Code:        &codeInvalidParameters,
 			Description: errs.ErrorDescriptionScheduledAtIsInPast,

@@ -25,17 +25,23 @@ type ComponentTest struct {
 
 func (f *ComponentTest) InitializeScenario(godogCtx *godog.ScenarioContext) {
 	authorizationFeature := componenttest.NewAuthorizationFeature()
-	bundleFeature, err := steps.NewBundleComponent(f.MongoFeature.Server.URI())
+
+	mongoURI, err := f.MongoFeature.GetConnectionString()
+	if err != nil {
+		panic(err)
+	}
+
+	bundleFeature, err := steps.NewBundleComponent(mongoURI)
 	if err != nil {
 		panic(err)
 	}
 
 	godogCtx.Before(func(ctx context.Context, _ *godog.Scenario) (context.Context, error) {
-		if err := bundleFeature.Reset(); err != nil {
-			panic(err)
-		}
 		if err := f.MongoFeature.Reset(); err != nil {
 			log.Error(context.Background(), "failed to reset mongo feature", err)
+		}
+		if err := bundleFeature.Reset(); err != nil {
+			panic(err)
 		}
 		authorizationFeature.Reset()
 		return ctx, nil

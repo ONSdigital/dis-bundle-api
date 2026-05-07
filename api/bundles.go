@@ -238,47 +238,8 @@ func (api *BundleAPI) createBundle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bundleErrs := models.ValidateBundle(bundle)
-	err = api.stateMachineBundleAPI.ValidateScheduledAt(bundle)
-	if err != nil {
-		if err == errs.ErrScheduledAtRequired {
-			log.Error(ctx, "createBundle: scheduled_at is required for scheduled bundles", err)
-			code := models.CodeInvalidParameters
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtIsRequired,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			bundleErrs = append(bundleErrs, e)
-		}
-		if err == errs.ErrScheduledAtSet {
-			log.Error(ctx, "createBundle: scheduled_at should not be set for manual bundles", err)
-			code := models.CodeInvalidParameters
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtShouldNotBeSet,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			bundleErrs = append(bundleErrs, e)
-		}
-		if err == errs.ErrScheduledAtInPast {
-			log.Error(ctx, "createBundle: scheduled_at cannot be in the past", err)
-			code := models.CodeInvalidParameters
-			e := &models.Error{
-				Code:        &code,
-				Description: errs.ErrorDescriptionScheduledAtIsInPast,
-				Source: &models.Source{
-					Field: "/scheduled_at",
-				},
-			}
-			bundleErrs = append(bundleErrs, e)
-		}
-	}
 
-	if bundle.State != models.BundleStateDraft {
+	if bundle.State != "" && bundle.State.IsValid() && bundle.State != models.BundleStateDraft {
 		// below matches what was returned from the state machine previously
 		log.Error(ctx, "createBundle: bundle state must be DRAFT when creating a new bundle", err)
 		code := models.CodeBadRequest
