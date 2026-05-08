@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"net/http"
-	"net/http/pprof"
 	"sync"
 
 	"github.com/ONSdigital/dis-bundle-api/api"
@@ -156,17 +155,6 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	r := mux.NewRouter()
 	middleware := svc.createMiddleware()
 	svc.Server = svc.ServiceList.GetHTTPServer(svc.Config.BindAddr, middleware.Then(r))
-
-	// Register pprof handlers
-	r.HandleFunc("/debug/pprof/", pprof.Index)
-	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-
-	r.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
-	r.Handle("/debug/pprof/heap", pprof.Handler("heap"))
-	r.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
-	r.Handle("/debug/pprof/block", pprof.Handler("block"))
 
 	// Register Health Checkers
 	if err := svc.registerCheckers(ctx); err != nil {

@@ -112,7 +112,6 @@ func (api *BundleAPI) putBundleState(w http.ResponseWriter, r *http.Request) {
 	bundle, err := api.stateMachineBundleAPI.UpdateBundleState(ctx, bundleID, *etag, stateRequest.State, authEntityData)
 
 	if err != nil {
-		fmt.Println("THE ERROR CAME BACK")
 		handleErr(ctx, w, r, err, logData, RouteNamePutBundleState)
 		return
 	}

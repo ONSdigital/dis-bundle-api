@@ -134,22 +134,8 @@ func (api *BundleAPI) handleInternalError(ctx context.Context, w http.ResponseWr
 	utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
 }
 
-func (api *BundleAPI) handleGetBundleError(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logdata log.Data) {
-	if err == apierrors.ErrBundleNotFound {
-		log.Error(ctx, "putBundle endpoint: bundle not found", err, logdata)
-		code := models.CodeNotFound
-		errInfo := &models.Error{
-			Code:        &code,
-			Description: apierrors.ErrorDescriptionNotFound,
-		}
-		utils.HandleBundleAPIErr(w, r, http.StatusNotFound, errInfo)
-		return
-	}
-	api.handleInternalError(ctx, w, r, "failed to get bundle", err, logdata)
-}
-
 // Helper function to create and validate bundle update
-func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID string, email string) (*models.Bundle, []*models.Error, error) {
+func (api BundleAPI) CreateAndValidateBundleUpdate(r *http.Request, bundleID, email string) (*models.Bundle, []*models.Error, error) {
 	bundleUpdate, err := models.CreateBundle(r.Body, email)
 	if err != nil {
 		return nil, nil, err
