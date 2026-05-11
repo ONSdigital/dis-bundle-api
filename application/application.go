@@ -580,15 +580,18 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 			"alarm_fields":    alarmFields,
 		})
 		errCh <- err
+		return
 	}
 
 	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, state); err != nil {
 		errCh <- err
+		return
 	}
 
 	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
 		errCh <- err
+		return
 	}
 
 	ch <- contentItem.BundleID
@@ -687,6 +690,10 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		return nil, err
 	}
 
+	if contents == nil || len(*contents) == 0 {
+		return nil, apierrors.ErrBundleHasNoContentItems
+	}
+
 	var wg sync.WaitGroup
 	ch := make(chan string, len(*contents))
 	errCh := make(chan error, len(*contents))
@@ -708,24 +715,10 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	bundle.State = models.BundleStateApproved
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
 
-	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	updatedBundle, err := smBundle.updateBundleAndCreateEvent(ctx, bundle, authEntityData, logData)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Info(ctx, "Approve bundle completed", logData)
-
-	identityType := log.USER
-	if authEntityData.IsServiceAuth {
-		identityType = log.SERVICE
-	}
-	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
-
-	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
-		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
-		return nil, err
-	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
 	return updatedBundle, nil
 }
@@ -736,24 +729,10 @@ func ReviewBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *m
 	bundle.State = models.BundleStateInReview
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
 
-	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	updatedBundle, err := smBundle.updateBundleAndCreateEvent(ctx, bundle, authEntityData, logData)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Info(ctx, "Review transition bundle completed", logData)
-
-	identityType := log.USER
-	if authEntityData.IsServiceAuth {
-		identityType = log.SERVICE
-	}
-	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
-
-	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
-		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
-		return nil, err
-	}
-	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
 	return updatedBundle, nil
 }
@@ -764,12 +743,21 @@ func DraftBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *mo
 	bundle.State = models.BundleStateDraft
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
 
-	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	updatedBundle, err := smBundle.updateBundleAndCreateEvent(ctx, bundle, authEntityData, logData)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Info(ctx, "Review transition bundle completed", logData)
+	return updatedBundle, nil
+}
+
+func (s *StateMachineBundleAPI) updateBundleAndCreateEvent(ctx context.Context, bundle *models.Bundle, authEntityData *models.AuthEntityData, logData log.Data) (*models.Bundle, error) {
+	updatedBundle, err := s.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info(ctx, "Update bundle completed", logData)
 
 	identityType := log.USER
 	if authEntityData.IsServiceAuth {
@@ -777,7 +765,7 @@ func DraftBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *mo
 	}
 	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
 
-	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+	if err = s.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 		return nil, err
 	}

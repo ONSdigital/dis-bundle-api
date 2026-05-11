@@ -301,6 +301,13 @@ Feature: Update a bundle - PUT /bundles/{id}
             {
                 "errors": [
                     {
+                        "code": "MissingParameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
+                        "source": {
+                            "field": "/title"
+                        }
+                    },
+                    {
                         "code": "InvalidParameters",
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
@@ -312,13 +319,6 @@ Feature: Update a bundle - PUT /bundles/{id}
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/state"
-                        }
-                    },
-                    {
-                        "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
-                        "source": {
-                            "field": "/title"
                         }
                     },
                     {

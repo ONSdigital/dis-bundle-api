@@ -108,15 +108,11 @@ func CleanBundle(bundle *Bundle) {
 	bundle.ManagedBy = ManagedBy(strings.TrimSpace(bundle.ManagedBy.String()))
 }
 
-// ValidateBundle checks that the Bundle has all mandatory fields and valid values
-func ValidateBundle(bundle *Bundle) []*Error {
-	var invalidOrMissingFields []*Error
-
+func validateRequiredFields(bundle *Bundle) []*Error {
+	var missingFields []*Error
 	codeMissingParameters := CodeMissingParameters
-	codeInvalidParameters := CodeInvalidParameters
-
 	if bundle.ID == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &codeMissingParameters,
 			Description: errs.ErrorDescriptionMissingParameters,
 			Source: &Source{
@@ -126,19 +122,9 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	}
 
 	if bundle.BundleType == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &codeMissingParameters,
 			Description: errs.ErrorDescriptionMissingParameters,
-			Source: &Source{
-				Field: "/bundle_type",
-			},
-		})
-	}
-
-	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-			Code:        &codeInvalidParameters,
-			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/bundle_type",
 			},
@@ -146,11 +132,77 @@ func ValidateBundle(bundle *Bundle) []*Error {
 	}
 
 	if bundle.CreatedBy != nil && bundle.CreatedBy.Email == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+		missingFields = append(missingFields, &Error{
 			Code:        &codeMissingParameters,
 			Description: errs.ErrorDescriptionMissingParameters,
 			Source: &Source{
 				Field: "/created_by/email",
+			},
+		})
+	}
+
+	if bundle.PreviewTeams != nil {
+		for _, team := range *bundle.PreviewTeams {
+			if team.ID == "" {
+				missingFields = append(missingFields, &Error{
+					Code:        &codeMissingParameters,
+					Description: errs.ErrorDescriptionMissingParameters,
+					Source: &Source{
+						Field: "/preview_teams/id",
+					},
+				})
+				break
+			}
+		}
+	}
+
+	if bundle.State.String() == "" {
+		missingFields = append(missingFields, &Error{
+			Code:        &codeMissingParameters,
+			Description: errs.ErrorDescriptionMissingParameters,
+			Source: &Source{
+				Field: "/state",
+			},
+		})
+	}
+
+	if bundle.Title == "" {
+		missingFields = append(missingFields, &Error{
+			Code:        &codeMissingParameters,
+			Description: errs.ErrorDescriptionMissingParameters,
+			Source: &Source{
+				Field: "/title",
+			},
+		})
+	}
+
+	if bundle.ManagedBy == "" {
+		missingFields = append(missingFields, &Error{
+			Code:        &codeMissingParameters,
+			Description: errs.ErrorDescriptionMissingParameters,
+			Source: &Source{
+				Field: "/managed_by",
+			},
+		})
+	}
+
+	return missingFields
+}
+
+// ValidateBundle checks that the Bundle has all mandatory fields and valid values
+func ValidateBundle(bundle *Bundle) []*Error {
+	var invalidOrMissingFields []*Error
+
+	codeInvalidParameters := CodeInvalidParameters
+
+	invalidOrMissingFields = validateRequiredFields(bundle)
+
+	if bundle.BundleType != "" && !bundle.BundleType.IsValid() {
+		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
+			Code:        &codeInvalidParameters,
+			Description: errs.ErrorDescriptionMalformedRequest,
+			Source: &Source{
+				Field: "/bundle_type",
 			},
 		})
 	}
@@ -165,57 +217,12 @@ func ValidateBundle(bundle *Bundle) []*Error {
 		})
 	}
 
-	if bundle.PreviewTeams != nil {
-		for _, team := range *bundle.PreviewTeams {
-			if team.ID == "" {
-				invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-					Code:        &codeMissingParameters,
-					Description: errs.ErrorDescriptionMissingParameters,
-					Source: &Source{
-						Field: "/preview_teams/id",
-					},
-				})
-				break
-			}
-		}
-	}
-
-	if bundle.State.String() == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-			Code:        &codeMissingParameters,
-			Description: errs.ErrorDescriptionMissingParameters,
-			Source: &Source{
-				Field: "/state",
-			},
-		})
-	}
-
 	if bundle.State.String() != "" && !bundle.State.IsValid() {
 		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
 			Code:        &codeInvalidParameters,
 			Description: errs.ErrorDescriptionMalformedRequest,
 			Source: &Source{
 				Field: "/state",
-			},
-		})
-	}
-
-	if bundle.Title == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-			Code:        &codeMissingParameters,
-			Description: errs.ErrorDescriptionMissingParameters,
-			Source: &Source{
-				Field: "/title",
-			},
-		})
-	}
-
-	if bundle.ManagedBy == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{
-			Code:        &codeMissingParameters,
-			Description: errs.ErrorDescriptionMissingParameters,
-			Source: &Source{
-				Field: "/managed_by",
 			},
 		})
 	}
