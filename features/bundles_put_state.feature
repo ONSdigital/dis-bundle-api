@@ -120,7 +120,7 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                             "id": "567j908h-98df-11ec-b909-0242ac120002"
                         }
                     ],
-                    "state": "APPROVED",
+                    "state": "IN_REVIEW",
                     "title": "bundle-6",
                     "updated_at": "2025-04-05T13:40:00Z",
                     "managed_by": "WAGTAIL"
@@ -629,6 +629,30 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     ]
                 }
             """
+    
+    Scenario: PUT /bundles/{id}/state with a bundle with no content items on approval
+        Given I am an admin user
+        And I set the "If-Match" header to "etag-bundle-6"
+        When I PUT "/bundles/bundle-6/state"
+            """
+                {
+                    "state": "APPROVED"
+                }
+            """
+        Then the HTTP status code should be "404"
+        And I should receive the following JSON response:
+            """
+                {
+                    "errors":[
+                        {
+                            "code": "NotFound",
+                            "description": "The requested resource does not exist."
+                        }
+                    ]
+                }
+            """
+        And bundle "bundle-6" should have state "IN_REVIEW"
+        And bundle "bundle-6" should have this etag "etag-bundle-6"
 
     Scenario: PUT /bundles/{id}/state with a bundle with a missing version
         Given I am an admin user

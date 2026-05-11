@@ -139,6 +139,19 @@ const (
 	ContentTypeDataset ContentType = "DATASET"
 )
 
+func CastContentItemStateToState(state string) *State {
+	if state == "PUBLISHED" {
+		newState := StatePublished
+		return &newState
+	}
+	if state == "APPROVED" {
+		newState := StateApproved
+		return &newState
+	}
+
+	return nil
+}
+
 // IsValid validates that the ContentType is a valid enum value
 func (ct ContentType) IsValid() bool {
 	switch ct {

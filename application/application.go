@@ -588,11 +588,21 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 		return
 	}
 
+	if state == models.BundleStateApproved.String() {
+		contentItem.State = models.CastContentItemStateToState(models.BundleStateApproved.String())
+	}
+
+	if state == models.BundleStatePublished.String() {
+		contentItem.State = models.CastContentItemStateToState(models.BundleStatePublished.String())
+	}
+
 	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
 		errCh <- err
 		return
 	}
+
+	fmt.Println("CREATED EVENT")
 
 	ch <- contentItem.BundleID
 }
