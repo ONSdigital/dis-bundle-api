@@ -3,16 +3,9 @@ package application
 import (
 	"context"
 	"errors"
-<<<<<<< HEAD
-	"fmt"
-	"slices"
-	"strconv"
-=======
->>>>>>> feature/improve-publish-performance
 
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
-	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
 )
@@ -103,7 +96,7 @@ func (sm *StateMachine) Transition(ctx context.Context, stateMachineBundleAPI *S
 
 	updatedBundle, err := nextState.EnterFunc(ctx, *stateMachineBundleAPI, currentBundle, &authEntityData)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	return updatedBundle, nil
 }

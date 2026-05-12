@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ONSdigital/dis-bundle-api/apierrors"
+	errs "github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/filters"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/slack"
@@ -128,7 +128,7 @@ func (s *StateMachineBundleAPI) GetBundleAndValidateETag(ctx context.Context, bu
 		log.Warn(ctx, "ETag for bundle is empty; generating new", log.Data{"bundle-id": bundleID, "etag": bundle.ETag, "supplied-etag": suppliedETag})
 		bundleBytes, err := json.Marshal(bundle)
 		if err != nil {
-			return nil, apierrors.ErrUnableToParseJSON
+			return nil, errs.ErrUnableToParseJSON
 		}
 
 		bundle.ETag = bundle.GenerateETag(&bundleBytes)
@@ -136,7 +136,7 @@ func (s *StateMachineBundleAPI) GetBundleAndValidateETag(ctx context.Context, bu
 
 	if bundle.ETag != suppliedETag {
 		log.Warn(ctx, "ETag validation failed", log.Data{"bundle-id": bundleID, "etag": bundle.ETag, "supplied-etag": suppliedETag})
-		return nil, apierrors.ErrInvalidIfMatchHeader
+		return nil, errs.ErrInvalidIfMatchHeader
 	}
 
 	return bundle, nil
@@ -161,28 +161,28 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		return nil, err
 	}
 
-	if isPublishTransition {
-		publishEndTime := time.Now()
-		publishLogFields = append(publishLogFields,
-			slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
-			slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
-		)
-		logData["slack_fields"] = publishLogFields
+	// if isPublishTransition {
+	// 	publishEndTime := time.Now()
+	// 	publishLogFields = append(publishLogFields,
+	// 		slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
+	// 		slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+	// 	)
+	// 	logData["slack_fields"] = publishLogFields
 
-		if hadContentItemFailures {
-			log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
-			_, err = s.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
-			if err != nil {
-				log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
-			}
-		} else {
-			log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-			_, err = s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-			if err != nil {
-				log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
-			}
-		}
-	}
+	// 	if hadContentItemFailures {
+	// 		log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
+	// 		_, err = s.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
+	// 		if err != nil {
+	// 			log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
+	// 		}
+	// 	} else {
+	// 		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
+	// 		_, err = s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+	// 		if err != nil {
+	// 			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+	// 		}
+	// 	}
+	// }
 
 	return updatedBundle, nil
 }
@@ -194,22 +194,22 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		return http.StatusInternalServerError, nil, e, err
 	}
 
 	if bundleExists {
-		log.Error(ctx, "bundle with the same title already exists", apierrors.ErrBundleTitleAlreadyExists)
+		log.Error(ctx, "bundle with the same title already exists", errs.ErrBundleTitleAlreadyExists)
 		code := models.CodeConflict
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionBundleTitleAlreadyExist,
+			Description: errs.ErrorDescriptionBundleTitleAlreadyExist,
 			Source: &models.Source{
 				Field: "/title",
 			},
 		}
-		return http.StatusConflict, nil, e, apierrors.ErrBundleTitleAlreadyExists
+		return http.StatusConflict, nil, e, errs.ErrBundleTitleAlreadyExists
 	}
 
 	err = s.Datastore.CreateBundle(ctx, bundle)
@@ -218,7 +218,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		return http.StatusInternalServerError, nil, e, err
 	}
@@ -229,7 +229,7 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		return http.StatusInternalServerError, nil, e, err
 	}
@@ -249,18 +249,6 @@ func (s *StateMachineBundleAPI) CreateBundle(ctx context.Context, bundle *models
 	return http.StatusCreated, createdBundle, nil, nil
 }
 
-func removeConditionValuesForBundlePreviewTeam(values []string, toRemove ...string) []string {
-	removed := []string{}
-	for _, v := range toRemove {
-		if slices.Contains(values, v) && !slices.Contains(removed, v) {
-			idx := slices.Index(values, v)
-			values = slices.Delete(values, idx, idx+1)
-			removed = append(removed, v)
-		}
-	}
-	return values
-}
-
 func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID string, authEntityData *models.AuthEntityData) (int, *models.Error, error) {
 	identityType := log.USER
 	if authEntityData.IsServiceAuth {
@@ -270,18 +258,18 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 
 	bundle, err := s.GetBundle(ctx, bundleID)
 	if err != nil {
-		if err == apierrors.ErrBundleNotFound {
+		if err == errs.ErrBundleNotFound {
 			code := models.CodeNotFound
 			e := &models.Error{
 				Code:        &code,
-				Description: apierrors.ErrorDescriptionNotFound,
+				Description: errs.ErrorDescriptionNotFound,
 			}
 			return http.StatusNotFound, e, err
 		} else {
 			code := models.CodeInternalError
 			e := &models.Error{
 				Code:        &code,
-				Description: apierrors.ErrorDescriptionInternalError,
+				Description: errs.ErrorDescriptionInternalError,
 			}
 			return http.StatusInternalServerError, e, err
 		}
@@ -289,10 +277,10 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 
 	if bundle.State == models.BundleStatePublished {
 		code := models.CodeConflict
-		err := apierrors.ErrDeleteBundleForbidden
+		err := errs.ErrDeleteBundleForbidden
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionConflict,
+			Description: errs.ErrorDescriptionConflict,
 		}
 		return http.StatusConflict, e, err
 	}
@@ -302,7 +290,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		return http.StatusInternalServerError, e, err
 	}
@@ -315,7 +303,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 				code := models.CodeInternalError
 				e := &models.Error{
 					Code:        &code,
-					Description: apierrors.ErrorDescriptionInternalError,
+					Description: errs.ErrorDescriptionInternalError,
 				}
 				return http.StatusInternalServerError, e, err
 			}
@@ -368,7 +356,7 @@ func (s *StateMachineBundleAPI) DeleteBundle(ctx context.Context, bundleID strin
 		code := models.CodeInternalError
 		e := &models.Error{
 			Code:        &code,
-			Description: apierrors.ErrorDescriptionInternalError,
+			Description: errs.ErrorDescriptionInternalError,
 		}
 		return http.StatusInternalServerError, e, err
 	}
@@ -392,15 +380,15 @@ func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, ti
 
 // func (s *StateMachineBundleAPI) ValidateScheduledAt(bundle *models.Bundle) error {
 // 	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
-// 		return apierrors.apierrorscheduledAtRequired
+// 		return errs.apierrorscheduledAtRequired
 // 	}
 
 // 	if bundle.BundleType == models.BundleTypeManual && bundle.ScheduledAt != nil {
-// 		return apierrors.apierrorscheduledAtSet
+// 		return errs.apierrorscheduledAtSet
 // 	}
 
 // 	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
-// 		return apierrors.apierrorscheduledAtInPast
+// 		return errs.apierrorscheduledAtInPast
 // 	}
 
 // 	return nil
@@ -456,6 +444,11 @@ func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID 
 
 func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, bundleUpdate *models.Bundle, authEntityData *models.AuthEntityData, eTag string) (*models.Bundle, error) {
 	logData := log.Data{"bundle_id": bundleID}
+	identityType := log.USER
+	if authEntityData.IsServiceAuth {
+		identityType = log.SERVICE
+	}
+	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
 	userID := authEntityData.GetUserID()
 
 	originalBundle, err := s.GetBundleAndValidateETag(ctx, bundleID, eTag)
@@ -471,7 +464,7 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		}
 		if exists {
 			log.Error(ctx, "bundle title already exists", err, logData)
-			return nil, apierrors.ErrBundleTitleAlreadyExists
+			return nil, errs.ErrBundleTitleAlreadyExists
 		}
 	}
 
@@ -480,19 +473,19 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 	// If a preview team is removed from the bundle, their policies will still exist.
 	if err := s.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
 		log.Error(ctx, "failed to create bundle policies", err, logData)
-		return nil, apierrors.ErrBundlePolicyFailedToCreate
+		return nil, errs.ErrBundlePolicyFailedToCreate
 	}
 
 	// Add policy conditions for newly added teams for existing content items.
 	if err := s.AddPolicyConditionsForAddedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, originalBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
 		log.Error(ctx, "failed to add policy conditions for added preview teams", err, logData)
-		return nil, apierrors.ErrBundleFailedToAddPolicyPreviewTeams
+		return nil, errs.ErrBundleFailedToAddPolicyPreviewTeams
 	}
 
 	// Remove policy conditions for any preview teams removed in the update.
 	if err := s.RemovePolicyConditionsForRemovedPreviewTeams(ctx, authEntityData.Headers.AccessToken, bundleID, originalBundle.PreviewTeams, bundleUpdate.PreviewTeams); err != nil {
 		log.Error(ctx, "failed to remove policy conditions for removed preview teams", err, logData)
-		return nil, apierrors.ErrBundleFailedToRemovePolicyPreviewTeams
+		return nil, errs.ErrBundleFailedToRemovePolicyPreviewTeams
 	}
 
 	now := time.Now()
@@ -545,7 +538,7 @@ func (s *StateMachineBundleAPI) UpdateContentItemsWithDatasetInfo(ctx context.Co
 					"content_item_id": contentItem.ID,
 					"dataset_id":      contentItem.Metadata.DatasetID,
 				})
-				return apierrors.ErrNotFound
+				return errs.ErrNotFound
 			}
 
 			return err
@@ -743,7 +736,7 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	if contents == nil || len(*contents) == 0 {
-		return nil, apierrors.ErrBundleHasNoContentItems
+		return nil, errs.ErrBundleHasNoContentItems
 	}
 
 	var wg sync.WaitGroup
