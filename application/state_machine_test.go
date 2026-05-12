@@ -303,5 +303,4 @@ func TestTransition_failure(t *testing.T) {
 			So(bundle, ShouldBeNil)
 		})
 	})
-
 }
