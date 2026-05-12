@@ -637,8 +637,6 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 		return
 	}
 
-	fmt.Println("CREATED EVENT")
-
 	ch <- contentItem.BundleID
 }
 
