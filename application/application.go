@@ -161,29 +161,6 @@ func (s *StateMachineBundleAPI) UpdateBundleState(ctx context.Context, bundleID,
 		return nil, err
 	}
 
-	// if isPublishTransition {
-	// 	publishEndTime := time.Now()
-	// 	publishLogFields = append(publishLogFields,
-	// 		slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
-	// 		slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
-	// 	)
-	// 	logData["slack_fields"] = publishLogFields
-
-	// 	if hadContentItemFailures {
-	// 		log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
-	// 		_, err = s.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
-	// 		if err != nil {
-	// 			log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
-	// 		}
-	// 	} else {
-	// 		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-	// 		_, err = s.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-	// 		if err != nil {
-	// 			log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
-	// 		}
-	// 	}
-	// }
-
 	return updatedBundle, nil
 }
 
