@@ -355,22 +355,6 @@ func (s *StateMachineBundleAPI) CheckBundleExistsByTitle(ctx context.Context, ti
 	return exists, nil
 }
 
-// func (s *StateMachineBundleAPI) ValidateScheduledAt(bundle *models.Bundle) error {
-// 	if bundle.BundleType == models.BundleTypeScheduled && bundle.ScheduledAt == nil {
-// 		return errs.apierrorscheduledAtRequired
-// 	}
-
-// 	if bundle.BundleType == models.BundleTypeManual && bundle.ScheduledAt != nil {
-// 		return errs.apierrorscheduledAtSet
-// 	}
-
-// 	if bundle.ScheduledAt != nil && bundle.ScheduledAt.Before(time.Now()) {
-// 		return errs.apierrorscheduledAtInPast
-// 	}
-
-// 	return nil
-// }
-
 func (s *StateMachineBundleAPI) GetBundleContents(ctx context.Context, bundleID string, offset, limit int, authHeaders datasetAPISDK.Headers) ([]*models.ContentItem, int, error) {
 	// Get bundle
 	bundle, err := s.Datastore.GetBundle(ctx, bundleID)
