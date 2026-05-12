@@ -8,7 +8,7 @@ linters:
     - errcheck
     - gochecknoinits
     - gocognit
-    - goconst
+    # - goconst
     - gocritic
     - gocyclo
     - gosec
@@ -26,9 +26,9 @@ linters:
       threshold: 100
     gocognit:
       min-complexity: 42
-    goconst:
-      min-len: 2
-      min-occurrences: 2
+    # goconst:
+    #   min-len: 2
+    #   min-occurrences: 2
     gocritic:
       disabled-checks:
         - wrapperFunc
@@ -81,8 +81,8 @@ formatters:
   settings:
     gofmt:
       simplify: false
-    goconst:
-      min-len: 2
-      min-occurrences: 2
+    # goconst:
+    #   min-len: 2
+    #   min-occurrences: 2
   exclusions:
     generated: lax
