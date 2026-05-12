@@ -399,43 +399,6 @@ func TestCreateBundle_Success(t *testing.T) {
 	})
 }
 
-// func TestCreateBundle_Failure_Transition(t *testing.T) {
-// 	Convey("Given a valid bundle", t, func() {
-// 		ctx := context.Background()
-// 		bundleToCreate := &models.Bundle{
-// 			ID:            bundle123,
-// 			Title:         "Example Bundle",
-// 			ScheduledAt:   &tomorrow,
-// 			BundleType:    models.BundleTypeScheduled,
-// 			State:         models.BundleStateApproved,
-// 		}
-
-// 		stateMachine := &application.StateMachineBundleAPI{}
-
-// 		Convey("When CreateBundle is called and the bundle is not in state DRAFT", func() {
-// 			statusCode, createdBundle, errObject, err := stateMachine.CreateBundle(ctx, bundleToCreate, authEntityData)
-
-// 			Convey("Then it should return the expected error", func() {
-// 				So(err, ShouldNotBeNil)
-// 				So(err.Error(), ShouldEqual, "bundle state must be DRAFT when creating a new bundle")
-
-// 				code := models.CodeBadRequest
-// 				expectedErr := &models.Error{
-// 					Code:        &code,
-// 					Description: apierrors.ErrorDescriptionStateNotAllowedToTransition,
-// 				}
-// 				So(errObject, ShouldNotBeNil)
-// 				So(errObject, ShouldResemble, expectedErr)
-// 			})
-
-// 			Convey("And it should return a status code of 400 and nil for createdBundle", func() {
-// 				So(statusCode, ShouldEqual, 400)
-// 				So(createdBundle, ShouldBeNil)
-// 			})
-// 		})
-// 	})
-// }
-
 func TestCreateBundle_Failure_CheckBundleExistsByTitle(t *testing.T) {
 	Convey("Given a StateMachineBundleAPI with a mocked datastore", t, func() {
 		ctx := context.Background()
@@ -761,78 +724,6 @@ func TestCheckBundleExistsByTitle_Failure(t *testing.T) {
 		})
 	})
 }
-
-// func TestValidateScheduledAt_Success(t *testing.T) {
-// 	Convey("Given a bundle with a valid ScheduledAt date", t, func() {
-// 		bundle := &models.Bundle{
-// 			ScheduledAt: &tomorrow,
-// 		}
-
-// 		Convey("When validateScheduledAt is called", func() {
-// 			stateMachine := &application.StateMachineBundleAPI{}
-// 			err := stateMachine.ValidateScheduledAt(bundle)
-
-// 			Convey("Then it should not return an error", func() {
-// 				So(err, ShouldBeNil)
-// 			})
-// 		})
-// 	})
-// }
-
-// func TestValidateScheduledAt_Failure_ScheduledAtNotSet(t *testing.T) {
-// 	Convey("Given a bundle with ScheduledAt not set", t, func() {
-// 		bundle := &models.Bundle{
-// 			BundleType: models.BundleTypeScheduled,
-// 		}
-
-// 		Convey("When validateScheduledAt is called", func() {
-// 			stateMachine := &application.StateMachineBundleAPI{}
-// 			err := stateMachine.ValidateScheduledAt(bundle)
-
-// 			Convey("Then it should return an error", func() {
-// 				So(err, ShouldNotBeNil)
-// 				So(err.Error(), ShouldContainSubstring, "scheduled_at is required for scheduled bundles")
-// 			})
-// 		})
-// 	})
-// }
-
-// func TestValidateScheduledAt_Failure_ScheduledAtSet(t *testing.T) {
-// 	Convey("Given a bundle with ScheduledAt set for a manual bundle", t, func() {
-// 		bundle := &models.Bundle{
-// 			BundleType:  models.BundleTypeManual,
-// 			ScheduledAt: &tomorrow,
-// 		}
-
-// 		Convey("When validateScheduledAt is called", func() {
-// 			stateMachine := &application.StateMachineBundleAPI{}
-// 			err := stateMachine.ValidateScheduledAt(bundle)
-
-// 			Convey("Then it should return an error", func() {
-// 				So(err, ShouldNotBeNil)
-// 				So(err.Error(), ShouldContainSubstring, "scheduled_at should not be set for manual bundles")
-// 			})
-// 		})
-// 	})
-// }
-
-// func TestValidateScheduledAt_Failure_ScheduledAtInThePast(t *testing.T) {
-// 	Convey("Given a bundle with a ScheduledAt date in the past", t, func() {
-// 		bundle := &models.Bundle{
-// 			ScheduledAt: &yesterday,
-// 		}
-
-// 		Convey("When validateScheduledAt is called", func() {
-// 			stateMachine := &application.StateMachineBundleAPI{}
-// 			err := stateMachine.ValidateScheduledAt(bundle)
-
-// 			Convey("Then it should return an error", func() {
-// 				So(err, ShouldNotBeNil)
-// 				So(err.Error(), ShouldContainSubstring, "scheduled_at cannot be in the past")
-// 			})
-// 		})
-// 	})
-// }
 
 func TestGetBundleContents(t *testing.T) {
 	ctx := context.Background()
