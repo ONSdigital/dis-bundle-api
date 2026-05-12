@@ -1,9 +1,22 @@
 package application
 
 // list of states for the state machine
-var (
-	Draft     = State{Name: "DRAFT"}
-	InReview  = State{Name: "IN_REVIEW"}
-	Approved  = State{Name: "APPROVED"}
-	Published = State{Name: "PUBLISHED"}
-)
+var Published = State{
+	Name:      "PUBLISHED",
+	EnterFunc: PublishBundle,
+}
+
+var InReview = State{
+	Name:      "IN_REVIEW",
+	EnterFunc: ReviewBundle,
+}
+
+var Approved = State{
+	Name:      "APPROVED",
+	EnterFunc: ApproveBundle,
+}
+
+var Draft = State{
+	Name:      "DRAFT",
+	EnterFunc: DraftBundle,
+}

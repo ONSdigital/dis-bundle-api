@@ -49,13 +49,13 @@ func GetListTransitions() []application.Transition {
 	draftTransition := application.Transition{
 		Label:               "DRAFT",
 		TargetState:         application.Draft,
-		AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
+		AllowedSourceStates: []string{"DRAFT", "IN_REVIEW", "APPROVED"},
 	}
 
 	inReviewTransition := application.Transition{
 		Label:               "IN_REVIEW",
 		TargetState:         application.InReview,
-		AllowedSourceStates: []string{"DRAFT", "APPROVED"},
+		AllowedSourceStates: []string{"DRAFT", "APPROVED", "IN_REVIEW"},
 	}
 
 	approvedTransition := application.Transition{
@@ -73,11 +73,11 @@ func GetListTransitions() []application.Transition {
 	return []application.Transition{draftTransition, inReviewTransition, approvedTransition, publishedTransition}
 }
 
-func GetStateMachine(ctx context.Context, datastore store.Datastore) *application.StateMachine {
+func GetStateMachine(ctx context.Context, datastore store.Datastore, datasetAPIClienter datasetAPISDK.Clienter) *application.StateMachine {
 	stateMachineInit.Do(func() {
 		states := []application.State{application.Draft, application.InReview, application.Approved, application.Published}
 		transitions := GetListTransitions()
-		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore)
+		stateMachine = application.NewStateMachine(ctx, states, transitions, datastore, datasetAPIClienter)
 	})
 
 	return stateMachine
@@ -165,7 +165,7 @@ func (svc *Service) Run(ctx context.Context, buildTime, gitCommit, version strin
 	datastore := store.Datastore{Backend: BundleAPIStore{svc.mongoDB}}
 
 	// Setup state machine
-	sm := GetStateMachine(ctx, datastore)
+	sm := GetStateMachine(ctx, datastore, svc.datasetAPIClient)
 	svc.stateMachineBundleAPI = application.Setup(datastore, sm, svc.datasetAPIClient, svc.permissionsAPIClient, svc.dataBundleSlackClient, cfg.PreviewServiceURL)
 
 	// Setup API

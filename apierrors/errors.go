@@ -100,21 +100,27 @@ var (
 	// Role errors
 	ErrInvalidRole = errors.New("invalid role provided")
 
+	// Bundle policy errors
+	ErrBundlePolicyFailedToCreate             = errors.New("failed to create bundle policies")
+	ErrBundleFailedToAddPolicyPreviewTeams    = errors.New("failed to add policy conditions for added preview teams")
+	ErrBundleFailedToRemovePolicyPreviewTeams = errors.New("failed to remove policy conditions for removed preview teams")
+
 	// Other errors
 	ErrUnableToReadMessage = errors.New("failed to read message body")
 )
 
 // Map errors to HTTP status codes
 var ErrorToStatusCode = map[error]int{
-	ErrInvalidBody:            400,
-	ErrMissingParameters:      400,
-	ErrInvalidQueryParameter:  400,
-	ErrTooManyQueryParameters: 400,
-	ErrMissingBundleID:        400,
-	ErrInvalidBundleReference: 400,
-	ErrInvalidBundleState:     400,
-	ErrInvalidTransition:      400,
-	ErrMissingIfMatchHeader:   400,
+	ErrInvalidBody:              400,
+	ErrMissingParameters:        400,
+	ErrInvalidQueryParameter:    400,
+	ErrTooManyQueryParameters:   400,
+	ErrMissingBundleID:          400,
+	ErrInvalidBundleReference:   400,
+	ErrInvalidBundleState:       400,
+	ErrInvalidTransition:        400,
+	ErrMissingIfMatchHeader:     400,
+	ErrBundleTitleAlreadyExists: 400,
 
 	ErrDeleteBundleForbidden:  403,
 	ErrExpectedStateOfCreated: 403,

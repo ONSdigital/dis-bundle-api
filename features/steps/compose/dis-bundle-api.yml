@@ -21,4 +21,3 @@ services:
       SERVICE_AUTH_TOKEN: "testToken"
       COMPONENT_TEST_USE_LOG_FILE: "${COMPONENT_TEST_USE_LOG_FILE-false}"
       GOTOOLCHAIN: auto
-      

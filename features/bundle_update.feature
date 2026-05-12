@@ -268,7 +268,8 @@ Feature: Update a bundle - PUT /bundles/{id}
             {
                 "bundle_type": "MANUAL",
                 "title": "Updated Title",
-                "managed_by": "DATA-ADMIN"
+                "managed_by": "DATA-ADMIN",
+                "state": "DRAFT"
             }
             """
         Then I should receive the following JSON response with status "409":
@@ -277,7 +278,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                 "errors": [
                     {
                         "code": "Conflict",
-                        "description": "Change rejected due to a conflict with the current resource state. A common cause is attempting to change a bundle that is already locked pending publication or has already been published."
+                        "description": "Unable to process request invalid If-Match header."
                     }
                 ]
             }
@@ -300,6 +301,13 @@ Feature: Update a bundle - PUT /bundles/{id}
             {
                 "errors": [
                     {
+                        "code": "MissingParameters",
+                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
+                        "source": {
+                            "field": "/title"
+                        }
+                    },
+                    {
                         "code": "InvalidParameters",
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
@@ -311,13 +319,6 @@ Feature: Update a bundle - PUT /bundles/{id}
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/state"
-                        }
-                    },
-                    {
-                        "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
-                        "source": {
-                            "field": "/title"
                         }
                     },
                     {
@@ -377,7 +378,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
+                        "description": "scheduled_at is required for scheduled bundles.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -405,7 +406,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
+                        "description": "scheduled_at should not be set for manual bundles.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -433,7 +434,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
+                        "description": "scheduled_at cannot be in the past.",
                         "source": {
                             "field": "/scheduled_at"
                         }
@@ -460,7 +461,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                 "errors": [
                     {
                         "code": "InvalidParameters",
-                        "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
+                        "description": "Unable to process request due to invalid state transition.",
                         "source": {
                             "field": "/state"
                         }
@@ -477,6 +478,7 @@ Feature: Update a bundle - PUT /bundles/{id}
             {
                 "bundle_type": "MANUAL",
                 "title": "Missing Bundle",
+                "state":"DRAFT",
                 "managed_by": "DATA-ADMIN"
             }
             """

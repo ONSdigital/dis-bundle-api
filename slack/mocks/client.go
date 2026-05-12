@@ -5,8 +5,9 @@ package mocks
 
 import (
 	"context"
-	"github.com/ONSdigital/dis-bundle-api/slack"
 	"sync"
+
+	"github.com/ONSdigital/dis-bundle-api/slack"
 )
 
 // Ensure, that ClienterMock does implement slack.Clienter.

@@ -130,6 +130,9 @@ var ErrorToModelErrorMap = map[error]*Error{
 	errs.ErrMissingIfMatchHeader: CreateModelError(CodeBadRequest, errs.ErrorDescriptionMissingIfMatchHeader),
 	errs.ErrInvalidIfMatchHeader: CreateModelError(CodeConflict, errs.ErrorDescriptionInvalidIfMatchHeader),
 
+	// Validation - Title already exists
+	errs.ErrBundleTitleAlreadyExists: CreateModelError(CodeBadRequest, errs.ErrorDescriptionBundleTitleAlreadyExist),
+
 	// Validation - State
 	errs.ErrInvalidBundleState: invalidTransitionError,
 	errs.ErrInvalidTransition:  invalidTransitionError,

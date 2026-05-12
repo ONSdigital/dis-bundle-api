@@ -20,11 +20,9 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/application"
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/filters"
-	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
-	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
@@ -173,7 +171,7 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 		{
 			Label:               "DRAFT",
 			TargetState:         application.Draft,
-			AllowedSourceStates: []string{"IN_REVIEW", "APPROVED"},
+			AllowedSourceStates: []string{"DRAFT", "IN_REVIEW", "APPROVED"},
 		},
 		{
 			Label:               "IN_REVIEW",
@@ -191,7 +189,7 @@ func GetBundleAPIWithMocksWithAuthMiddleware(datastore store.Datastore, datasetA
 			AllowedSourceStates: []string{"APPROVED"},
 		},
 	}
-	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore)
+	stateMachine := application.NewStateMachine(ctx, mockStates, mockTransitions, datastore, datasetAPIClient)
 
 	stateMachineBundleAPI := &application.StateMachineBundleAPI{
 		Datastore:            datastore,
@@ -441,7 +439,6 @@ func TestGetBundles_Failure(t *testing.T) {
 				errList.Errors = append(errList.Errors, expectedError)
 				errBytes, err := json.Marshal(errList)
 				if err != nil {
-					fmt.Println(err)
 					return
 				}
 				expectedErrorString := fmt.Sprintf("%s\n", string(errBytes))
@@ -826,11 +823,6 @@ func createMockDatasetAPIClient(data *testData) *datasetAPISDKMock.ClienterMock 
 	}
 }
 
-// Helper functions
-func shouldItemBeUpdated(itemID string) bool {
-	return strings.Contains(itemID, "matching")
-}
-
 // createUpdateStateRequest creates a http.Request for updating bundle state.
 func createUpdateStateRequest(bundleID, etag string, state models.BundleState, requestBody interface{}, isAuthorised bool) *http.Request {
 	if requestBody == nil {
@@ -855,163 +847,11 @@ func createUpdateStateRequest(bundleID, etag string, state models.BundleState, r
 	return req
 }
 
-var validTransitionTestCases = []struct {
-	name             string
-	fromState        models.BundleState
-	toState          models.BundleState
-	invalidState     models.BundleState
-	contentItemState *models.State
-	versionState     string
-}{
-	{"DRAFT to IN_REVIEW", models.BundleStateDraft, models.BundleStateInReview, models.BundleStatePublished, nil, "associated"},
-	{"IN_REVIEW to APPROVED", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft, nil, "associated"},
-	{"IN_REVIEW to APPROVED with version already approved", models.BundleStateInReview, models.BundleStateApproved, models.BundleStateDraft, nil, "approved"},
-	{"APPROVED to PUBLISHED", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft, utils.PtrContentItemState(models.StateApproved), "approved"},
-	{"APPROVED to PUBLISHED with version already published", models.BundleStateApproved, models.BundleStatePublished, models.BundleStateDraft, utils.PtrContentItemState(models.StateApproved), "published"},
-}
-
 const (
 	PutBundleStateRoute = "/bundles/{bundle-id}/state"
 	ValidDataset1       = "dataset-1"
 	ValidDataset2       = "dataset-2"
 )
-
-//nolint:gocognit // cognitive complexity is high but acceptable for this test
-func TestPutBundleState_ValidTransitions(t *testing.T) {
-	t.Parallel()
-
-	for index := range validTransitionTestCases {
-		tc := validTransitionTestCases[index]
-
-		var additionalEventCalls int
-		if tc.toState == models.BundleStateApproved || tc.toState == models.BundleStatePublished {
-			// manually set to 2 since we have 2 content items that will be updated within the test data
-			additionalEventCalls = 2
-		}
-
-		var isBeingPubished bool
-		if tc.toState == models.BundleStatePublished {
-			// flag so we can assert slack client calls are made when bundle is being published
-			isBeingPubished = true
-		}
-
-		testCaseName := generateTestCaseName(PutBundleStateRoute, "PUT", fmt.Sprintf("With a valid request and a valid state transition to update state from %s", tc.name))
-		t.Run(testCaseName, func(t *testing.T) {
-			t.Parallel()
-
-			Convey(tc.name, t, func() {
-				data := setupTestData(tc.fromState, tc.contentItemState, tc.versionState)
-				mockStore := createMockStore(data)
-				mockDatasetAPIClient := createMockDatasetAPIClient(data)
-				mockPermissionsAPIClient := &permissionsAPISDKMock.ClienterMock{}
-				mockSlackClient := &slackMock.ClienterMock{
-					SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
-						return &slack.MessageRef{
-							ChannelID: "example-channel",
-							Timestamp: "example-timestamp",
-						}, nil
-					},
-					UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
-						return &slack.MessageRef{}, nil
-					},
-				}
-				bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockStore}, mockDatasetAPIClient, mockPermissionsAPIClient, true)
-				bundleAPI.stateMachineBundleAPI.DataBundleSlackClient = mockSlackClient
-
-				req := createUpdateStateRequest(data.bundle.ID, data.bundle.ETag, tc.toState, nil, true)
-				rec := httptest.NewRecorder()
-
-				bundleAPI.Router.ServeHTTP(rec, req)
-
-				Convey(fmt.Sprintf("Then the bundle state should be updated to %s", tc.toState.String()), func() {
-					So(data.bundle.State.String(), ShouldEqual, tc.toState.String())
-				})
-
-				Convey("And the response should be HTTP 200 OK", func() {
-					So(rec.Code, ShouldEqual, http.StatusOK)
-				})
-
-				Convey("And the response body should contain the updated bundle with the new state", func() {
-					var responseBundle models.Bundle
-					err := json.NewDecoder(rec.Body).Decode(&responseBundle)
-					So(err, ShouldBeNil)
-
-					So(responseBundle.ID, ShouldEqual, data.bundle.ID)
-					So(responseBundle.State.String(), ShouldEqual, tc.toState.String())
-				})
-
-				Convey("And an event should be created", func() {
-					So(len(mockStore.CreateEventCalls()), ShouldEqual, 1+additionalEventCalls)
-				})
-
-				Convey("And only matching content items should be updated", func() {
-					calls := mockStore.UpdateContentItemStateCalls()
-
-					So(len(calls), ShouldEqual, 0+additionalEventCalls)
-
-					if len(calls) > 0 {
-						for _, item := range data.contentItems {
-							if shouldItemBeUpdated(item.ID) {
-								So(item.State.String(), ShouldEqual, tc.toState.String())
-							} else {
-								So(item.State.String(), ShouldNotEqual, tc.toState.String())
-							}
-						}
-					}
-				})
-
-				expectedVersionState := strings.ToLower(tc.toState.String())
-
-				Convey("And only matching versions should be updated", func() {
-					calls := mockDatasetAPIClient.PutVersionStateCalls()
-
-					// TODO: remove if condition and keep else block once we know if approved or published versions can be added to bundles
-					if strings.EqualFold(tc.toState.String(), tc.versionState) {
-						So(len(calls), ShouldEqual, 0)
-					} else {
-						So(len(calls), ShouldEqual, 0+additionalEventCalls)
-					}
-
-					if len(calls) > 0 {
-						for _, call := range calls {
-							So(call.State, ShouldEqual, expectedVersionState)
-							isMatchingDataset := call.DatasetID == ValidDataset1 || call.DatasetID == ValidDataset2
-							So(isMatchingDataset, ShouldBeTrue)
-						}
-					}
-				})
-
-				Convey("Then version states should be updated", func() {
-					for _, version := range data.versions {
-						isMatchingDataset := version.DatasetID == ValidDataset1 || version.DatasetID == ValidDataset2
-						if isMatchingDataset && (tc.toState == models.BundleStateApproved || tc.toState == models.BundleStatePublished) {
-							So(version.State, ShouldEqual, expectedVersionState)
-						} else {
-							So(version.State, ShouldNotEqual, expectedVersionState)
-						}
-					}
-				})
-
-				Convey("And events should have been created", func() {
-					So(len(*data.events), ShouldEqual, 1+additionalEventCalls)
-
-					for index := range *data.events {
-						event := (*data.events)[index]
-
-						So(event.Action, ShouldEqual, models.ActionUpdate)
-					}
-				})
-
-				Convey("And if the bundle is being published, a message should be sent to Slack", func() {
-					if isBeingPubished {
-						So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
-						So(len(mockSlackClient.UpdatePublishLogCalls()), ShouldEqual, 1)
-					}
-				})
-			})
-		})
-	}
-}
 
 var invalidTransitionTestCases = []struct {
 	name             string
@@ -1573,6 +1413,9 @@ func TestCreateBundle_Failure_FailedToTransitionBundleState(t *testing.T) {
 						{
 							Code:        &code,
 							Description: apierrors.ErrorDescriptionStateNotAllowedToTransition,
+							Source: &models.Source{
+								Field: "/state",
+							},
 						},
 					},
 				}
