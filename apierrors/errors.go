@@ -82,7 +82,7 @@ var (
 	ErrExpectedStateOfCreated  = errors.New("expected bundle state to be 'CREATED'")
 	ErrExpectedStateOfApproved = errors.New("expected bundle state to be 'APPROVED'")
 	ErrInvalidTransition       = errors.New("state not allowed to transition")
-	ErrVersionStateNotApproved = errors.New("version state expected to be APPROVED when transitioning bundle to PUBLISHED")
+	ErrVersionStateNotApproved = errors.New("version state expected to be APPROVED when transitioning bundle to APPROVED")
 
 	// Parsing errors
 	ErrUnableToParseTime = errors.New("failed to parse time from json body")

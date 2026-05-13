@@ -160,6 +160,22 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "title": "bundle-11",
                     "updated_at": "2025-04-05T13:40:00Z",
                     "managed_by": "WAGTAIL"
+                },
+                {
+                    "id": "bundle-12",
+                    "bundle_type": "MANUAL",
+                    "created_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {
+                        "email": "publisher@ons.gov.uk"
+                    },
+                    "preview_teams": [],
+                    "state": "IN_REVIEW",
+                    "title": "bundle-12",
+                    "updated_at": "2025-04-05T13:40:00Z",
+                    "managed_by": "WAGTAIL"
                 }
             ]
             """
@@ -349,6 +365,21 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                         "preview": "preview/link"
                     },
                     "state": "APPROVED"
+                },
+                {
+                    "id": "content-item-21",
+                    "bundle_id": "bundle-12",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset-10",
+                        "edition_id": "edition-8",
+                        "version_id": 1,
+                        "title": "Not approved"
+                    },
+                    "links": {
+                        "edit": "edit/link",
+                        "preview": "preview/link"
+                    }
                 }
             ]
             """
@@ -367,35 +398,35 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "version": 1,
                     "dataset_id": "dataset5",
                     "edition": "edition5",
-                    "state": "associated" 
+                    "state": "approved" 
                 },
                 {
                     "id": "version-3",
                     "version": 1,
                     "dataset_id": "dataset6",
                     "edition": "edition6",
-                    "state": "associated" 
+                    "state": "approved" 
                 },
                  {
                     "id": "version-4",
                     "version": 1,
                     "dataset_id": "dataset7",
                     "edition": "edition7",
-                    "state": "associated" 
+                    "state": "approved" 
                 },
                  {
                     "id": "version-5",
                     "version": 1,
                     "dataset_id": "dataset8",
                     "edition": "edition8",
-                    "state": "associated" 
+                    "state": "approved" 
                 },
                 {
                     "id": "version-6",
                     "version": 10,
                     "dataset_id": "dataset9",
                     "edition": "edition9",
-                    "state": "associated" 
+                    "state": "approved" 
                 },
                 {
                     "id": "version-7",
@@ -403,6 +434,13 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "dataset_id": "dataset10",
                     "edition": "edition10",
                     "state": "published" 
+                },
+                {
+                    "id": "version-8",
+                    "version": 8,
+                    "dataset_id": "dataset10",
+                    "edition": "edition11",
+                    "state": "associated" 
                 }
             ]
             """
@@ -663,9 +701,9 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
                     "state": "APPROVED"
                 }
             """
-        Then the HTTP status code should be "200"
-        And bundle "bundle-10" should have state "APPROVED"
-        And bundle "bundle-10" should not have this etag "etag-bundle-10"
+        Then the HTTP status code should be "500"
+        And bundle "bundle-10" should have state "IN_REVIEW"
+        And bundle "bundle-10" should have this etag "etag-bundle-10"
 
     Scenario: PUT /bundles/{id}/state where one content item fails but the remaining content item is still processed
         Given I am an admin user
@@ -786,3 +824,16 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
         And the total number of events should be 6
         And the number of events with action "UPDATE" and datatype "bundle" should be 1
         And the number of events with action "UPDATE" and datatype "content_item" should be 5
+
+    Scenario: PUT /bundles/{id}/state for 'IN_REVIEW' -> 'APPROVED' but not all content items are approved
+        Given I am an admin user
+        And I set the "If-Match" header to "etag-bundle-12"
+        When I PUT "/bundles/bundle-12/state"
+            """
+                {
+                    "state": "APPROVED"
+                }
+            """
+        Then the HTTP status code should be "500"
+        And bundle "bundle-12" should have state "IN_REVIEW"
+        And bundle "bundle-12" should have this etag "etag-bundle-12"

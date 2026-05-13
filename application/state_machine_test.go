@@ -187,6 +187,17 @@ func TestTransition_Success(t *testing.T) {
 			PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
 				return nil
 			},
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+				version := datasetAPIModels.Version{
+
+					ID:        "valid-version-1",
+					Version:   1,
+					DatasetID: "dataset-id-1",
+					Edition:   "edition-id-1",
+					State:     datasetAPIModels.ApprovedState,
+				}
+				return version, nil
+			},
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)

@@ -48,7 +48,7 @@ func (api *BundleAPI) putBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var allValidationErrors []*models.Error
+	allValidationErrors := make([]*models.Error, 0, len(validationErrors))
 	allValidationErrors = append(allValidationErrors, validationErrors...)
 
 	if len(allValidationErrors) > 0 {

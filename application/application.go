@@ -609,13 +609,8 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	publishStartTime := time.Now()
-	publishLogFields := []slack.Field{
-		{Title: "Bundle ID", Value: bundle.ID},
-		{Title: "Title", Value: bundle.Title},
-		{Title: "Type", Value: bundle.BundleType.String()},
-		{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))},
-		{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
-	}
+	var publishLogFields = make([]slack.Field, 0, 7)
+	publishLogFields = append(publishLogFields, slack.Field{Title: "Bundle ID", Value: bundle.ID}, slack.Field{Title: "Title", Value: bundle.Title}, slack.Field{Title: "Type", Value: bundle.BundleType.String()}, slack.Field{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))}, slack.Field{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)})
 	logData["slack_fields"] = publishLogFields
 
 	c1 := make(chan *slack.MessageRef)
@@ -687,6 +682,24 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	return updatedBundle, nil
 }
 
+func checkAllVersionsAreApproved(ctx context.Context, smBundle StateMachineBundleAPI, contents *[]models.ContentItem, authEntityData *models.AuthEntityData) (bool, error) {
+	for index := range *contents {
+		contentItem := &(*contents)[index]
+		versionID := strconv.Itoa(contentItem.Metadata.VersionID)
+		version, err := smBundle.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
+		if err != nil {
+			return false, err
+		}
+
+		if version.State != datasetAPIModels.ApprovedState {
+			log.Warn(ctx, "Content item not approved", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "target-state": models.BundleStateApproved})
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
 func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
 	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
@@ -696,6 +709,16 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 	if contents == nil || len(*contents) == 0 {
 		return nil, errs.ErrBundleHasNoContentItems
+	}
+
+	allItemsApproved, err := checkAllVersionsAreApproved(ctx, smBundle, contents, authEntityData)
+	if err != nil {
+		return nil, err
+	}
+
+	if !allItemsApproved {
+		log.Error(ctx, "Not all bundle content items are approved", err, logData)
+		return nil, errs.ErrVersionStateNotApproved
 	}
 
 	var wg sync.WaitGroup

@@ -1548,10 +1548,10 @@ func TestPutBundle_Success(t *testing.T) {
 			},
 		}
 
-		var states []application.State
+		var states = make([]application.State, 0, 1)
 		states = append(states, application.Draft)
 
-		var transitions []application.Transition
+		var transitions = make([]application.Transition, 0, 1)
 		transitions = append(transitions, application.Transition{
 			Label:               "DRAFT",
 			TargetState:         application.Draft,
@@ -1662,10 +1662,10 @@ func TestPutBundleState_Success(t *testing.T) {
 			},
 		}
 
-		var states []application.State
+		var states = make([]application.State, 0, 1)
 		states = append(states, application.Draft)
 
-		var transitions []application.Transition
+		var transitions = make([]application.Transition, 0, 1)
 		transitions = append(transitions, application.Transition{
 			Label:               "PUBLISHED",
 			TargetState:         application.Published,
@@ -1763,10 +1763,10 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 			},
 		}
 
-		var states []application.State
+		var states = make([]application.State, 0, 1)
 		states = append(states, application.Draft)
 
-		var transitions []application.Transition
+		var transitions = make([]application.Transition, 0, 1)
 		transitions = append(transitions, application.Transition{
 			Label:               "PUBLISHED",
 			TargetState:         application.Published,
@@ -1850,7 +1850,7 @@ func TestPutBundlePolicy_Failures(t *testing.T) {
 		bundleID := bundle123
 		userEmail := userEmail
 
-		var previewTeams []models.PreviewTeam
+		var previewTeams = make([]models.PreviewTeam, 0, 1)
 		previewTeams = append(previewTeams, models.PreviewTeam{ID: "test-team"})
 
 		currentBundle := &models.Bundle{
@@ -1875,10 +1875,10 @@ func TestPutBundlePolicy_Failures(t *testing.T) {
 			},
 		}
 
-		var states []application.State
+		var states = make([]application.State, 0, 1)
 		states = append(states, application.Draft)
 
-		var transitions []application.Transition
+		var transitions = make([]application.Transition, 0, 1)
 		transitions = append(transitions, application.Transition{
 			Label:               "DRAFT",
 			TargetState:         application.Draft,
@@ -1982,10 +1982,10 @@ func TestPutBundle_Fails(t *testing.T) {
 			},
 		}
 
-		var states []application.State
+		var states = make([]application.State, 0, 1)
 		states = append(states, application.Draft)
 
-		var transitions []application.Transition
+		var transitions = make([]application.Transition, 0, 1)
 		transitions = append(transitions, application.Transition{
 			Label:               "DRAFT",
 			TargetState:         application.Draft,
@@ -2011,6 +2011,103 @@ func TestPutBundle_Fails(t *testing.T) {
 
 			Convey("Then the bundle should not be updated", func() {
 				So(err, ShouldEqual, errors.New("bundle with the same title already exists"))
+				So(result, ShouldBeNil)
+				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 0)
+				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 0)
+			})
+		})
+	})
+}
+
+func TestApproveBundle_Failure(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI with mocked dependencies", t, func() {
+		ctx := context.Background()
+		bundleID := bundle123
+		userEmail := userEmail
+
+		currentBundle := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateInReview,
+			Title: "Bundle title",
+			ETag:  "old-etag",
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateApproved,
+			Title: "Bundle title",
+			ETag:  "new-etag",
+		}
+
+		authEntityData := &models.AuthEntityData{
+			EntityData: &permissionsAPISDK.EntityData{
+				UserID: userEmail,
+			},
+			Headers: datasetAPISDK.Headers{
+				AccessToken: "test-token",
+			},
+		}
+
+		var states = make([]application.State, 0, 1)
+		states = append(states, application.Draft)
+
+		var transitions = make([]application.Transition, 0, 1)
+		transitions = append(transitions, application.Transition{
+			Label:               "APPROVED",
+			TargetState:         application.Approved,
+			AllowedSourceStates: []string{"IN_REVIEW"},
+		})
+
+		version := datasetAPIModels.Version{
+
+			ID:        "valid-version-1",
+			Version:   1,
+			DatasetID: "dataset-id-1",
+			Edition:   "edition-id-1",
+			State:     "associated",
+		}
+
+		contentItems := []models.ContentItem{
+			{
+				ID:       "valid-content-item",
+				BundleID: bundle123,
+				Metadata: models.Metadata{
+					DatasetID: "dataset-id-1",
+					EditionID: "edition-id-1",
+					VersionID: 1,
+				},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return currentBundle, nil
+			},
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) {
+				return false, nil
+			},
+			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+				return &contentItems, nil
+			},
+		}
+
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+				return version, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+			StateMachine:     application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+		}
+
+		Convey("When PutBundle is called but the content items are not approved", func() {
+			result, err := stateMachine.PutBundle(ctx, bundleID, bundleUpdate, authEntityData, currentBundle.ETag)
+
+			Convey("Then the bundle should not be updated", func() {
+				So(err, ShouldEqual, errors.New("version state expected to be APPROVED when transitioning bundle to APPROVED"))
 				So(result, ShouldBeNil)
 				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 0)
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 0)
