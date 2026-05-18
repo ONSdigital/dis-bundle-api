@@ -429,9 +429,6 @@ func (s *StateMachineBundleAPI) PutBundle(ctx context.Context, bundleID string, 
 		}
 	}
 
-	// Create policies for any preview teams added in the update.
-	// NOTE: This does not currently handle the case where existing preview teams are removed.
-	// If a preview team is removed from the bundle, their policies will still exist.
 	if err := s.CreateBundlePolicies(ctx, authEntityData.Headers.AccessToken, bundleUpdate.PreviewTeams, models.RoleDatasetsPreviewer); err != nil {
 		log.Error(ctx, "failed to create bundle policies", err, logData)
 		return nil, errs.ErrBundlePolicyFailedToCreate
@@ -585,11 +582,10 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 	}
 
 	if state == models.BundleStateApproved.String() {
-		contentItem.State = models.CastContentItemStateToState(models.BundleStateApproved.String())
+		contentItem.State = new(models.StateApproved)
 	}
-
 	if state == models.BundleStatePublished.String() {
-		contentItem.State = models.CastContentItemStateToState(models.BundleStatePublished.String())
+		contentItem.State = new(models.StatePublished)
 	}
 
 	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
@@ -662,9 +658,9 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	logData["slack_fields"] = publishLogFields
 
 	log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-	_, err = smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-	if err != nil {
-		log.Error(ctx, "failed to send slack notification: Bundle publish completed", err, logData)
+	_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+	if alarmErr != nil {
+		log.Error(ctx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
 	}
 
 	identityType := log.USER

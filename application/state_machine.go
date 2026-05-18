@@ -14,7 +14,6 @@ type StateMachine struct {
 	states           map[string]State
 	transitions      map[string][]string
 	datastore        store.Datastore
-	ctx              context.Context
 	datasetAPIClient datasetAPISDK.Clienter
 }
 
@@ -48,7 +47,6 @@ func NewStateMachine(ctx context.Context, states []State, transitions []Transiti
 		states:           statesMap,
 		transitions:      transitionsMap,
 		datastore:        datastore,
-		ctx:              ctx,
 		datasetAPIClient: datasetAPIClient,
 	}
 
