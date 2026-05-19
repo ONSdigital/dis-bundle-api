@@ -546,39 +546,50 @@ func removeConditionValuesForBundlePreviewTeam(values []string, toRemove ...stri
 	return values
 }
 
-func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state, bundleTitle string, errCh chan error) {
+func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state, bundleTitle string, errCh chan error) {
 	defer wg.Done()
 
 	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state)); err != nil {
 		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
-		previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
+		if state == string(models.BundleStatePublished) {
+			previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
 
-		alarmFields := []slack.Field{
-			{Title: "Bundle ID", Value: contentItem.BundleID},
-			{Title: "Bundle Title", Value: bundleTitle},
-			{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
-			{Title: "Edition", Value: contentItem.Metadata.EditionID},
-			{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
-			{Title: "Preview Link", Value: previewURL},
+			alarmFields := []slack.Field{
+				{Title: "Bundle ID", Value: contentItem.BundleID},
+				{Title: "Bundle Title", Value: bundleTitle},
+				{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
+				{Title: "Edition", Value: contentItem.Metadata.EditionID},
+				{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
+				{Title: "Preview Link", Value: previewURL},
+			}
+
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
+			if alarmErr != nil {
+				log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+			}
+
+			log.Info(ctx, "sending slack alarm for content item failure", log.Data{
+				"bundle-id":       contentItem.BundleID,
+				"content-item-id": contentItem.ID,
+				"alarm_fields":    alarmFields,
+			})
 		}
-
-		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
-		if alarmErr != nil {
-			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
-		}
-
-		log.Info(ctx, "sending slack alarm for content item failure", log.Data{
-			"bundle-id":       contentItem.BundleID,
-			"content-item-id": contentItem.ID,
-			"alarm_fields":    alarmFields,
-		})
 		errCh <- err
 		return
 	}
 
-	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, state); err != nil {
+	err := UpdateContentItemCreateEvent(ctx, smBundle, authEntityData, contentItem, state)
+	if err != nil {
 		errCh <- err
 		return
+	}
+
+	ch <- contentItem.BundleID
+}
+
+func UpdateContentItemCreateEvent(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, state string) error {
+	if err := smBundle.Datastore.UpdateContentItemState(ctx, contentItem.ID, state); err != nil {
+		return err
 	}
 
 	if state == models.BundleStateApproved.String() {
@@ -590,11 +601,9 @@ func UpdateContentItemsForupdate(ctx context.Context, smBundle StateMachineBundl
 
 	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, nil, contentItem); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Data{"bundle_id": contentItem.BundleID, "content_item_id": contentItem.ID})
-		errCh <- err
-		return
+		return err
 	}
-
-	ch <- contentItem.BundleID
+	return nil
 }
 
 func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
@@ -628,7 +637,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStatePublished.String(), bundle.Title, errCh)
+		go PublishContentItems(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStatePublished.String(), bundle.Title, errCh)
 	}
 
 	wg.Wait()
@@ -717,22 +726,13 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		return nil, errs.ErrVersionStateNotApproved
 	}
 
-	var wg sync.WaitGroup
-	ch := make(chan string, len(*contents))
-	errCh := make(chan error, len(*contents))
-
 	for index := range *contents {
 		contentItem := &(*contents)[index]
-		wg.Add(1)
-		//nolint:errcheck // errors are returned in an error channel
-		go UpdateContentItemsForupdate(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStateApproved.String(), bundle.Title, errCh)
-	}
-
-	wg.Wait()
-
-	close(errCh)
-	for err := range errCh {
-		log.Error(ctx, "Something went wrong in processing the content items", err, logData)
+		err := UpdateContentItemCreateEvent(ctx, smBundle, authEntityData, contentItem, models.BundleStateApproved.String())
+		if err != nil {
+			log.Error(ctx, "Something went wrong in processing the content items", err, logData)
+			return nil, err
+		}
 	}
 
 	bundle.State = models.BundleStateApproved
