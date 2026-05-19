@@ -551,29 +551,29 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 
 	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state)); err != nil {
 		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
-		if state == string(models.BundleStatePublished) {
-			previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
 
-			alarmFields := []slack.Field{
-				{Title: "Bundle ID", Value: contentItem.BundleID},
-				{Title: "Bundle Title", Value: bundleTitle},
-				{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
-				{Title: "Edition", Value: contentItem.Metadata.EditionID},
-				{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
-				{Title: "Preview Link", Value: previewURL},
-			}
+		previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
 
-			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
-			if alarmErr != nil {
-				log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
-			}
-
-			log.Info(ctx, "sending slack alarm for content item failure", log.Data{
-				"bundle-id":       contentItem.BundleID,
-				"content-item-id": contentItem.ID,
-				"alarm_fields":    alarmFields,
-			})
+		alarmFields := []slack.Field{
+			{Title: "Bundle ID", Value: contentItem.BundleID},
+			{Title: "Bundle Title", Value: bundleTitle},
+			{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
+			{Title: "Edition", Value: contentItem.Metadata.EditionID},
+			{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
+			{Title: "Preview Link", Value: previewURL},
 		}
+
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
+		if alarmErr != nil {
+			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+		}
+
+		log.Info(ctx, "sending slack alarm for content item failure", log.Data{
+			"bundle-id":       contentItem.BundleID,
+			"content-item-id": contentItem.ID,
+			"alarm_fields":    alarmFields,
+		})
+
 		errCh <- err
 		return
 	}
