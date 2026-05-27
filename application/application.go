@@ -643,7 +643,9 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	wg.Wait()
 
 	close(errCh)
+	var contentItemErr error
 	for err := range errCh {
+		contentItemErr = err
 		log.Error(ctx, "something went wrong when processing content items", err, logData)
 	}
 
@@ -666,10 +668,18 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	)
 	logData["slack_fields"] = publishLogFields
 
-	log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-	_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-	if alarmErr != nil {
-		log.Error(ctx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
+	if contentItemErr != nil {
+		log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
+		_, err = smBundle.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
+		if err != nil {
+			log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
+		}
+	} else {
+		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
+		_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
+		if alarmErr != nil {
+			log.Error(ctx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
+		}
 	}
 
 	identityType := log.USER

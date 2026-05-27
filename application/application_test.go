@@ -1810,10 +1810,13 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 					Timestamp: "example-timestamp",
 				}, nil
 			},
-			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
-				return &slack.MessageRef{}, nil
-			},
 			SendAlarmFunc: func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error) {
+				return &slack.MessageRef{
+					ChannelID: "example-channel",
+					Timestamp: "example-timestamp",
+				}, nil
+			},
+			UpdatePublishLogAsAlarmFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 				return &slack.MessageRef{
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
@@ -1837,7 +1840,7 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 1)
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
-				So(len(mockSlackClient.UpdatePublishLogCalls()), ShouldEqual, 1)
+				So(len(mockSlackClient.UpdatePublishLogAsAlarmCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, 2)
 			})
 		})
