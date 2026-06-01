@@ -46,10 +46,6 @@ func TestPostBundleContents_Success(t *testing.T) {
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
-			},
 		}
 		newContentItemForManualBundleJSON, err := json.Marshal(newContentItemForManualBundle)
 		So(err, ShouldBeNil)
@@ -62,10 +58,6 @@ func TestPostBundleContents_Success(t *testing.T) {
 				EditionID: "edition-2",
 				Title:     "Example Content Item",
 				VersionID: 1,
-			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
 			},
 		}
 		newContentItemForScheduledBundleJSON, err := json.Marshal(newContentItemForScheduledBundle)
@@ -141,6 +133,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 						DatasetID: datasetID,
 						Edition:   editionID,
 						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
 					}, nil
 				}
 
@@ -149,6 +142,7 @@ func TestPostBundleContents_Success(t *testing.T) {
 						DatasetID: datasetID,
 						Edition:   editionID,
 						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-2/editions/edition-2/versions/1"}},
 					}, nil
 				}
 				return datasetAPIModels.Version{}, errors.New("version not found")
@@ -181,8 +175,8 @@ func TestPostBundleContents_Success(t *testing.T) {
 				So(createdContentItem.Metadata.DatasetID, ShouldEqual, "dataset-1")
 				So(createdContentItem.Metadata.EditionID, ShouldEqual, "edition-1")
 				So(createdContentItem.Metadata.VersionID, ShouldEqual, 1)
-				So(createdContentItem.Links.Edit, ShouldEqual, "/edit")
-				So(createdContentItem.Links.Preview, ShouldEqual, "/preview")
+				So(createdContentItem.Links.Edit, ShouldEqual, "/data-admin/series/dataset-1/editions/edition-1/versions/1")
+				So(createdContentItem.Links.Preview, ShouldEqual, "/topic-slug/datasets/dataset-1/editions/edition-1/versions/1")
 			})
 
 			Convey("And the correct headers should be set", func() {
@@ -217,8 +211,8 @@ func TestPostBundleContents_Success(t *testing.T) {
 				So(createdContentItem.Metadata.DatasetID, ShouldEqual, "dataset-2")
 				So(createdContentItem.Metadata.EditionID, ShouldEqual, "edition-2")
 				So(createdContentItem.Metadata.VersionID, ShouldEqual, 1)
-				So(createdContentItem.Links.Edit, ShouldEqual, "/edit")
-				So(createdContentItem.Links.Preview, ShouldEqual, "/preview")
+				So(createdContentItem.Links.Edit, ShouldEqual, "/data-admin/series/dataset-2/editions/edition-2/versions/1")
+				So(createdContentItem.Links.Preview, ShouldEqual, "/topic-slug/datasets/dataset-2/editions/edition-2/versions/1")
 			})
 
 			Convey("And the correct headers should be set", func() {
@@ -287,9 +281,6 @@ func TestPostBundleContents_InvalidBody_Failure(t *testing.T) {
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Preview: "/preview",
-			},
 		}
 		invalidContentItemJSON, err := json.Marshal(invalidContentItem)
 		So(err, ShouldBeNil)
@@ -320,11 +311,6 @@ func TestPostBundleContents_InvalidBody_Failure(t *testing.T) {
 							Description: apierrors.ErrorDescriptionMissingParameters,
 							Source:      &models.Source{Field: "/metadata/edition_id"},
 						},
-						{
-							Code:        &codeMissingParameters,
-							Description: apierrors.ErrorDescriptionMissingParameters,
-							Source:      &models.Source{Field: "/links/edit"},
-						},
 					},
 				}
 				So(errResp, ShouldResemble, expectedErrResp)
@@ -345,10 +331,6 @@ func TestPostBundleContents_NonExistentBundle_Failure(t *testing.T) {
 				EditionID: "edition-1",
 				Title:     "Example Content Item",
 				VersionID: 1,
-			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
 			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
@@ -437,10 +419,6 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 				EditionID: "edition-1",
 				Title:     "Example Content Item",
 				VersionID: 1,
-			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
 			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
@@ -606,6 +584,77 @@ func TestPostBundleContents_NonExistentDatasetEditionOrVersion_Failure(t *testin
 	})
 }
 
+func TestPostBundleContents_InvalidVersionURL(t *testing.T) {
+	t.Parallel()
+
+	Convey("Given a POST request to /bundles/{bundle-id}/contents where the WebPage URL in dataset API is invalid", t, func() {
+		newContentItem := &models.ContentItem{
+			BundleID:    "bundle-1",
+			ContentType: models.ContentTypeDataset,
+			Metadata: models.Metadata{
+				DatasetID: "dataset-1",
+				EditionID: "edition-1",
+				Title:     "Example Content Item",
+				VersionID: 1,
+			},
+		}
+		newContentItemJSON, err := json.Marshal(newContentItem)
+		So(err, ShouldBeNil)
+
+		mockedDatastore := &storetest.StorerMock{
+			CheckBundleExistsFunc: func(ctx context.Context, bundleID string) (bool, error) {
+				return true, nil
+			},
+		}
+
+		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "&*%(*&%*())"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
+			},
+		}
+
+		bundleAPI := GetBundleAPIWithMocks(store.Datastore{Backend: mockedDatastore}, &datasetAPISDKMock.ClienterMock{}, &permissionsAPISDKMock.ClienterMock{}, false)
+		bundleAPI.stateMachineBundleAPI.DatasetAPIClient = &mockDatasetAPIClient
+
+		Convey("When postBundleContents is called", func() {
+			r := httptest.NewRequest("POST", "/bundles/bundle-1/contents", bytes.NewReader(newContentItemJSON))
+			r.Header.Set("Authorization", "test-auth-token")
+			w := httptest.NewRecorder()
+
+			bundleAPI.Router.ServeHTTP(w, r)
+
+			Convey("Then it should return a 500 Internal Server Error status code", func() {
+				So(w.Code, ShouldEqual, 500)
+			})
+
+			Convey("And the response body should contain an error message", func() {
+				var errResp models.ErrorList
+				err := json.NewDecoder(w.Body).Decode(&errResp)
+				So(err, ShouldBeNil)
+
+				codeInternalError := models.CodeInternalError
+				expectedErrResp := models.ErrorList{
+					Errors: []*models.Error{
+						{
+							Code:        &codeInternalError,
+							Description: apierrors.ErrorDescriptionInternalError,
+						},
+					},
+				}
+				So(errResp, ShouldResemble, expectedErrResp)
+			})
+		})
+	})
+}
+
 func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.T) {
 	t.Parallel()
 
@@ -618,10 +667,6 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 				EditionID: "edition-1",
 				Title:     "Example Content Item",
 				VersionID: 1,
-			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
 			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
@@ -641,7 +686,24 @@ func TestPostBundleContents_ExistingDatasetEditionAndVersion_Failure(t *testing.
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				return datasetAPIModels.Version{}, nil
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
+					}, nil
+				}
+
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "2" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   2,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/2"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
 			},
 		}
 
@@ -725,10 +787,6 @@ func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
-			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
 		So(err, ShouldBeNil)
@@ -747,7 +805,15 @@ func TestPostBundleContents_CreateContentItem_Failure(t *testing.T) {
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				return datasetAPIModels.Version{}, nil
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
 			},
 		}
 
@@ -797,10 +863,6 @@ func TestPostBundleContents_ParseJWT_Failure(t *testing.T) {
 				EditionID: "edition-1",
 				Title:     "Example Content Item",
 				VersionID: 1,
-			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
 			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
@@ -865,10 +927,6 @@ func TestPostBundleContents_EventCreation_Failure(t *testing.T) {
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
-			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
 		So(err, ShouldBeNil)
@@ -896,7 +954,15 @@ func TestPostBundleContents_EventCreation_Failure(t *testing.T) {
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				return datasetAPIModels.Version{}, nil
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
 			},
 		}
 
@@ -983,10 +1049,6 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
-			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
 		So(err, ShouldBeNil)
@@ -1011,7 +1073,15 @@ func TestPostBundleContents_UpdateBundleETag_Failure(t *testing.T) {
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				return datasetAPIModels.Version{}, nil
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
 			},
 		}
 
@@ -1060,10 +1130,6 @@ func TestPostBundleContents_UpdateDatasetVersionReleaseDate_Failure(t *testing.T
 				Title:     "Example Content Item",
 				VersionID: 1,
 			},
-			Links: models.Links{
-				Edit:    "/edit",
-				Preview: "/preview",
-			},
 		}
 		newContentItemJSON, err := json.Marshal(newContentItem)
 		So(err, ShouldBeNil)
@@ -1093,7 +1159,15 @@ func TestPostBundleContents_UpdateDatasetVersionReleaseDate_Failure(t *testing.T
 
 		mockDatasetAPIClient := datasetAPISDKMock.ClienterMock{
 			GetVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string) (datasetAPIModels.Version, error) {
-				return datasetAPIModels.Version{}, nil
+				if datasetID == "dataset-1" && editionID == "edition-1" && versionID == "1" {
+					return datasetAPIModels.Version{
+						DatasetID: datasetID,
+						Edition:   editionID,
+						Version:   1,
+						Links:     &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset-1/editions/edition-1/versions/1"}},
+					}, nil
+				}
+				return datasetAPIModels.Version{}, errors.New("version not found")
 			},
 			PutVersionFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID string, versionID string, version datasetAPIModels.Version) (datasetAPIModels.Version, error) {
 				return datasetAPIModels.Version{}, errors.New("failed to update dataset version release date")

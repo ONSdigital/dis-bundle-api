@@ -611,7 +611,6 @@ definitions:
     required:
       - content_type
       - metadata
-      - links
     properties:
       bundle_id:
         description: The ID of the bundle the content item is associated with.
@@ -666,22 +665,20 @@ definitions:
       links:
         description: Navigational links for onward actions related to the content item.
         type: object
-        required:
-          - edit
-          - preview
+        readOnly: true
         properties:
           edit:
             description: "The URL to the admin page to make changes to the content item."
             type: string
             format: url
             minLength: 1
-            example: "https://publishing.ons.gov.uk/data-admin/edit/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
+            example: "https://publishing.ons.gov.uk/data-admin/series/cpih/editions/time-series/versions/1"
           preview:
-            description: "The URL to the admin page to make changes to the content item."
+            description: "The URL to the preview page for the content item."
             type: string
             format: url
             minLength: 1
-            example: "https://publishing.ons.gov.uk/data-admin/preview/datasets/cpih/editions/time-series/versions/1" # TODO: replace with actual URL
+            example: "https://publishing.ons.gov.uk/inflationandpriceindices/datasets/cpih/editions/time-series/versions/1"
   ErrorList:
     description: "A list of errors that occurred."
     type: object

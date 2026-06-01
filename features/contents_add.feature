@@ -61,10 +61,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                     "edition_id": "edition2",
                     "version_id": 2,
                     "title": "Test Dataset 2"
-                },
-                "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
                 }
             }
         ]
@@ -77,14 +73,24 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 "version": 1,
                 "dataset_id": "dataset1",
                 "edition": "edition1",
-                "state": "approved" 
+                "state": "approved",
+                "links": {
+                    "web_page": {
+                        "href": "http://publishing.ons.gov.uk/topic-slug/datasets/dataset1/editions/edition1/versions/1"
+                    }
+                }
             },
             {
                 "id": "version-2",
                 "version": 2,
                 "dataset_id": "dataset2",
                 "edition": "edition2",
-                "state": "approved" 
+                "state": "approved",
+                "links": {
+                    "web_page": {
+                        "href": "http://publishing.ons.gov.uk/topic-slug/datasets/dataset2/editions/edition2/versions/2"
+                    }
+                }
             }
         ]
         """
@@ -102,7 +108,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         }
     ]
     """
-        
+
     Scenario: POST /bundles/{id}/contents successfully for SCHEDULED bundle
         Given I am an admin user
         When I POST "/bundles/bundle-1/contents"
@@ -114,10 +120,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -139,8 +141,8 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 },
                 "id": "new-uuid",
                 "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
+                    "edit": "/data-admin/series/dataset1/editions/edition1/versions/1",
+                    "preview": "/topic-slug/datasets/dataset1/editions/edition1/versions/1"
                 }
             }
             """
@@ -160,10 +162,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -185,8 +183,8 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                 },
                 "id": "new-uuid",
                 "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
+                    "edit": "/data-admin/series/dataset1/editions/edition1/versions/1",
+                    "preview": "/topic-slug/datasets/dataset1/editions/edition1/versions/1"
                 }
             }
             """
@@ -195,7 +193,7 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
         And the number of events with action "UPDATE" and datatype "bundle" should be 1
         And the release date for the dataset version with id "version-1" should be ""
     
-    Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type and missing edit link)
+    Scenario: POST /bundles/{id}/contents with an invalid body (invalid content_type)
         Given I am an admin user
         When I POST "/bundles/bundle-1/contents"
             """
@@ -206,9 +204,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -221,13 +216,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "description": "Unable to process request due to a malformed or invalid request body or query parameter.",
                         "source": {
                             "field": "/content_type"
-                        }
-                    },
-                    {
-                        "code": "MissingParameters",
-                        "description": "Unable to process request due to missing required parameters in the request body or query parameters.",
-                        "source": {
-                            "field": "/links/edit"
                         }
                     }
                 ]
@@ -245,10 +233,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -275,10 +259,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -308,10 +288,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition-not-found",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -341,10 +317,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 404,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -374,10 +346,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition2",
                         "version_id": 2,
                         "title": "Test Dataset 2"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -404,10 +372,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                         "edition_id": "edition1",
                         "version_id": 1,
                         "title": "Test Dataset"
-                    },
-                    "links": {
-                        "edit": "edit/link",
-                        "preview": "preview/link"
                     }
                 }
             """
@@ -425,10 +389,6 @@ Feature: Add a dataset item to a bundle - POST /bundles/{id}/contents
                     "edition_id": "edition1",
                     "version_id": 1,
                     "title": "Test Dataset"
-                },
-                "links": {
-                    "edit": "edit/link",
-                    "preview": "preview/link"
                 }
             }
             """

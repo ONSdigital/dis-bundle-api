@@ -117,13 +117,6 @@ func ValidateContentItem(contentItem *ContentItem) []*Error {
 		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeInvalidParameters, Description: errs.ErrorDescriptionMalformedRequest, Source: &Source{Field: "/state"}})
 	}
 
-	if contentItem.Links.Edit == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/links/edit"}})
-	}
-	if contentItem.Links.Preview == "" {
-		invalidOrMissingFields = append(invalidOrMissingFields, &Error{Code: &codeMissingParameters, Description: errs.ErrorDescriptionMissingParameters, Source: &Source{Field: "/links/preview"}})
-	}
-
 	if len(invalidOrMissingFields) > 0 {
 		return invalidOrMissingFields
 	}

@@ -36,7 +36,7 @@ const (
 )
 
 var mockDatasetVersions = []*datasetAPIModels.Version{
-	{ID: "dataset1-edition1-1", DatasetID: "dataset1", Edition: "edition1", Version: 1, State: "APPROVED"},
+	{ID: "dataset1-edition1-1", DatasetID: "dataset1", Edition: "edition1", Version: 1, State: "APPROVED", Links: &datasetAPIModels.VersionLinks{WebPage: &datasetAPIModels.LinkObject{HRef: "http://publishing.ons.gov.uk/topic-slug/datasets/dataset1/editions/edition1/versions/1"}}},
 	{ID: "test-static-dataset-1-time-series-1", DatasetID: "test-static-dataset-1", Edition: "time-series", Version: 1, State: "APPROVED"},
 	{ID: "test-static-dataset-2-2024-1", DatasetID: "test-static-dataset-2", Edition: "2024", Version: 1, State: "APPROVED"},
 	{ID: "test-static-dataset-2-2026-1", DatasetID: "test-static-dataset-2", Edition: "2026", Version: 1, State: "APPROVED"},

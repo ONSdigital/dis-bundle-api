@@ -250,14 +250,6 @@ func TestValidateContentItem_Failure(t *testing.T) {
 				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
 				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
 				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
-
-				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
-				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
-				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
-
-				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
-				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
-				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
 			})
 		})
 
@@ -295,14 +287,6 @@ func TestValidateContentItem_Failure(t *testing.T) {
 				So(validationErrs[5].Source.Field, ShouldEqual, "/state")
 				So(validationErrs[5].Description, ShouldEqual, errs.ErrorDescriptionMalformedRequest)
 				So(validationErrs[5].Code, ShouldEqual, &codeInvalidParameters)
-
-				So(validationErrs[6].Source.Field, ShouldEqual, "/links/edit")
-				So(validationErrs[6].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
-				So(validationErrs[6].Code, ShouldEqual, &codeMissingParameters)
-
-				So(validationErrs[7].Source.Field, ShouldEqual, "/links/preview")
-				So(validationErrs[7].Description, ShouldEqual, errs.ErrorDescriptionMissingParameters)
-				So(validationErrs[7].Code, ShouldEqual, &codeMissingParameters)
 			})
 		})
 	})

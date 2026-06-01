@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -77,7 +79,7 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	_, err = api.stateMachineBundleAPI.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
+	version, err := api.stateMachineBundleAPI.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID))
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "dataset not found"):
@@ -124,6 +126,20 @@ func (api *BundleAPI) postBundleContents(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
+
+	versionURL, err := url.Parse(version.Links.WebPage.HRef)
+	if err != nil {
+		log.Error(ctx, "postBundleContents endpoint: failed to parse version URL", err)
+		code := models.CodeInternalError
+		errInfo := &models.Error{
+			Code:        &code,
+			Description: apierrors.ErrorDescriptionInternalError,
+		}
+		utils.HandleBundleAPIErr(w, r, http.StatusInternalServerError, errInfo)
+		return
+	}
+	contentItem.Links.Edit = fmt.Sprintf("/data-admin/series/%s/editions/%s/versions/%d", contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID)
+	contentItem.Links.Preview = versionURL.Path
 
 	exists, err := api.stateMachineBundleAPI.CheckContentItemExistsByDatasetEditionVersion(ctx, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, contentItem.Metadata.VersionID)
 	if err != nil {
