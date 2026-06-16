@@ -837,3 +837,172 @@ Feature: Update Bundles functionality - PUT /bundles/{id}/state
         Then the HTTP status code should be "500"
         And bundle "bundle-12" should have state "IN_REVIEW"
         And bundle "bundle-12" should have this etag "etag-bundle-12"
+
+    Scenario: PUT /bundles/{id}/state IN_REVIEW -> APPROVED refreshes content item metadata and links
+        Given I am an admin user
+        And I have these bundles:
+            """
+            [
+                {
+                    "id": "bundle-20",
+                    "bundle_type": "MANUAL",
+                    "created_by": {"email": "publisher@ons.gov.uk"},
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {"email": "publisher@ons.gov.uk"},
+                    "preview_teams": [],
+                    "state": "IN_REVIEW",
+                    "title": "bundle-20",
+                    "updated_at": "2025-04-05T13:40:00Z",
+                    "managed_by": "WAGTAIL"
+                }
+            ]
+            """
+        And I have these content items:
+            """
+            [
+                {
+                    "id": "content-item-30",
+                    "bundle_id": "bundle-20",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset20",
+                        "edition_id": "edition20",
+                        "version_id": 1,
+                        "title": "Refresh Test"
+                    },
+                    "links": {
+                        "edit": "stale/edit",
+                        "preview": "stale/preview"
+                    }
+                }
+            ]
+            """
+        And I have these dataset versions:
+            """
+            [
+                {
+                    "id": "version-20",
+                    "version": 1,
+                    "dataset_id": "dataset20",
+                    "edition": "edition20",
+                    "state": "approved",
+                    "links": {
+                        "web_page": {
+                            "href": "http://publishing.ons.gov.uk/topic-slug/datasets/dataset20/editions/edition20/versions/1"
+                        }
+                    }
+                }
+            ]
+            """
+        And I set the "If-Match" header to "etag-bundle-20"
+        When I PUT "/bundles/bundle-20/state"
+            """
+                {
+                    "state": "APPROVED"
+                }
+            """
+        Then the HTTP status code should be "200"
+        And bundle "bundle-20" should have state "APPROVED"
+        And these content items should match:
+            """
+            [
+                {
+                    "id": "content-item-30",
+                    "metadata": {
+                        "edition_id": "edition20"
+                    },
+                    "links": {
+                        "edit": "/data-admin/series/dataset20/editions/edition20/versions/1",
+                        "preview": "/topic-slug/datasets/dataset20/editions/edition20/versions/1"
+                    }
+                }
+            ]
+            """
+
+ Scenario: PUT /bundles/{id}/state IN_REVIEW -> APPROVED corrects a stale edition id from dataset-api
+        Given I am an admin user
+        And I have these bundles:
+            """
+            [
+                {
+                    "id": "bundle-21",
+                    "bundle_type": "MANUAL",
+                    "created_by": {"email": "publisher@ons.gov.uk"},
+                    "created_at": "2025-04-05T13:40:00Z",
+                    "last_updated_by": {"email": "publisher@ons.gov.uk"},
+                    "preview_teams": [],
+                    "state": "IN_REVIEW",
+                    "title": "bundle-21",
+                    "updated_at": "2025-04-05T13:40:00Z",
+                    "managed_by": "WAGTAIL"
+                }
+            ]
+            """
+        And I have these content items:
+            """
+            [
+                {
+                    "id": "content-item-31",
+                    "bundle_id": "bundle-21",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "dataset21",
+                        "edition_id": "old-edition",
+                        "version_id": 1,
+                        "title": "Rename Test"
+                    },
+                    "links": {
+                        "edit": "stale/edit",
+                        "preview": "stale/preview"
+                    }
+                }
+            ]
+            """
+        And I have these dataset versions:
+            """
+            [
+                {
+                    "id": "version-21",
+                    "version": 1,
+                    "dataset_id": "dataset21",
+                    "edition": "new-edition",
+                    "previous_edition_id": ["old-edition"],
+                    "state": "approved",
+                    "links": {
+                        "dataset": {
+                            "id": "dataset21"
+                        },
+                        "edition": {
+                            "id": "new-edition"
+                        },
+                        "web_page": {
+                            "href": "http://publishing.ons.gov.uk/topic-slug/datasets/dataset21/editions/new-edition/versions/1"
+                        }
+                    }
+                }
+            ]
+            """
+        And I set the "If-Match" header to "etag-bundle-21"
+        When I PUT "/bundles/bundle-21/state"
+            """
+                {
+                    "state": "APPROVED"
+                }
+            """
+        Then the HTTP status code should be "200"
+        And bundle "bundle-21" should have state "APPROVED"
+        And these content items should match:
+            """
+            [
+                {
+                    "id": "content-item-31",
+                    "metadata": {
+                        "edition_id": "new-edition"
+                    },
+                    "links": {
+                        "edit": "/data-admin/series/dataset21/editions/new-edition/versions/1",
+                        "preview": "/topic-slug/datasets/dataset21/editions/new-edition/versions/1"
+                    }
+                }
+            ]
+            """

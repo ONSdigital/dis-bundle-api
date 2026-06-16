@@ -59,6 +59,7 @@ func (c *BundleComponent) RegisterSteps(ctx *godog.ScenarioContext) {
 
 	// Content Item assertions
 	ctx.Step(`^I should receive the following ContentItem JSON response:$`, c.iShouldReceiveTheFollowingContentItemJSONResponse)
+	ctx.Step(`^these content items should match:$`, c.contentItemsShouldMatch)
 
 	// Dataset version assertions
 	ctx.Step(`^the release date for the dataset version with id "([^"]*)" should be "([^"]*)"$`, c.theReleaseDateForDatasetVersionShouldBe)
@@ -694,4 +695,39 @@ func compareSlices[T any](expectedItems, actualItems []T, matches Predicate[T], 
 	}
 
 	return errs
+}
+
+func (c *BundleComponent) contentItemsShouldMatch(expectedJSON *godog.DocString) error {
+	var expected []models.ContentItem
+	if err := json.Unmarshal([]byte(expectedJSON.Content), &expected); err != nil {
+		return fmt.Errorf("failed to unmarshal expected JSON: %w", err)
+	}
+
+	ctx := context.Background()
+	contentsCollection := c.MongoClient.ActualCollectionName(config.BundleContentsCollection)
+
+	var actual []models.ContentItem
+	if _, err := c.MongoClient.Connection.Collection(contentsCollection).Find(ctx, bson.M{}, &actual); err != nil {
+		return err
+	}
+
+	idSelector := func(ci models.ContentItem) string { return ci.ID }
+	check := func(actual, expected models.ContentItem) string {
+		if actual.Metadata.EditionID != expected.Metadata.EditionID {
+			return fmt.Sprintf("content item %s edition_id mismatch: expected %s got %s", expected.ID, expected.Metadata.EditionID, actual.Metadata.EditionID)
+		}
+		if actual.Links.Edit != expected.Links.Edit {
+			return fmt.Sprintf("content item %s edit link mismatch: expected %s got %s", expected.ID, expected.Links.Edit, actual.Links.Edit)
+		}
+		if actual.Links.Preview != expected.Links.Preview {
+			return fmt.Sprintf("content item %s preview link mismatch: expected %s got %s", expected.ID, expected.Links.Preview, actual.Links.Preview)
+		}
+		return ""
+	}
+
+	errs := compareSlices(expected, actual, check, idSelector)
+	if len(errs) > 0 {
+		return fmt.Errorf("content items do not match:\n%s", strings.Join(errs, "\n"))
+	}
+	return nil
 }

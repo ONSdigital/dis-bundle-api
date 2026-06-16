@@ -182,6 +182,9 @@ func TestTransition_Success(t *testing.T) {
 		mockedDatastore.UpdateContentItemStateFunc = func(ctx context.Context, contentItemID, state string) error {
 			return nil
 		}
+		mockedDatastore.UpdateContentItemMetadataAndLinksFunc = func(ctx context.Context, contentItemID, datasetID, editionID, editLink, previewLink string) error {
+			return nil
+		}
 
 		mockDatasetAPIClient := &datasetAPISDKMock.ClienterMock{
 			PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {

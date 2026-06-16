@@ -48,6 +48,7 @@ type dataMongoDB interface {
 	CheckBundleExistsByTitleUpdate(ctx context.Context, title, excludeID string) (bool, error)
 	GetContentItemsByBundleID(ctx context.Context, bundleID string) ([]*models.ContentItem, error)
 	UpdateContentItemDatasetInfo(ctx context.Context, contentItemID, title, state string) error
+	UpdateContentItemMetadataAndLinks(ctx context.Context, contentItemID, datasetID, editionID, editLink, previewLink string) error
 
 	// Other
 	Checker(ctx context.Context, state *healthcheck.CheckState) error
@@ -154,4 +155,8 @@ func (ds *Datastore) ListBundleContentIDsWithoutLimit(ctx context.Context, bundl
 
 func (ds *Datastore) GetBundlesByPreviewTeamID(ctx context.Context, teamID string) ([]*models.Bundle, error) {
 	return ds.Backend.GetBundlesByPreviewTeamID(ctx, teamID)
+}
+
+func (ds *Datastore) UpdateContentItemMetadataAndLinks(ctx context.Context, contentItemID, datasetID, editionID, editLink, previewLink string) error {
+	return ds.Backend.UpdateContentItemMetadataAndLinks(ctx, contentItemID, datasetID, editionID, editLink, previewLink)
 }

@@ -234,6 +234,16 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 				}
 			}
 
+			for _, version := range c.DatasetAPIVersions {
+				if version.DatasetID == datasetID && version.Version == versionVersion {
+					for _, prev := range version.PreviousEditionId {
+						if prev == editionID {
+							return *version, nil
+						}
+					}
+				}
+			}
+
 			return datasetAPIModels.Version{}, errors.New("version not found")
 		},
 		PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {

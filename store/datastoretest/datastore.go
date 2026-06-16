@@ -98,6 +98,9 @@ var _ store.Storer = &StorerMock{}
 //			UpdateContentItemDatasetInfoFunc: func(ctx context.Context, contentItemID string, title string, state string) error {
 //				panic("mock out the UpdateContentItemDatasetInfo method")
 //			},
+//			UpdateContentItemMetadataAndLinksFunc: func(ctx context.Context, contentItemID string, datasetID string, editionID string, editLink string, previewLink string) error {
+//				panic("mock out the UpdateContentItemMetadataAndLinks method")
+//			},
 //			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID string, state string) error {
 //				panic("mock out the UpdateContentItemState method")
 //			},
@@ -182,6 +185,9 @@ type StorerMock struct {
 
 	// UpdateContentItemDatasetInfoFunc mocks the UpdateContentItemDatasetInfo method.
 	UpdateContentItemDatasetInfoFunc func(ctx context.Context, contentItemID string, title string, state string) error
+
+	// UpdateContentItemMetadataAndLinksFunc mocks the UpdateContentItemMetadataAndLinks method.
+	UpdateContentItemMetadataAndLinksFunc func(ctx context.Context, contentItemID string, datasetID string, editionID string, editLink string, previewLink string) error
 
 	// UpdateContentItemStateFunc mocks the UpdateContentItemState method.
 	UpdateContentItemStateFunc func(ctx context.Context, contentItemID string, state string) error
@@ -393,6 +399,21 @@ type StorerMock struct {
 			// State is the state argument value.
 			State string
 		}
+		// UpdateContentItemMetadataAndLinks holds details about calls to the UpdateContentItemMetadataAndLinks method.
+		UpdateContentItemMetadataAndLinks []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ContentItemID is the contentItemID argument value.
+			ContentItemID string
+			// DatasetID is the datasetID argument value.
+			DatasetID string
+			// EditionID is the editionID argument value.
+			EditionID string
+			// EditLink is the editLink argument value.
+			EditLink string
+			// PreviewLink is the previewLink argument value.
+			PreviewLink string
+		}
 		// UpdateContentItemState holds details about calls to the UpdateContentItemState method.
 		UpdateContentItemState []struct {
 			// Ctx is the ctx argument value.
@@ -428,6 +449,7 @@ type StorerMock struct {
 	lockUpdateBundle                                  sync.RWMutex
 	lockUpdateBundleETag                              sync.RWMutex
 	lockUpdateContentItemDatasetInfo                  sync.RWMutex
+	lockUpdateContentItemMetadataAndLinks             sync.RWMutex
 	lockUpdateContentItemState                        sync.RWMutex
 }
 
@@ -1388,6 +1410,58 @@ func (mock *StorerMock) UpdateContentItemDatasetInfoCalls() []struct {
 	mock.lockUpdateContentItemDatasetInfo.RLock()
 	calls = mock.calls.UpdateContentItemDatasetInfo
 	mock.lockUpdateContentItemDatasetInfo.RUnlock()
+	return calls
+}
+
+// UpdateContentItemMetadataAndLinks calls UpdateContentItemMetadataAndLinksFunc.
+func (mock *StorerMock) UpdateContentItemMetadataAndLinks(ctx context.Context, contentItemID string, datasetID string, editionID string, editLink string, previewLink string) error {
+	if mock.UpdateContentItemMetadataAndLinksFunc == nil {
+		panic("StorerMock.UpdateContentItemMetadataAndLinksFunc: method is nil but Storer.UpdateContentItemMetadataAndLinks was just called")
+	}
+	callInfo := struct {
+		Ctx           context.Context
+		ContentItemID string
+		DatasetID     string
+		EditionID     string
+		EditLink      string
+		PreviewLink   string
+	}{
+		Ctx:           ctx,
+		ContentItemID: contentItemID,
+		DatasetID:     datasetID,
+		EditionID:     editionID,
+		EditLink:      editLink,
+		PreviewLink:   previewLink,
+	}
+	mock.lockUpdateContentItemMetadataAndLinks.Lock()
+	mock.calls.UpdateContentItemMetadataAndLinks = append(mock.calls.UpdateContentItemMetadataAndLinks, callInfo)
+	mock.lockUpdateContentItemMetadataAndLinks.Unlock()
+	return mock.UpdateContentItemMetadataAndLinksFunc(ctx, contentItemID, datasetID, editionID, editLink, previewLink)
+}
+
+// UpdateContentItemMetadataAndLinksCalls gets all the calls that were made to UpdateContentItemMetadataAndLinks.
+// Check the length with:
+//
+//	len(mockedStorer.UpdateContentItemMetadataAndLinksCalls())
+func (mock *StorerMock) UpdateContentItemMetadataAndLinksCalls() []struct {
+	Ctx           context.Context
+	ContentItemID string
+	DatasetID     string
+	EditionID     string
+	EditLink      string
+	PreviewLink   string
+} {
+	var calls []struct {
+		Ctx           context.Context
+		ContentItemID string
+		DatasetID     string
+		EditionID     string
+		EditLink      string
+		PreviewLink   string
+	}
+	mock.lockUpdateContentItemMetadataAndLinks.RLock()
+	calls = mock.calls.UpdateContentItemMetadataAndLinks
+	mock.lockUpdateContentItemMetadataAndLinks.RUnlock()
 	return calls
 }
 

@@ -2285,3 +2285,83 @@ func TestUpdateDatasetVersionReleaseDate(t *testing.T) {
 		})
 	})
 }
+
+func TestApproveBundle_RefreshesContentItemMetadataAndLinks(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI approving a bundle whose edition was renamed in dataset-api", t, func() {
+		ctx := context.Background()
+		bundleID := bundle123
+
+		currentBundle := &models.Bundle{
+			ID: bundleID, State: models.BundleStateInReview, Title: "Bundle title", ETag: "old-etag",
+		}
+		bundleUpdate := &models.Bundle{
+			ID: bundleID, State: models.BundleStateApproved, Title: "Bundle title", ETag: "new-etag",
+		}
+
+		authData := &models.AuthEntityData{
+			EntityData: &permissionsAPISDK.EntityData{UserID: userEmail},
+			Headers:    datasetAPISDK.Headers{AccessToken: "test-token"},
+		}
+
+		states := []application.State{application.Approved}
+		transitions := []application.Transition{{
+			Label: "APPROVED", TargetState: application.Approved, AllowedSourceStates: []string{"IN_REVIEW"},
+		}}
+
+		contentItems := []models.ContentItem{{
+			ID: "content-1", BundleID: bundleID,
+			Metadata: models.Metadata{DatasetID: "dataset-1", EditionID: "old-edition", VersionID: 1},
+			Links:    models.Links{Edit: "/old/edit", Preview: "/old/preview"},
+		}}
+
+		version := datasetAPIModels.Version{
+			ID: "v1", Version: 1, State: datasetAPIModels.ApprovedState,
+			Links: &datasetAPIModels.VersionLinks{
+				Dataset: &datasetAPIModels.LinkObject{ID: "dataset-1"},
+				Edition: &datasetAPIModels.LinkObject{ID: "new-edition"},
+				WebPage: &datasetAPIModels.LinkObject{HRef: "https://example.com/datasets/dataset-1/editions/new-edition/versions/1"},
+			},
+		}
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc:                      func(ctx context.Context, id string) (*models.Bundle, error) { return currentBundle, nil },
+			CheckBundleExistsByTitleUpdateFunc: func(ctx context.Context, title, excludeID string) (bool, error) { return false, nil },
+			GetBundleContentsForBundleFunc:     func(ctx context.Context, id string) (*[]models.ContentItem, error) { return &contentItems, nil },
+			UpdateContentItemMetadataAndLinksFunc: func(ctx context.Context, contentItemID, datasetID, editionID, editLink, previewLink string) error {
+				return nil
+			},
+			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID, state string) error { return nil },
+			UpdateBundleFunc:           func(ctx context.Context, id string, b *models.Bundle) (*models.Bundle, error) { return b, nil },
+			CreateEventFunc:            func(ctx context.Context, e *models.Event) error { return nil },
+		}
+
+		mockDatasetAPI := &datasetAPIMocks.ClienterMock{
+			GetVersionFunc: func(ctx context.Context, h datasetAPISDK.Headers, dID, eID, vID string) (datasetAPIModels.Version, error) {
+				return version, nil
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:        store.Datastore{Backend: mockedDatastore},
+			DatasetAPIClient: mockDatasetAPI,
+			StateMachine:     application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+		}
+
+		Convey("When the bundle is approved", func() {
+			result, err := stateMachine.PutBundle(ctx, bundleID, bundleUpdate, authData, currentBundle.ETag)
+
+			Convey("Then the content item's metadata and links are refreshed from dataset-api", func() {
+				So(err, ShouldBeNil)
+				So(result, ShouldNotBeNil)
+				So(result.State, ShouldEqual, models.BundleStateApproved)
+
+				calls := mockedDatastore.UpdateContentItemMetadataAndLinksCalls()
+				So(len(calls), ShouldEqual, 1)
+				So(calls[0].EditionID, ShouldEqual, "new-edition")
+				So(calls[0].DatasetID, ShouldEqual, "dataset-1")
+				So(calls[0].EditLink, ShouldEqual, "/data-admin/series/dataset-1/editions/new-edition/versions/1")
+				So(calls[0].PreviewLink, ShouldEqual, "/datasets/dataset-1/editions/new-edition/versions/1")
+			})
+		})
+	})
+}

@@ -607,3 +607,60 @@ func TestCountBundleContents(t *testing.T) {
 		})
 	})
 }
+
+func TestUpdateContentItemMetadataAndLinks_Success(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx, t)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateContentItemMetadataAndLinks is called with a valid content item ID", func() {
+			contentItem := contentsTestData[0]
+			err := mongodb.UpdateContentItemMetadataAndLinks(
+				ctx,
+				contentItem.ID,
+				"dataset1",
+				"2026-revised",
+				"/data-admin/series/dataset1/editions/2026-revised/versions/1",
+				"/census/datasets/dataset1/editions/2026-revised/versions/1",
+			)
+
+			Convey("Then it updates the metadata and links without error", func() {
+				So(err, ShouldBeNil)
+
+				updated, err := mongodb.GetContentItemByBundleIDAndContentItemID(ctx, contentItem.BundleID, contentItem.ID)
+				So(err, ShouldBeNil)
+				So(updated.Metadata.DatasetID, ShouldEqual, "dataset1")
+				So(updated.Metadata.EditionID, ShouldEqual, "2026-revised")
+				So(updated.Links.Edit, ShouldEqual, "/data-admin/series/dataset1/editions/2026-revised/versions/1")
+				So(updated.Links.Preview, ShouldEqual, "/census/datasets/dataset1/editions/2026-revised/versions/1")
+			})
+		})
+	})
+}
+
+func TestUpdateContentItemMetadataAndLinks_Failure(t *testing.T) {
+	ctx := context.Background()
+
+	Convey("Given the db connection is initialized correctly", t, func() {
+		mongodb, err := getTestMongoDB(ctx, t)
+		So(err, ShouldBeNil)
+
+		err = setupBundleContentsTestData(ctx, mongodb)
+		So(err, ShouldBeNil)
+
+		Convey("When UpdateContentItemMetadataAndLinks is called and the connection is closed", func() {
+			mongodb.Connection.Close(ctx)
+			err := mongodb.UpdateContentItemMetadataAndLinks(ctx, contentsTestData[0].ID, "d", "e", "edit", "preview")
+
+			Convey("Then it returns an error", func() {
+				So(err, ShouldNotBeNil)
+				So(err.Error(), ShouldContainSubstring, "client is disconnected")
+			})
+		})
+	})
+}

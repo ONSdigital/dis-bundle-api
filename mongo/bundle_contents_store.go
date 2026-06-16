@@ -233,3 +233,22 @@ func buildListBundleContentsQuery(bundleID string) (filter, sort bson.M) {
 	sort = bson.M{"id": -1}
 	return
 }
+
+// UpdateContentItemMetadataAndLinks updates a content item's dataset/edition metadata and edit/preview links
+func (m *Mongo) UpdateContentItemMetadataAndLinks(ctx context.Context, contentItemID, datasetID, editionID, editLink, previewLink string) error {
+	filter := bson.M{"id": contentItemID}
+
+	updateData := bson.M{
+		"$set": bson.M{
+			"metadata.dataset_id": datasetID,
+			"metadata.edition_id": editionID,
+			"links.edit":          editLink,
+			"links.preview":       previewLink,
+		},
+	}
+
+	_, err := m.Connection.Collection(m.ActualCollectionName(config.BundleContentsCollection)).
+		UpdateOne(ctx, filter, updateData)
+
+	return err
+}
