@@ -235,11 +235,15 @@ func (c *BundleComponent) DoGetDatasetAPIClient(datasetAPIURL string) datasetAPI
 			}
 
 			for _, version := range c.DatasetAPIVersions {
-				if version.DatasetID == datasetID && version.Version == versionVersion {
-					for _, prev := range version.PreviousEditionId {
-						if prev == editionID {
-							return *version, nil
-						}
+				if version.DatasetID != datasetID || version.Version != versionVersion {
+					continue
+				}
+				if version.Edition == editionID {
+					return *version, nil
+				}
+				for _, prev := range version.PreviousEditionId {
+					if prev == editionID {
+						return *version, nil
 					}
 				}
 			}

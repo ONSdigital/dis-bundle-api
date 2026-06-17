@@ -713,6 +713,9 @@ func (c *BundleComponent) contentItemsShouldMatch(expectedJSON *godog.DocString)
 
 	idSelector := func(ci models.ContentItem) string { return ci.ID }
 	check := func(actual, expected models.ContentItem) string {
+		if actual.Metadata.DatasetID != expected.Metadata.DatasetID {
+			return fmt.Sprintf("content item %s dataset_id mismatch: expected %s got %s", expected.ID, expected.Metadata.DatasetID, actual.Metadata.DatasetID)
+		}
 		if actual.Metadata.EditionID != expected.Metadata.EditionID {
 			return fmt.Sprintf("content item %s edition_id mismatch: expected %s got %s", expected.ID, expected.Metadata.EditionID, actual.Metadata.EditionID)
 		}

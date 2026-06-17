@@ -698,25 +698,54 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	return updatedBundle, nil
 }
 
-func checkAllVersionsAreApproved(ctx context.Context, smBundle StateMachineBundleAPI, contents *[]models.ContentItem, authEntityData *models.AuthEntityData) (allApproved bool, versions map[string]datasetAPIModels.Version, err error) {
-	versions = make(map[string]datasetAPIModels.Version, len(*contents))
+func checkApprovedAndRefreshContentItems(ctx context.Context, smBundle StateMachineBundleAPI, contents *[]models.ContentItem, authEntityData *models.AuthEntityData) (allApproved bool, err error) {
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		versionID := strconv.Itoa(contentItem.Metadata.VersionID)
+
 		version, err := smBundle.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
 		if err != nil {
-			return false, nil, err
+			return false, err
 		}
 
 		if version.State != datasetAPIModels.ApprovedState {
 			log.Warn(ctx, "Content item not approved", log.Data{"content-item-id": contentItem.ID, "version-state": version.State, "target-state": models.BundleStateApproved})
-			return false, nil, nil
+			return false, nil
 		}
 
-		versions[contentItem.ID] = version
+		datasetID := contentItem.Metadata.DatasetID
+		editionID := contentItem.Metadata.EditionID
+		previewLink := contentItem.Links.Preview
+
+		if version.Links != nil {
+			if version.Links.Dataset != nil && version.Links.Dataset.ID != "" {
+				datasetID = version.Links.Dataset.ID
+			}
+			if version.Links.Edition != nil && version.Links.Edition.ID != "" {
+				editionID = version.Links.Edition.ID
+			}
+			if version.Links.WebPage != nil && version.Links.WebPage.HRef != "" {
+				webPageURL, parseErr := url.Parse(version.Links.WebPage.HRef)
+				if parseErr != nil {
+					return false, parseErr
+				}
+				previewLink = webPageURL.Path
+			}
+		}
+
+		editLink := fmt.Sprintf("/data-admin/series/%s/editions/%s/versions/%d", datasetID, editionID, contentItem.Metadata.VersionID)
+
+		contentItem.Metadata.DatasetID = datasetID
+		contentItem.Metadata.EditionID = editionID
+		contentItem.Links.Edit = editLink
+		contentItem.Links.Preview = previewLink
+
+		if err := smBundle.Datastore.UpdateContentItemMetadataAndLinks(ctx, contentItem.ID, datasetID, editionID, editLink, previewLink); err != nil {
+			return false, err
+		}
 	}
 
-	return true, versions, nil
+	return true, nil
 }
 
 func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
@@ -730,7 +759,7 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		return nil, errs.ErrBundleHasNoContentItems
 	}
 
-	allItemsApproved, versions, err := checkAllVersionsAreApproved(ctx, smBundle, contents, authEntityData)
+	allItemsApproved, err := checkApprovedAndRefreshContentItems(ctx, smBundle, contents, authEntityData)
 	if err != nil {
 		return nil, err
 	}
@@ -742,14 +771,6 @@ func ApproveBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 	for index := range *contents {
 		contentItem := &(*contents)[index]
-
-		if err := refreshContentItemFromDatasetAPI(ctx, smBundle, contentItem, versions[contentItem.ID]); err != nil {
-			log.Error(ctx, "failed to refresh content item metadata and links from dataset API", err, log.Data{
-				"bundle_id":       bundle.ID,
-				"content_item_id": contentItem.ID,
-			})
-		}
-
 		if err := UpdateContentItemCreateEvent(ctx, smBundle, authEntityData, contentItem, models.BundleStateApproved.String()); err != nil {
 			log.Error(ctx, "Something went wrong in processing the content items", err, logData)
 			return nil, err
@@ -816,35 +837,4 @@ func (s *StateMachineBundleAPI) updateBundleAndCreateEvent(ctx context.Context, 
 	log.Info(ctx, "bundle event creation successful", log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 
 	return updatedBundle, nil
-}
-
-func refreshContentItemFromDatasetAPI(ctx context.Context, smBundle StateMachineBundleAPI, contentItem *models.ContentItem, version datasetAPIModels.Version) error {
-	datasetID := contentItem.Metadata.DatasetID
-	editionID := contentItem.Metadata.EditionID
-	previewLink := contentItem.Links.Preview
-
-	if version.Links != nil {
-		if version.Links.Dataset != nil && version.Links.Dataset.ID != "" {
-			datasetID = version.Links.Dataset.ID
-		}
-		if version.Links.Edition != nil && version.Links.Edition.ID != "" {
-			editionID = version.Links.Edition.ID
-		}
-		if version.Links.WebPage != nil && version.Links.WebPage.HRef != "" {
-			webPageURL, err := url.Parse(version.Links.WebPage.HRef)
-			if err != nil {
-				return err
-			}
-			previewLink = webPageURL.Path
-		}
-	}
-
-	editLink := fmt.Sprintf("/data-admin/series/%s/editions/%s/versions/%d", datasetID, editionID, contentItem.Metadata.VersionID)
-
-	contentItem.Metadata.DatasetID = datasetID
-	contentItem.Metadata.EditionID = editionID
-	contentItem.Links.Edit = editLink
-	contentItem.Links.Preview = previewLink
-
-	return smBundle.Datastore.UpdateContentItemMetadataAndLinks(ctx, contentItem.ID, datasetID, editionID, editLink, previewLink)
 }
