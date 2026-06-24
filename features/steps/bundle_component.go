@@ -96,11 +96,13 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 	mongodb := &mongo.Mongo{
 		MongoConfig: config.MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
-				ClusterEndpoint: parsedMongoURI.Host,
-				Database:        utils.RandomDatabase(),
-				Collections:     c.Config.Collections,
-				ConnectTimeout:  c.Config.ConnectTimeout,
-				QueryTimeout:    c.Config.QueryTimeout,
+				ClusterEndpoint:  parsedMongoURI.Host,
+				Database:         utils.RandomDatabase(),
+				Collections:      c.Config.Collections,
+				ConnectTimeout:   c.Config.ConnectTimeout,
+				QueryTimeout:     c.Config.QueryTimeout,
+				ReplicaSet:       parsedMongoURI.Query().Get("replicaSet"),
+				DirectConnection: parsedMongoURI.Query().Get("directConnection") == "true",
 			},
 		}}
 
