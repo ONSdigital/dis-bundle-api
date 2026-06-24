@@ -5,8 +5,8 @@ go 1.26
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.274.2
 	github.com/ONSdigital/dp-authorisation/v2 v2.34.0
-	github.com/ONSdigital/dp-component-test v1.4.5-alpha
-	github.com/ONSdigital/dp-dataset-api v1.111.0
+	github.com/ONSdigital/dp-component-test v1.4.6
+	github.com/ONSdigital/dp-dataset-api v1.113.0
 	github.com/ONSdigital/dp-healthcheck v1.6.4
 	github.com/ONSdigital/dp-mongodb/v3 v3.12.0
 	github.com/ONSdigital/dp-net/v3 v3.10.0
@@ -23,8 +23,8 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/slack-go/slack v0.17.3
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/testcontainers/testcontainers-go v0.42.0
-	github.com/testcontainers/testcontainers-go/modules/mongodb v0.42.0
+	github.com/testcontainers/testcontainers-go v0.43.0
+	github.com/testcontainers/testcontainers-go/modules/mongodb v0.43.0
 	go.mongodb.org/mongo-driver v1.17.9
 )
 
@@ -90,7 +90,7 @@ require (
 	github.com/mdelapenya/tlscert v0.2.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/api v1.54.1 // indirect
+	github.com/moby/moby/api v1.54.2 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -106,7 +106,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b // indirect
-	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.5 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/smarty/assertions v1.16.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
