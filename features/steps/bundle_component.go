@@ -93,12 +93,6 @@ func NewBundleComponent(mongoURI string) (*BundleComponent, error) {
 		return nil, fmt.Errorf("failed to parse MongoDB URI: %w", err)
 	}
 
-	log.Info(context.Background(), "parsed mongo URI", log.Data{
-		"host":              parsedMongoURI.Host,
-		"replica_set":       parsedMongoURI.Query().Get("replicaSet"),
-		"direct_connection": parsedMongoURI.Query().Get("directConnection"),
-	})
-
 	mongodb := &mongo.Mongo{
 		MongoConfig: config.MongoConfig{
 			MongoDriverConfig: mongodriver.MongoDriverConfig{
