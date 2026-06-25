@@ -5,7 +5,7 @@ go 1.26
 require (
 	github.com/ONSdigital/dp-api-clients-go/v2 v2.274.2
 	github.com/ONSdigital/dp-authorisation/v2 v2.34.0
-	github.com/ONSdigital/dp-component-test v1.4.6
+	github.com/ONSdigital/dp-component-test v1.4.7-0.20260624161642-6038d39d05ad
 	github.com/ONSdigital/dp-dataset-api v1.113.0
 	github.com/ONSdigital/dp-healthcheck v1.6.4
 	github.com/ONSdigital/dp-mongodb/v3 v3.12.0
