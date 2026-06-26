@@ -748,7 +748,7 @@ func TestAddPolicyConditionsForAddedPreviewTeams(t *testing.T) {
 
 			Convey("Then no duplicate values are added", func() {
 				So(err, ShouldBeNil)
-				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 1)
+				So(len(mockPermissionsAPIClient.PutPolicyCalls()), ShouldEqual, 0)
 			})
 		})
 

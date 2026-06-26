@@ -170,6 +170,64 @@ Feature: Update a bundle - PUT /bundles/{id}
             ]
             """
 
+    Scenario: PUT /bundles/{id} backfills policy condition values when preview team is added after content
+        Given I have these content items:
+            """
+            [
+                {
+                    "id": "content-1",
+                    "bundle_id": "bundle-1",
+                    "content_type": "DATASET",
+                    "metadata": {
+                        "dataset_id": "static-test-dataset",
+                        "edition_id": "time-series",
+                        "version_id": 1
+                    },
+                    "links": {
+                        "edit": "/datasets/static-test-dataset/editions/time-series/versions/1",
+                        "preview": "/datasets/static-test-dataset/editions/time-series/versions/1"
+                    }
+                }
+            ]
+            """
+        And I am an admin user
+        And I set the header "If-Match" to "etag-bundle-1"
+        When I PUT "/bundles/bundle-1"
+            """
+            {
+                "bundle_type": "MANUAL",
+                "preview_teams": [
+                    {
+                        "id": "team-preview-1"
+                    }
+                ],
+                "state": "DRAFT",
+                "title": "Updated Bundle Title",
+                "managed_by": "DATA-ADMIN"
+            }
+            """
+        Then the HTTP status code should be "200"
+        And the following policies should exist:
+            """
+            [
+                {
+                    "id": "team-preview-1",
+                    "role": "datasets-previewer",
+                    "entities": [
+                        "groups/team-preview-1"
+                    ],
+                    "condition": {
+                        "attribute": "dataset_edition",
+                        "operator": "StringEquals",
+                        "values": [
+                            "static-test-dataset",
+                            "static-test-dataset/time-series"
+                        ]
+                    }
+                }
+            ]
+            """
+
     Scenario: PUT /bundles/{id} with state transition from DRAFT to IN_REVIEW
         Given I am an admin user
         And I set the header "If-Match" to "etag-bundle-1"
