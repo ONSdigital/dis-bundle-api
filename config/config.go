@@ -23,7 +23,7 @@ type Config struct {
 	GracefulShutdownTimeout    time.Duration `envconfig:"GRACEFUL_SHUTDOWN_TIMEOUT"`
 	HealthCheckInterval        time.Duration `envconfig:"HEALTHCHECK_INTERVAL"`
 	HealthCheckCriticalTimeout time.Duration `envconfig:"HEALTHCHECK_CRITICAL_TIMEOUT"`
-	OTBatchTimeout             time.Duration `encconfig:"OTEL_BATCH_TIMEOUT"`
+	OTBatchTimeout             time.Duration `envconfig:"OTEL_BATCH_TIMEOUT"`
 	OTExporterOTLPEndpoint     string        `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
 	OTServiceName              string        `envconfig:"OTEL_SERVICE_NAME"`
 	OtelEnabled                bool          `envconfig:"OTEL_ENABLED"`
