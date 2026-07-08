@@ -24,6 +24,11 @@ import (
 	"github.com/ONSdigital/log.go/v2/log"
 )
 
+type slackNotificationResult struct {
+	Ref *slack.MessageRef
+	Err error
+}
+
 type StateMachineBundleAPI struct {
 	Datastore             store.Datastore
 	StateMachine          *StateMachine
@@ -547,7 +552,7 @@ func removeConditionValuesForBundlePreviewTeam(values []string, toRemove ...stri
 	return values
 }
 
-func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, ch chan string, wg *sync.WaitGroup, state, bundleTitle string, errCh chan error) {
+func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, wg *sync.WaitGroup, state, bundleTitle string, errCh chan error) {
 	defer wg.Done()
 
 	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state)); err != nil {
@@ -584,8 +589,6 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 		errCh <- err
 		return
 	}
-
-	ch <- contentItem.BundleID
 }
 
 func UpdateContentItemCreateEvent(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, state string) error {
@@ -608,58 +611,86 @@ func UpdateContentItemCreateEvent(ctx context.Context, smBundle StateMachineBund
 }
 
 func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
-	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
+	logData := log.Data{
+		"bundle_id":   bundle.ID,
+		"bundle_type": bundle.BundleType,
+		"title":       bundle.Title,
+	}
+
 	contents, err := smBundle.Datastore.GetBundleContentsForBundle(ctx, bundle.ID)
 	if err != nil {
 		return nil, err
 	}
 
 	publishStartTime := time.Now()
-	var publishLogFields = make([]slack.Field, 0, 7)
-	publishLogFields = append(publishLogFields, slack.Field{Title: "Bundle ID", Value: bundle.ID}, slack.Field{Title: "Title", Value: bundle.Title}, slack.Field{Title: "Type", Value: bundle.BundleType.String()}, slack.Field{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))}, slack.Field{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)})
+	publishLogFields := make([]slack.Field, 0, 7)
+	publishLogFields = append(publishLogFields,
+		slack.Field{Title: "Bundle ID", Value: bundle.ID},
+		slack.Field{Title: "Title", Value: bundle.Title},
+		slack.Field{Title: "Type", Value: bundle.BundleType.String()},
+		slack.Field{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))},
+		slack.Field{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
+	)
+
 	logData["slack_fields"] = publishLogFields
 
-	c1 := make(chan *slack.MessageRef)
+	slackNotificationCh := make(chan slackNotificationResult, 1)
+
 	go func() {
-		log.Info(ctx, "sending slack notification: Bundle publish started", logData)
-		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(ctx, "Bundle publish started", publishLogFields)
-		if err != nil {
-			log.Error(ctx, "failed to send slack notification: Bundle publish started", err, logData)
-		}
-		c1 <- slackMessageRef
+		slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
+		defer cancel()
+
+		log.Info(slackCtx, "sending slack notification: Bundle publish started", logData)
+		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(slackCtx, "Bundle publish started", publishLogFields)
+
+		slackNotificationCh <- slackNotificationResult{Ref: slackMessageRef, Err: err}
 	}()
 
-	slackMessageRef := <-c1
-
 	var wg sync.WaitGroup
-	ch := make(chan string, len(*contents))
-	errCh := make(chan error, len(*contents))
+	contentItemErrCh := make(chan error, len(*contents))
 
 	for index := range *contents {
 		contentItem := &(*contents)[index]
 		wg.Add(1)
-		go PublishContentItems(ctx, smBundle, authEntityData, contentItem, ch, &wg, models.BundleStatePublished.String(), bundle.Title, errCh)
+		go PublishContentItems(ctx, smBundle, authEntityData, contentItem, &wg, models.BundleStatePublished.String(), bundle.Title, contentItemErrCh)
 	}
 
 	wg.Wait()
 
-	close(errCh)
-	var contentItemErr error
-	for err := range errCh {
-		contentItemErr = err
-		log.Error(ctx, "something went wrong when processing content items", err, logData)
+	close(contentItemErrCh)
+	contentItemsErrs := make([]error, 0, len(*contents))
+	for err := range contentItemErrCh {
+		contentItemsErrs = append(contentItemsErrs, err)
+		log.Error(ctx, "failed to process content item", err, logData)
 	}
+
+	// Wait for the initial Slack notification because the MessageRef is required
+	// to update the same Slack message when publishing completes.
+	slackResult := <-slackNotificationCh
+
+	if slackResult.Err != nil {
+		log.Error(ctx, "failed to send slack notification: Bundle publish started", slackResult.Err, logData)
+	} else {
+		log.Info(ctx, "slack notification sent: Bundle publish started", logData)
+	}
+
+	slackMessageRef := slackResult.Ref
 
 	bundle.State = models.BundleStatePublished
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
 
-	updatedBundle, err := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
-	if err != nil {
-		_, err := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Failed to publish bundle", err, publishLogFields)
-		if err != nil {
-			log.Error(ctx, "failed to send slack notification: Failed to publish bundle", err, logData)
-		}
-		return nil, err
+	updatedBundle, bundleUpdateErr := smBundle.Datastore.UpdateBundle(ctx, bundle.ID, bundle)
+	if bundleUpdateErr != nil {
+		go func() {
+			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
+			defer cancel()
+
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, "Failed to publish bundle", bundleUpdateErr, publishLogFields)
+			if alarmErr != nil {
+				log.Error(slackCtx, "failed to send slack notification: Failed to publish bundle", alarmErr, logData)
+			}
+		}()
+		return nil, bundleUpdateErr
 	}
 
 	publishEndTime := time.Now()
@@ -669,18 +700,28 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	)
 	logData["slack_fields"] = publishLogFields
 
-	if contentItemErr != nil {
-		log.Info(ctx, "updating slack notification: Bundle publish completed with errors", logData)
-		_, err = smBundle.DataBundleSlackClient.UpdatePublishLogAsAlarm(ctx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
-		if err != nil {
-			log.Error(ctx, "failed to update slack notification: Bundle publish completed with errors", err, logData)
-		}
+	if len(contentItemsErrs) > 0 {
+		go func() {
+			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
+			defer cancel()
+
+			log.Info(slackCtx, "updating slack notification: Bundle publish completed with errors", logData)
+			_, updateErr := smBundle.DataBundleSlackClient.UpdatePublishLogAsAlarm(slackCtx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
+			if updateErr != nil {
+				log.Error(slackCtx, "failed to update slack notification: Bundle publish completed with errors", updateErr, logData)
+			}
+		}()
 	} else {
-		log.Info(ctx, "updating slack notification: Bundle publish completed", logData)
-		_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(ctx, slackMessageRef, "Bundle publish completed", publishLogFields)
-		if alarmErr != nil {
-			log.Error(ctx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
-		}
+		go func() {
+			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
+			defer cancel()
+
+			log.Info(slackCtx, "updating slack notification: Bundle publish completed", logData)
+			_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(slackCtx, slackMessageRef, "Bundle publish completed", publishLogFields)
+			if alarmErr != nil {
+				log.Error(slackCtx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
+			}
+		}()
 	}
 
 	identityType := log.USER
@@ -689,7 +730,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 	logAuth := log.Auth(identityType, authEntityData.EntityData.UserID)
 
-	if err = smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
+	if err := smBundle.CreateEvent(ctx, authEntityData, models.ActionUpdate, updatedBundle, nil); err != nil {
 		log.Error(ctx, "failed to create event", err, log.Classification(log.ProtectiveMonitoring), logAuth, log.Data{"bundle_id": updatedBundle.ID, "action": models.ActionUpdate})
 		return nil, err
 	}

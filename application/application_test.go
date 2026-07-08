@@ -1712,6 +1712,9 @@ func TestPutBundleState_Success(t *testing.T) {
 			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
+			GetTimeoutFunc: func() time.Duration {
+				return time.Second * 30
+			},
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
@@ -1821,6 +1824,9 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
 				}, nil
+			},
+			GetTimeoutFunc: func() time.Duration {
+				return time.Second * 30
 			},
 		}
 

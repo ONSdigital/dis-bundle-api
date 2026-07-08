@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/slack"
@@ -248,6 +249,9 @@ func TestTransition_Success(t *testing.T) {
 			},
 			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
+			},
+			GetTimeoutFunc: func() time.Duration {
+				return time.Second * 30
 			},
 		}
 
