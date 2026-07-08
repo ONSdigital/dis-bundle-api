@@ -700,8 +700,12 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	)
 	logData["slack_fields"] = publishLogFields
 
+	var slackMessageUpdateWg sync.WaitGroup
+
 	if len(contentItemsErrs) > 0 {
+		slackMessageUpdateWg.Add(1)
 		go func() {
+			defer slackMessageUpdateWg.Done()
 			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
 			defer cancel()
 
@@ -712,7 +716,9 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			}
 		}()
 	} else {
+		slackMessageUpdateWg.Add(1)
 		go func() {
+			defer slackMessageUpdateWg.Done()
 			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
 			defer cancel()
 
@@ -723,6 +729,8 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			}
 		}()
 	}
+
+	slackMessageUpdateWg.Wait()
 
 	identityType := log.USER
 	if authEntityData.IsServiceAuth {
