@@ -1,8 +1,11 @@
 package slack
 
+import "time"
+
 // SlackConfig holds configuration for sending Slack notifications
 type SlackConfig struct {
 	Channels Channels
+	Timeout  time.Duration `envconfig:"SLACK_TIMEOUT"`
 }
 
 // Channels holds the Slack channel names for different notification levels
@@ -29,6 +32,9 @@ func validateSlackConfig(cfg *SlackConfig, apiToken string) error {
 	}
 	if cfg.Channels.PublishLogChannel == "" {
 		return errMissingPublishLogChannel
+	}
+	if cfg.Timeout <= 0 {
+		return errInvalidTimeout
 	}
 	return nil
 }

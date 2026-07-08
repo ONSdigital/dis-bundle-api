@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/slack-go/slack"
 	. "github.com/smartystreets/goconvey/convey"
@@ -19,6 +20,7 @@ var (
 			AlarmChannel:      "alarm-channel",
 			PublishLogChannel: "publish-log-channel",
 		},
+		Timeout: 30 * time.Second,
 	}
 	validAPIToken        = "valid-api-token"
 	postMessageAPIPath   = "/api/chat.postMessage"
@@ -390,6 +392,22 @@ func TestBuildAttachmentFields(t *testing.T) {
 
 			Convey("Then the returned fields are empty", func() {
 				So(len(fields), ShouldEqual, 0)
+			})
+		})
+	})
+}
+
+func TestClient_GetTimeout(t *testing.T) {
+	Convey("Given a Client with a specific timeout", t, func() {
+		client := &Client{
+			timeout: 30 * time.Second,
+		}
+
+		Convey("When GetTimeout is called", func() {
+			timeout := client.GetTimeout()
+
+			Convey("Then the returned timeout matches the expected value", func() {
+				So(timeout, ShouldEqual, 30*time.Second)
 			})
 		})
 	})

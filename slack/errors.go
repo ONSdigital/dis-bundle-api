@@ -11,6 +11,7 @@ var (
 	errMissingWarningChannel    = errors.New("slack warning channel is missing")
 	errMissingAlarmChannel      = errors.New("slack alarm channel is missing")
 	errMissingPublishLogChannel = errors.New("slack publish log channel is missing")
+	errInvalidTimeout           = errors.New("slack timeout must be greater than 0")
 
 	// MessageRef errors
 	errMissingMessageRef          = errors.New("slack message reference is missing")

@@ -2,6 +2,7 @@ package slack
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -63,6 +64,20 @@ func TestValidateSlackConfig(t *testing.T) {
 				expectErr: errMissingPublishLogChannel,
 			},
 			{
+				name:     "invalid timeout",
+				apiToken: validAPIToken,
+				config: &SlackConfig{
+					Channels: Channels{
+						InfoChannel:       "info-channel",
+						WarningChannel:    "warning-channel",
+						AlarmChannel:      "alarm-channel",
+						PublishLogChannel: "publish-log-channel",
+					},
+					Timeout: 0,
+				},
+				expectErr: errInvalidTimeout,
+			},
+			{
 				name:     "a valid config",
 				apiToken: validAPIToken,
 				config: &SlackConfig{
@@ -72,6 +87,7 @@ func TestValidateSlackConfig(t *testing.T) {
 						AlarmChannel:      "alarm-channel",
 						PublishLogChannel: "publish-log-channel",
 					},
+					Timeout: 30 * time.Second,
 				},
 				expectErr: nil,
 			},

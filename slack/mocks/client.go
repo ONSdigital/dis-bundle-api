@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"sync"
+	"time"
 )
 
 // Ensure, that ClienterMock does implement slack.Clienter.
@@ -19,6 +20,9 @@ var _ slack.Clienter = &ClienterMock{}
 //
 //		// make and configure a mocked slack.Clienter
 //		mockedClienter := &ClienterMock{
+//			GetTimeoutFunc: func() time.Duration {
+//				panic("mock out the GetTimeout method")
+//			},
 //			SendAlarmFunc: func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error) {
 //				panic("mock out the SendAlarm method")
 //			},
@@ -44,6 +48,9 @@ var _ slack.Clienter = &ClienterMock{}
 //
 //	}
 type ClienterMock struct {
+	// GetTimeoutFunc mocks the GetTimeout method.
+	GetTimeoutFunc func() time.Duration
+
 	// SendAlarmFunc mocks the SendAlarm method.
 	SendAlarmFunc func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error)
 
@@ -64,6 +71,9 @@ type ClienterMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// GetTimeout holds details about calls to the GetTimeout method.
+		GetTimeout []struct {
+		}
 		// SendAlarm holds details about calls to the SendAlarm method.
 		SendAlarm []struct {
 			// Ctx is the ctx argument value.
@@ -125,12 +135,40 @@ type ClienterMock struct {
 			Fields []slack.Field
 		}
 	}
+	lockGetTimeout              sync.RWMutex
 	lockSendAlarm               sync.RWMutex
 	lockSendInfo                sync.RWMutex
 	lockSendPublishLog          sync.RWMutex
 	lockSendWarning             sync.RWMutex
 	lockUpdatePublishLog        sync.RWMutex
 	lockUpdatePublishLogAsAlarm sync.RWMutex
+}
+
+// GetTimeout calls GetTimeoutFunc.
+func (mock *ClienterMock) GetTimeout() time.Duration {
+	if mock.GetTimeoutFunc == nil {
+		panic("ClienterMock.GetTimeoutFunc: method is nil but Clienter.GetTimeout was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetTimeout.Lock()
+	mock.calls.GetTimeout = append(mock.calls.GetTimeout, callInfo)
+	mock.lockGetTimeout.Unlock()
+	return mock.GetTimeoutFunc()
+}
+
+// GetTimeoutCalls gets all the calls that were made to GetTimeout.
+// Check the length with:
+//
+//	len(mockedClienter.GetTimeoutCalls())
+func (mock *ClienterMock) GetTimeoutCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetTimeout.RLock()
+	calls = mock.calls.GetTimeout
+	mock.lockGetTimeout.RUnlock()
+	return calls
 }
 
 // SendAlarm calls SendAlarmFunc.

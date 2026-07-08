@@ -3,6 +3,7 @@ package slack
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/slack-go/slack"
 )
@@ -11,6 +12,7 @@ import (
 type Client struct {
 	client   *slack.Client
 	channels Channels
+	timeout  time.Duration
 }
 
 // New returns a new Client if Slack notifications are enabled.
@@ -31,6 +33,7 @@ func New(slackConfig *SlackConfig, apiToken string, enabled bool) (Clienter, err
 	return &Client{
 		client:   slack.New(apiToken),
 		channels: slackConfig.Channels,
+		timeout:  slackConfig.Timeout,
 	}, nil
 }
 
@@ -138,4 +141,9 @@ func buildAttachmentFields(err error, fields []Field) []slack.AttachmentField {
 	}
 
 	return attachmentFields
+}
+
+// GetTimeout returns the timeout duration for Slack API requests.
+func (c *Client) GetTimeout() time.Duration {
+	return c.timeout
 }

@@ -1,6 +1,9 @@
 package slack
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // NoopClient is a Client that does nothing, used when Slack notifications are disabled
 type NoopClient struct{}
@@ -27,4 +30,8 @@ func (n *NoopClient) UpdatePublishLog(ctx context.Context, ref *MessageRef, summ
 
 func (n *NoopClient) UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
 	return nil, nil
+}
+
+func (n *NoopClient) GetTimeout() time.Duration {
+	return 0
 }

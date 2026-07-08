@@ -2,6 +2,7 @@ package slack
 
 import (
 	"context"
+	"time"
 )
 
 //go:generate moq -out mocks/client.go -pkg mocks . Clienter
@@ -14,4 +15,6 @@ type Clienter interface {
 	SendPublishLog(ctx context.Context, summary string, fields []Field) (*MessageRef, error)
 	UpdatePublishLog(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error)
 	UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error)
+
+	GetTimeout() time.Duration
 }

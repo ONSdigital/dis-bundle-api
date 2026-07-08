@@ -98,3 +98,17 @@ func TestNoopClient_UpdatePublishLogAsAlarm(t *testing.T) {
 		})
 	})
 }
+
+func TestNoopClient_GetTimeout(t *testing.T) {
+	Convey("Given a NoopClient", t, func() {
+		client := &slack.NoopClient{}
+
+		Convey("When GetTimeout is called", func() {
+			timeout := client.GetTimeout()
+
+			Convey("Then the timeout is 0", func() {
+				So(timeout, ShouldEqual, 0)
+			})
+		})
+	})
+}
