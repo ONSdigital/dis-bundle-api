@@ -642,6 +642,11 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 
 		log.Info(slackCtx, "sending slack notification: Bundle publish started", logData)
 		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(slackCtx, "Bundle publish started", publishLogFields)
+		if err != nil {
+			log.Error(slackCtx, "failed to send slack notification: Bundle publish started", err, logData)
+		} else {
+			log.Info(slackCtx, "slack notification sent: Bundle publish started", logData)
+		}
 
 		slackNotificationCh <- slackNotificationResult{Ref: slackMessageRef, Err: err}
 	}()
@@ -667,13 +672,6 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	// Wait for the initial Slack notification because the MessageRef is required
 	// to update the same Slack message when publishing completes.
 	slackResult := <-slackNotificationCh
-
-	if slackResult.Err != nil {
-		log.Error(ctx, "failed to send slack notification: Bundle publish started", slackResult.Err, logData)
-	} else {
-		log.Info(ctx, "slack notification sent: Bundle publish started", logData)
-	}
-
 	slackMessageRef := slackResult.Ref
 
 	bundle.State = models.BundleStatePublished
