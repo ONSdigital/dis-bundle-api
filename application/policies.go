@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -311,13 +312,34 @@ func (s *StateMachineBundleAPI) AddPolicyConditionsForAddedPreviewTeams(ctx cont
 		}
 
 		for value := range valuesToAdd {
-			if !existingValues[value] {
-				policy.Condition.Values = append(policy.Condition.Values, value)
+			existingValues[value] = true
+		}
+
+		updatedValues := make([]string, 0, len(existingValues))
+		for value := range existingValues {
+			updatedValues = append(updatedValues, value)
+		}
+		sort.Strings(updatedValues)
+
+		currentValues := append([]string{}, policy.Condition.Values...)
+		sort.Strings(currentValues)
+
+		valuesChanged := len(currentValues) != len(updatedValues)
+		if !valuesChanged {
+			for i := range updatedValues {
+				if updatedValues[i] != currentValues[i] {
+					valuesChanged = true
+					break
+				}
 			}
 		}
 
-		err = s.PermissionsAPIClient.PutPolicy(ctx, team.ID, *policy, permissionsAPISDK.Headers{Authorization: authToken})
-		if err != nil {
+		if !valuesChanged {
+			continue
+		}
+
+		policy.Condition.Values = updatedValues
+		if err := s.PermissionsAPIClient.PutPolicy(ctx, team.ID, *policy, permissionsAPISDK.Headers{Authorization: authToken}); err != nil {
 			return err
 		}
 	}
