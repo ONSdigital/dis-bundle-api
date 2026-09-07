@@ -39,6 +39,7 @@ type Config struct {
 	DataBundlePublicationServiceSlackEnabled  bool   `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_ENABLED"`
 	DataBundlePublicationServiceSlackAPIToken string `envconfig:"DATA_BUNDLE_PUBLICATION_SERVICE_SLACK_API_TOKEN"`
 	SlackConfig                               *slack.SlackConfig
+	BundleFailedToPublishRunbookURL           string `envconfig:"BUNDLE_FAILED_TO_PUBLISH_RUNBOOK_URL"`
 }
 
 var cfg *Config
@@ -93,6 +94,7 @@ func Get() (*Config, error) {
 		DataBundlePublicationServiceSlackEnabled:  false,
 		DataBundlePublicationServiceSlackAPIToken: "test-data-bundle-publication-service-slack-api-token",
 		SlackConfig:                               &slack.SlackConfig{},
+		BundleFailedToPublishRunbookURL:           "",
 	}
 
 	return cfg, envconfig.Process("", cfg)
