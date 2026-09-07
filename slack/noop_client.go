@@ -8,27 +8,23 @@ import (
 // NoopClient is a Client that does nothing, used when Slack notifications are disabled
 type NoopClient struct{}
 
-func (n *NoopClient) SendAlarm(ctx context.Context, summary string, err error, fields []Field) (*MessageRef, error) {
+func (n *NoopClient) SendAlarm(ctx context.Context, title string, err error, details []Detail, links []Link) (*MessageRef, error) {
 	return nil, nil
 }
 
-func (n *NoopClient) SendWarning(ctx context.Context, summary string, fields []Field) (*MessageRef, error) {
+func (n *NoopClient) SendWarning(ctx context.Context, title string, details []Detail, links []Link) (*MessageRef, error) {
 	return nil, nil
 }
 
-func (n *NoopClient) SendInfo(ctx context.Context, summary string, fields []Field) (*MessageRef, error) {
+func (n *NoopClient) SendInfo(ctx context.Context, title string, details []Detail, links []Link) (*MessageRef, error) {
 	return nil, nil
 }
 
-func (n *NoopClient) SendPublishLog(ctx context.Context, summary string, fields []Field) (*MessageRef, error) {
+func (n *NoopClient) SendPublishLog(ctx context.Context, title string, details []Detail, links []Link) (*MessageRef, error) {
 	return nil, nil
 }
 
-func (n *NoopClient) UpdatePublishLog(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
-	return nil, nil
-}
-
-func (n *NoopClient) UpdatePublishLogAsAlarm(ctx context.Context, ref *MessageRef, summary string, fields []Field) (*MessageRef, error) {
+func (n *NoopClient) UpdateMessage(ctx context.Context, ref *MessageRef, title string, err error, details []Detail, links []Link, color Colour, emoji Emoji) (*MessageRef, error) {
 	return nil, nil
 }
 
