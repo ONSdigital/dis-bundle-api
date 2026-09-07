@@ -14,7 +14,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
-	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/go/mocks"
 	permissionsAPIModels "github.com/ONSdigital/dp-permissions-api/models"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"

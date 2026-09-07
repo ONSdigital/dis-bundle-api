@@ -19,7 +19,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dis-bundle-api/utils"
 	datasetAPIModels "github.com/ONSdigital/dp-dataset-api/models"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"
 )

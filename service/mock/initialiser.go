@@ -5,15 +5,16 @@ package mock
 
 import (
 	"context"
+	"net/http"
+	"sync"
+
 	"github.com/ONSdigital/dis-bundle-api/config"
 	"github.com/ONSdigital/dis-bundle-api/service"
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
-	"net/http"
-	"sync"
 )
 
 // Ensure, that InitialiserMock does implement service.Initialiser.

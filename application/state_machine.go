@@ -7,7 +7,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/apierrors"
 	"github.com/ONSdigital/dis-bundle-api/models"
 	"github.com/ONSdigital/dis-bundle-api/store"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 )
 
 type StateMachine struct {

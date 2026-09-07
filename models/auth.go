@@ -1,7 +1,7 @@
 package models
 
 import (
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 )
 

@@ -13,7 +13,7 @@ import (
 	slackMock "github.com/ONSdigital/dis-bundle-api/slack/mocks"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	storetest "github.com/ONSdigital/dis-bundle-api/store/datastoretest"
-	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/mocks"
+	datasetAPISDKMock "github.com/ONSdigital/dp-dataset-api/sdk/go/mocks"
 	permissionsAPISDKMock "github.com/ONSdigital/dp-permissions-api/sdk/mocks"
 	. "github.com/smartystreets/goconvey/convey"
 )

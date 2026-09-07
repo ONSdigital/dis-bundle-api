@@ -12,7 +12,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-api-clients-go/v2/health"
 	auth "github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
 	"github.com/ONSdigital/log.go/v2/log"

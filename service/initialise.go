@@ -9,7 +9,7 @@ import (
 	"github.com/ONSdigital/dis-bundle-api/slack"
 	"github.com/ONSdigital/dis-bundle-api/store"
 	"github.com/ONSdigital/dp-authorisation/v2/authorisation"
-	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk"
+	datasetAPISDK "github.com/ONSdigital/dp-dataset-api/sdk/go"
 	"github.com/ONSdigital/dp-healthcheck/healthcheck"
 	dphttp "github.com/ONSdigital/dp-net/v3/http"
 	permissionsAPISDK "github.com/ONSdigital/dp-permissions-api/sdk"
