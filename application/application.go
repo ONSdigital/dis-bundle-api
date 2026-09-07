@@ -30,22 +30,24 @@ type slackNotificationResult struct {
 }
 
 type StateMachineBundleAPI struct {
-	Datastore             store.Datastore
-	StateMachine          *StateMachine
-	DatasetAPIClient      datasetAPISDK.Clienter
-	PermissionsAPIClient  permissionsAPISDK.Clienter
-	DataBundleSlackClient slack.Clienter
-	PreviewServiceURL     string
+	Datastore                       store.Datastore
+	StateMachine                    *StateMachine
+	DatasetAPIClient                datasetAPISDK.Clienter
+	PermissionsAPIClient            permissionsAPISDK.Clienter
+	DataBundleSlackClient           slack.Clienter
+	PreviewServiceURL               string
+	BundleFailedToPublishRunbookURL string
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL string) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL, bundleFailedToPublishRunbookURL string) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
-		Datastore:             datastore,
-		StateMachine:          stateMachine,
-		DatasetAPIClient:      datasetAPIClient,
-		PermissionsAPIClient:  permissionsAPIClient,
-		DataBundleSlackClient: dataBundleSlackClient,
-		PreviewServiceURL:     previewServiceURL,
+		Datastore:                       datastore,
+		StateMachine:                    stateMachine,
+		DatasetAPIClient:                datasetAPIClient,
+		PermissionsAPIClient:            permissionsAPIClient,
+		DataBundleSlackClient:           dataBundleSlackClient,
+		PreviewServiceURL:               previewServiceURL,
+		BundleFailedToPublishRunbookURL: bundleFailedToPublishRunbookURL,
 	}
 }
 
@@ -569,7 +571,11 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 			{Title: "Preview Link", Value: previewURL},
 		}
 
-		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmDetails, nil)
+		alarmLinks := []slack.Link{
+			{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
+		}
+
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmDetails, alarmLinks)
 		if alarmErr != nil {
 			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
 		}
@@ -683,7 +689,11 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
 			defer cancel()
 
-			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, "Failed to publish bundle", bundleUpdateErr, publishLogDetails, nil)
+			alarmLinks := []slack.Link{
+				{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
+			}
+
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, "Failed to publish bundle", bundleUpdateErr, publishLogDetails, alarmLinks)
 			if alarmErr != nil {
 				log.Error(slackCtx, "failed to send slack notification: Failed to publish bundle", alarmErr, logData)
 			}
@@ -707,8 +717,12 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
 			defer cancel()
 
+			alarmLinks := []slack.Link{
+				{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
+			}
+
 			log.Info(slackCtx, "updating slack notification: Bundle publish completed with errors", logData)
-			_, updateErr := smBundle.DataBundleSlackClient.UpdateMessage(slackCtx, slackMessageRef, "Bundle publish completed with errors", nil, publishLogDetails, nil, slack.RedColour, slack.AlarmEmoji)
+			_, updateErr := smBundle.DataBundleSlackClient.UpdateMessage(slackCtx, slackMessageRef, "Bundle publish completed with errors", nil, publishLogDetails, alarmLinks, slack.RedColour, slack.AlarmEmoji)
 			if updateErr != nil {
 				log.Error(slackCtx, "failed to update slack notification: Bundle publish completed with errors", updateErr, logData)
 			}

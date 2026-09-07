@@ -1832,10 +1832,11 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
-			Datastore:             store.Datastore{Backend: mockedDatastore},
-			StateMachine:          application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
-			DataBundleSlackClient: mockSlackClient,
-			DatasetAPIClient:      mockDatasetAPIClient,
+			Datastore:                       store.Datastore{Backend: mockedDatastore},
+			StateMachine:                    application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+			DataBundleSlackClient:           mockSlackClient,
+			DatasetAPIClient:                mockDatasetAPIClient,
+			BundleFailedToPublishRunbookURL: "",
 		}
 
 		Convey("When UpdateBundleState is called to publish a bundle which has content items that will fail", func() {
