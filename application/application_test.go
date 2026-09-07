@@ -1703,13 +1703,13 @@ func TestPutBundleState_Success(t *testing.T) {
 		}
 
 		mockSlackClient := &slackMock.ClienterMock{
-			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
 				return &slack.MessageRef{
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
 				}, nil
 			},
-			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
 			GetTimeoutFunc: func() time.Duration {
@@ -1733,7 +1733,7 @@ func TestPutBundleState_Success(t *testing.T) {
 				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 1)
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 3)
 				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
-				So(len(mockSlackClient.UpdatePublishLogCalls()), ShouldEqual, 1)
+				So(len(mockSlackClient.UpdateMessageCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.GetTimeoutCalls()), ShouldEqual, 2)
 			})
 		})
@@ -1808,19 +1808,19 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 		}
 
 		mockSlackClient := &slackMock.ClienterMock{
-			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
 				return &slack.MessageRef{
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
 				}, nil
 			},
-			SendAlarmFunc: func(ctx context.Context, summary string, err error, fields []slack.Field) (*slack.MessageRef, error) {
+			SendAlarmFunc: func(ctx context.Context, title string, err error, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
 				return &slack.MessageRef{
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
 				}, nil
 			},
-			UpdatePublishLogAsAlarmFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
 				return &slack.MessageRef{
 					ChannelID: "example-channel",
 					Timestamp: "example-timestamp",
@@ -1847,7 +1847,7 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 				So(len(mockedDatastore.UpdateBundleCalls()), ShouldEqual, 1)
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
-				So(len(mockSlackClient.UpdatePublishLogAsAlarmCalls()), ShouldEqual, 1)
+				So(len(mockSlackClient.UpdateMessageCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, 2)
 				So(len(mockSlackClient.GetTimeoutCalls()), ShouldEqual, 2)
 			})

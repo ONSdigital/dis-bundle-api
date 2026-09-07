@@ -560,7 +560,7 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 
 		previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
 
-		alarmFields := []slack.Field{
+		alarmDetails := []slack.Detail{
 			{Title: "Bundle ID", Value: contentItem.BundleID},
 			{Title: "Bundle Title", Value: bundleTitle},
 			{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
@@ -569,7 +569,7 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 			{Title: "Preview Link", Value: previewURL},
 		}
 
-		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmFields)
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmDetails, nil)
 		if alarmErr != nil {
 			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
 		}
@@ -577,7 +577,7 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 		log.Info(ctx, "sending slack alarm for content item failure", log.Data{
 			"bundle-id":       contentItem.BundleID,
 			"content-item-id": contentItem.ID,
-			"alarm_fields":    alarmFields,
+			"alarm_details":   alarmDetails,
 		})
 
 		errCh <- err
@@ -623,16 +623,16 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	publishStartTime := time.Now()
-	publishLogFields := make([]slack.Field, 0, 7)
-	publishLogFields = append(publishLogFields,
-		slack.Field{Title: "Bundle ID", Value: bundle.ID},
-		slack.Field{Title: "Title", Value: bundle.Title},
-		slack.Field{Title: "Type", Value: bundle.BundleType.String()},
-		slack.Field{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))},
-		slack.Field{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
+	publishLogDetails := make([]slack.Detail, 0, 7)
+	publishLogDetails = append(publishLogDetails,
+		slack.Detail{Title: "Bundle ID", Value: bundle.ID},
+		slack.Detail{Title: "Title", Value: bundle.Title},
+		slack.Detail{Title: "Type", Value: bundle.BundleType.String()},
+		slack.Detail{Title: "Number of Content Items", Value: strconv.Itoa(len(*contents))},
+		slack.Detail{Title: "Publish Start Date", Value: publishStartTime.Format(utils.SlackPublishTimeFormat)},
 	)
 
-	logData["slack_fields"] = publishLogFields
+	logData["slack_details"] = publishLogDetails
 
 	slackNotificationCh := make(chan slackNotificationResult, 1)
 
@@ -641,7 +641,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 		defer cancel()
 
 		log.Info(slackCtx, "sending slack notification: Bundle publish started", logData)
-		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(slackCtx, "Bundle publish started", publishLogFields)
+		slackMessageRef, err := smBundle.DataBundleSlackClient.SendPublishLog(slackCtx, "Bundle publish started", publishLogDetails, nil)
 		if err != nil {
 			log.Error(slackCtx, "failed to send slack notification: Bundle publish started", err, logData)
 		} else {
@@ -683,7 +683,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
 			defer cancel()
 
-			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, "Failed to publish bundle", bundleUpdateErr, publishLogFields)
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, "Failed to publish bundle", bundleUpdateErr, publishLogDetails, nil)
 			if alarmErr != nil {
 				log.Error(slackCtx, "failed to send slack notification: Failed to publish bundle", alarmErr, logData)
 			}
@@ -692,11 +692,11 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	publishEndTime := time.Now()
-	publishLogFields = append(publishLogFields,
-		slack.Field{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
-		slack.Field{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+	publishLogDetails = append(publishLogDetails,
+		slack.Detail{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
+		slack.Detail{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
 	)
-	logData["slack_fields"] = publishLogFields
+	logData["slack_details"] = publishLogDetails
 
 	var slackMessageUpdateWg sync.WaitGroup
 
@@ -708,7 +708,7 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			defer cancel()
 
 			log.Info(slackCtx, "updating slack notification: Bundle publish completed with errors", logData)
-			_, updateErr := smBundle.DataBundleSlackClient.UpdatePublishLogAsAlarm(slackCtx, slackMessageRef, "Bundle publish completed with errors", publishLogFields)
+			_, updateErr := smBundle.DataBundleSlackClient.UpdateMessage(slackCtx, slackMessageRef, "Bundle publish completed with errors", nil, publishLogDetails, nil, slack.RedColour, slack.AlarmEmoji)
 			if updateErr != nil {
 				log.Error(slackCtx, "failed to update slack notification: Bundle publish completed with errors", updateErr, logData)
 			}
@@ -721,9 +721,9 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			defer cancel()
 
 			log.Info(slackCtx, "updating slack notification: Bundle publish completed", logData)
-			_, alarmErr := smBundle.DataBundleSlackClient.UpdatePublishLog(slackCtx, slackMessageRef, "Bundle publish completed", publishLogFields)
+			_, alarmErr := smBundle.DataBundleSlackClient.UpdateMessage(slackCtx, slackMessageRef, "Bundle publish completed", nil, publishLogDetails, nil, slack.GreenColour, slack.TickEmoji)
 			if alarmErr != nil {
-				log.Error(slackCtx, "failed to send slack notification: Bundle publish completed", alarmErr, logData)
+				log.Error(slackCtx, "failed to update slack notification: Bundle publish completed", alarmErr, logData)
 			}
 		}()
 	}

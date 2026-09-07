@@ -45,7 +45,7 @@ var (
 		Timestamp: "1234.5678",
 	}
 
-	testError = errors.New("test error")
+	errExampleError = errors.New("test error")
 )
 
 func getMockHTTPServer(expectedPath string) *httptest.Server {
@@ -162,7 +162,7 @@ func TestClient_DoSendMessage(t *testing.T) {
 		})
 
 		Convey("When doSendMessage is called through SendAlarm", func() {
-			ref, err := client.SendAlarm(context.Background(), testTitle, testError, testDetails, testLinks)
+			ref, err := client.SendAlarm(context.Background(), testTitle, errExampleError, testDetails, testLinks)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -233,7 +233,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 		}
 
 		Convey("When UpdateMessage is called", func() {
-			updatedRef, err := client.UpdateMessage(context.Background(), testMessageRef, testTitle, testError, testDetails, testLinks, GreenColour, TickEmoji)
+			updatedRef, err := client.UpdateMessage(context.Background(), testMessageRef, testTitle, errExampleError, testDetails, testLinks, GreenColour, TickEmoji)
 
 			Convey("Then no error is returned", func() {
 				So(err, ShouldBeNil)
@@ -263,7 +263,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 		}
 
 		Convey("When UpdateMessage is called", func() {
-			updatedRef, err := client.UpdateMessage(context.Background(), testMessageRef, testTitle, testError, testDetails, testLinks, RedColour, AlarmEmoji)
+			updatedRef, err := client.UpdateMessage(context.Background(), testMessageRef, testTitle, errExampleError, testDetails, testLinks, RedColour, AlarmEmoji)
 
 			Convey("Then a wrapped error is returned", func() {
 				So(updatedRef, ShouldBeNil)
@@ -277,7 +277,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 		client := &Client{}
 
 		Convey("When UpdateMessage is called with a nil ref", func() {
-			updatedRef, err := client.UpdateMessage(context.Background(), nil, testTitle, testError, testDetails, testLinks, GreenColour, TickEmoji)
+			updatedRef, err := client.UpdateMessage(context.Background(), nil, testTitle, errExampleError, testDetails, testLinks, GreenColour, TickEmoji)
 
 			Convey("Then a missing ref error is returned", func() {
 				So(err, ShouldEqual, errMissingMessageRef)
@@ -286,7 +286,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 		})
 
 		Convey("When UpdateMessage is called with an empty channel", func() {
-			updatedRef, err := client.UpdateMessage(context.Background(), &MessageRef{Timestamp: "1234.5678"}, testTitle, testError, testDetails, testLinks, GreenColour, TickEmoji)
+			updatedRef, err := client.UpdateMessage(context.Background(), &MessageRef{Timestamp: "1234.5678"}, testTitle, errExampleError, testDetails, testLinks, GreenColour, TickEmoji)
 
 			Convey("Then a missing channel error is returned", func() {
 				So(err, ShouldEqual, errMissingMessageRefChannel)
@@ -295,7 +295,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 		})
 
 		Convey("When UpdateMessage is called with an empty timestamp", func() {
-			updatedRef, err := client.UpdateMessage(context.Background(), &MessageRef{ChannelID: "test-channel"}, testTitle, testError, testDetails, testLinks, GreenColour, TickEmoji)
+			updatedRef, err := client.UpdateMessage(context.Background(), &MessageRef{ChannelID: "test-channel"}, testTitle, errExampleError, testDetails, testLinks, GreenColour, TickEmoji)
 
 			Convey("Then a missing timestamp error is returned", func() {
 				So(err, ShouldEqual, errMissingMessageRefTimestamp)
@@ -308,7 +308,7 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 func TestBuildAttachmentFieldsFromDetails(t *testing.T) {
 	Convey("Given an error and details", t, func() {
 		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(testError, testDetails)
+			attachmentFields := buildAttachmentFieldsFromDetails(errExampleError, testDetails)
 
 			Convey("Then the returned attachmentFields contain the error and details", func() {
 				So(len(attachmentFields), ShouldEqual, 4)
@@ -342,7 +342,7 @@ func TestBuildAttachmentFieldsFromDetails(t *testing.T) {
 
 	Convey("Given an error and no details", t, func() {
 		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(testError, nil)
+			attachmentFields := buildAttachmentFieldsFromDetails(errExampleError, nil)
 
 			Convey("Then the returned attachmentFields contain only the error", func() {
 				So(len(attachmentFields), ShouldEqual, 1)
@@ -391,7 +391,7 @@ func TestBuildAttachmentFieldsFromLinks(t *testing.T) {
 func TestBuildAttachments(t *testing.T) {
 	Convey("Given valid parameters", t, func() {
 		Convey("When buildAttachments is called", func() {
-			attachments := buildAttachments(testError, testDetails, testLinks, RedColour)
+			attachments := buildAttachments(errExampleError, testDetails, testLinks, RedColour)
 
 			Convey("Then 2 attachments are returned", func() {
 				So(len(attachments), ShouldEqual, 2)
@@ -401,7 +401,7 @@ func TestBuildAttachments(t *testing.T) {
 		})
 
 		Convey("When buildAttachments is called without links", func() {
-			attachments := buildAttachments(testError, testDetails, nil, RedColour)
+			attachments := buildAttachments(errExampleError, testDetails, nil, RedColour)
 
 			Convey("Then 1 attachment is returned", func() {
 				So(len(attachments), ShouldEqual, 1)

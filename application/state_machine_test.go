@@ -244,10 +244,10 @@ func TestTransition_Success(t *testing.T) {
 		}
 
 		mockSlackClient := &slackMock.ClienterMock{
-			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
-			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
 			GetTimeoutFunc: func() time.Duration {
