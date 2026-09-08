@@ -35,8 +35,14 @@ type MessageRef struct {
 	Timestamp string
 }
 
-// Field represents a key-value pair to be included in the Slack message attachments.
-type Field struct {
+// Detail represents a key-value pair to be included in the Slack message attachments.
+type Detail struct {
 	Title string
 	Value string
+}
+
+// Link represents a hyperlink to be included in the Slack message attachments.
+type Link struct {
+	Title string
+	URL   string
 }

@@ -152,7 +152,7 @@ func TestTransition_Success(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "")
 
 		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateDraft, bundleUpdateWithStateInReview.State, *authEntityData)
 
@@ -205,7 +205,7 @@ func TestTransition_Success(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "")
 
 		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateApproved.State, *authEntityData)
 
@@ -244,10 +244,10 @@ func TestTransition_Success(t *testing.T) {
 		}
 
 		mockSlackClient := &slackMock.ClienterMock{
-			SendPublishLogFunc: func(ctx context.Context, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
-			UpdatePublishLogFunc: func(ctx context.Context, ref *slack.MessageRef, summary string, fields []slack.Field) (*slack.MessageRef, error) {
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
 				return &slack.MessageRef{}, nil
 			},
 			GetTimeoutFunc: func() time.Duration {
@@ -256,7 +256,7 @@ func TestTransition_Success(t *testing.T) {
 		}
 
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "")
 		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateApproved, bundleUpdateWithStatePublished.State, *authEntityData)
 
 		Convey("Then the transition should be successful", func() {
@@ -278,7 +278,7 @@ func TestTransition_Success(t *testing.T) {
 			},
 		}
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
-		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "")
 		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, currentBundleWithStateInReview, bundleUpdateWithStateDraft.State, *authEntityData)
 		Convey("Then the transition should be successful", func() {
 			So(err, ShouldBeNil)
@@ -301,7 +301,7 @@ func TestTransition_failure(t *testing.T) {
 	mockSlackClient := &slackMock.ClienterMock{}
 
 	stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
-	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "")
+	stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "")
 
 	authEntityData := &models.AuthEntityData{
 		EntityData: &permissionsAPISDK.EntityData{
