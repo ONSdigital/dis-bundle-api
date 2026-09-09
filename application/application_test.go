@@ -2382,7 +2382,7 @@ func TestApproveBundle_RefreshesContentItemMetadataAndLinks(t *testing.T) {
 }
 
 func TestPutBundleState_SlowPublish_Success(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI where every content item publish exceeds the configured slow publish threshold", t, func() {
+	Convey("Given a StateMachineBundleAPI where the bundle publish exceeds the configured slow publish threshold", t, func() {
 		ctx := context.Background()
 		bundleID := bundle123
 		userEmail := userEmail
@@ -2481,9 +2481,9 @@ func TestPutBundleState_SlowPublish_Success(t *testing.T) {
 				So(result.State, ShouldEqual, models.BundleStatePublished)
 			})
 
-			Convey("And a slow publish alarm should be sent for every content item, even though none of them failed", func() {
+			Convey("And the bundle slow publish alarm should be sent", func() {
 				expectedTitle := fmt.Sprintf("Bundle took longer than %g seconds to publish", time.Duration(-1).Seconds())
-				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, len(mockContentItems))
+				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, 1)
 				So(mockSlackClient.SendAlarmCalls()[0].Title, ShouldEqual, expectedTitle)
 			})
 		})
@@ -2491,7 +2491,7 @@ func TestPutBundleState_SlowPublish_Success(t *testing.T) {
 }
 
 func TestPutBundleState_SlowAndFailingContentItems(t *testing.T) {
-	Convey("Given a StateMachineBundleAPI where content items are both slow and failing to publish", t, func() {
+	Convey("Given a StateMachineBundleAPI where the bundle publish is slow and every content item also fails", t, func() {
 		ctx := context.Background()
 		bundleID := bundle123
 		userEmail := userEmail
@@ -2584,14 +2584,14 @@ func TestPutBundleState_SlowAndFailingContentItems(t *testing.T) {
 		Convey("When UpdateBundleState is called to publish the bundle", func() {
 			result, err := stateMachine.UpdateBundleState(ctx, bundleID, currentBundle.ETag, bundleUpdate.State, authEntityData)
 
-			Convey("Then the bundle should still publish, since content item failures don't block the bundle level publish", func() {
+			Convey("Then the bundle should still publish, since content item failures don't block the bundle-level publish", func() {
 				So(err, ShouldBeNil)
 				So(result, ShouldNotBeNil)
 				So(result.State, ShouldEqual, models.BundleStatePublished)
 			})
 
-			Convey("And both a slow-publish alarm and a failure alarm should be sent for each content item independently", func() {
-				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, len(mockContentItems)*2)
+			Convey("And a slow-publish alarm and one failure alarm per failing content item should be sent", func() {
+				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, len(mockContentItems)+1)
 			})
 		})
 	})
