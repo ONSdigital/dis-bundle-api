@@ -37,9 +37,10 @@ type StateMachineBundleAPI struct {
 	DataBundleSlackClient           slack.Clienter
 	PreviewServiceURL               string
 	BundleFailedToPublishRunbookURL string
+	BundlePublishSlowThreshold      time.Duration
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL, bundleFailedToPublishRunbookURL string) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL, bundleFailedToPublishRunbookURL string, bundlePublishSlowThreshold time.Duration) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:                       datastore,
 		StateMachine:                    stateMachine,
@@ -48,6 +49,7 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClie
 		DataBundleSlackClient:           dataBundleSlackClient,
 		PreviewServiceURL:               previewServiceURL,
 		BundleFailedToPublishRunbookURL: bundleFailedToPublishRunbookURL,
+		BundlePublishSlowThreshold:      bundlePublishSlowThreshold,
 	}
 }
 
@@ -557,25 +559,51 @@ func removeConditionValuesForBundlePreviewTeam(values []string, toRemove ...stri
 func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, authEntityData *models.AuthEntityData, contentItem *models.ContentItem, wg *sync.WaitGroup, state, bundleTitle string, errCh chan error) {
 	defer wg.Done()
 
-	if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state)); err != nil {
-		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", err.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+	itemPublishStart := time.Now()
+	publishErr := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, strconv.Itoa(contentItem.Metadata.VersionID), strings.ToLower(state))
+	itemPublishDuration := time.Since(itemPublishStart)
 
-		previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
+	previewURL := smBundle.PreviewServiceURL + contentItem.Links.Preview
 
-		alarmDetails := []slack.Detail{
-			{Title: "Bundle ID", Value: contentItem.BundleID},
-			{Title: "Bundle Title", Value: bundleTitle},
-			{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
-			{Title: "Edition", Value: contentItem.Metadata.EditionID},
-			{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
-			{Title: "Preview Link", Value: previewURL},
+	baseAlarmDetails := []slack.Detail{
+		{Title: "Bundle ID", Value: contentItem.BundleID},
+		{Title: "Bundle Title", Value: bundleTitle},
+		{Title: "Dataset ID", Value: contentItem.Metadata.DatasetID},
+		{Title: "Edition", Value: contentItem.Metadata.EditionID},
+		{Title: "Version", Value: strconv.Itoa(contentItem.Metadata.VersionID)},
+		{Title: "Preview Link", Value: previewURL},
+	}
+
+	alarmLinks := []slack.Link{
+		{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
+	}
+
+	if itemPublishDuration > smBundle.BundlePublishSlowThreshold {
+		slowAlarmDetails := append(append([]slack.Detail{}, baseAlarmDetails...), slack.Detail{
+			Title: "Duration",
+			Value: fmt.Sprintf("%.4f seconds", itemPublishDuration.Seconds()),
+		})
+
+		slowPublishTitle := fmt.Sprintf("Bundle took longer than %g seconds to publish", smBundle.BundlePublishSlowThreshold.Seconds())
+
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, slowPublishTitle, nil, slowAlarmDetails, alarmLinks)
+		if alarmErr != nil {
+			log.Error(ctx, "failed to send slack alarm for slow content item publish", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
 		}
 
-		alarmLinks := []slack.Link{
-			{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
-		}
+		log.Info(ctx, "sending slack alarm for slow content item publish", log.Data{
+			"bundle-id":       contentItem.BundleID,
+			"content-item-id": contentItem.ID,
+			"duration":        itemPublishDuration.Seconds(),
+			"threshold":       smBundle.BundlePublishSlowThreshold.Seconds(),
+			"alarm_details":   slowAlarmDetails,
+		})
+	}
 
-		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", err, alarmDetails, alarmLinks)
+	if publishErr != nil {
+		log.Warn(ctx, fmt.Sprintf("Error occurred transitioning content item for bundle: %s", publishErr.Error()), log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
+
+		_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(ctx, "Bundle content item failed to update", publishErr, baseAlarmDetails, alarmLinks)
 		if alarmErr != nil {
 			log.Error(ctx, "failed to send slack alarm for content item failure", alarmErr, log.Data{"bundle-id": contentItem.BundleID, "content-item-id": contentItem.ID})
 		}
@@ -583,10 +611,10 @@ func PublishContentItems(ctx context.Context, smBundle StateMachineBundleAPI, au
 		log.Info(ctx, "sending slack alarm for content item failure", log.Data{
 			"bundle-id":       contentItem.BundleID,
 			"content-item-id": contentItem.ID,
-			"alarm_details":   alarmDetails,
+			"alarm_details":   baseAlarmDetails,
 		})
 
-		errCh <- err
+		errCh <- publishErr
 		return
 	}
 

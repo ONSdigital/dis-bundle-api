@@ -41,6 +41,7 @@ To run `make lint-api-spec` you require the Node version specified in [`.nvmrc`]
 | SLACK_ENABLED                     | `false`                  | Feature flag to enable Slack notifications                                                                         |
 | ZEBEDEE_URL                       | `http://localhost:8082`  | Zebedee URL                                                                                                        |
 | ZEBEDEE_CLIENT_TIMEOUT            | `30s`                    | Timeout for Zebedee client (`time.Duration` format)                                                                |
+| BUNDLE_PUBLISH_SLOW_THRESHOLD     | `59s`                    | Duration a bundle's content item publish can take before a Slack alarm is raised (`time.Duration` format)          |
 
 ## Contributing
 
