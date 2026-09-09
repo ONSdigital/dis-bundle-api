@@ -103,9 +103,9 @@ func (c *Client) doUpdateMessage(ctx context.Context, ref *MessageRef, title str
 	return &MessageRef{ChannelID: channelID, Timestamp: timestamp}, nil
 }
 
-// buildAttachmentFieldsFromDetails constructs Slack attachment fields from the given error and details.
-func buildAttachmentFieldsFromDetails(err error, details []Detail) []slack.AttachmentField {
-	attachmentFields := make([]slack.AttachmentField, 0, len(details)+1)
+// buildAttachmentFields constructs Slack attachment fields from the given error, details, and links.
+func buildAttachmentFields(err error, details []Detail, links []Link) []slack.AttachmentField {
+	attachmentFields := make([]slack.AttachmentField, 0, len(details)+len(links)+1)
 
 	if err != nil {
 		attachmentFields = append(attachmentFields, slack.AttachmentField{
@@ -122,41 +122,23 @@ func buildAttachmentFieldsFromDetails(err error, details []Detail) []slack.Attac
 		})
 	}
 
-	return attachmentFields
-}
-
-// buildAttachmentFieldsFromLinks constructs Slack attachment fields for the given links.
-func buildAttachmentFieldsFromLinks(links []Link) []slack.AttachmentField {
-	attachmentLinks := make([]slack.AttachmentField, 0, len(links))
-
 	for _, link := range links {
-		attachmentLinks = append(attachmentLinks, slack.AttachmentField{
+		attachmentFields = append(attachmentFields, slack.AttachmentField{
 			Value: fmt.Sprintf("<%s|%s>", link.URL, link.Title),
 		})
 	}
 
-	return attachmentLinks
+	return attachmentFields
 }
 
-// buildAttachments constructs Slack attachments for a message, including the details, links, and error if present.
+// buildAttachments constructs a Slack attachment for a message, including the error, details, and links if present.
 func buildAttachments(err error, details []Detail, links []Link, color Colour) []slack.Attachment {
-	attachments := make([]slack.Attachment, 0, 2)
-
-	// Message details
-	attachments = append(attachments, slack.Attachment{
-		Fields: buildAttachmentFieldsFromDetails(err, details),
-		Color:  color.String(),
-	})
-
-	// Message links
-	if len(links) > 0 {
-		attachments = append(attachments, slack.Attachment{
-			Title:  "Resources",
-			Fields: buildAttachmentFieldsFromLinks(links),
-		})
+	return []slack.Attachment{
+		{
+			Fields: buildAttachmentFields(err, details, links),
+			Color:  color.String(),
+		},
 	}
-
-	return attachments
 }
 
 // GetTimeout returns the timeout duration for Slack API requests.

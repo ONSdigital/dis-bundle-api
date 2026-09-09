@@ -305,12 +305,52 @@ func TestClient_DoUpdateMessage(t *testing.T) {
 	})
 }
 
-func TestBuildAttachmentFieldsFromDetails(t *testing.T) {
-	Convey("Given an error and details", t, func() {
-		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(errExampleError, testDetails)
+func TestBuildAttachmentFields(t *testing.T) {
+	Convey("Given an error, details, and links", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(errExampleError, testDetails, testLinks)
 
-			Convey("Then the returned attachmentFields contain the error and details", func() {
+			Convey("Then the returned attachmentFields contain error, details, and links in order", func() {
+				So(len(attachmentFields), ShouldEqual, 7)
+				So(attachmentFields[0].Title, ShouldEqual, "Error")
+				So(attachmentFields[0].Value, ShouldEqual, "test error")
+				So(attachmentFields[1].Title, ShouldEqual, "key 1")
+				So(attachmentFields[1].Value, ShouldEqual, "value 1")
+				So(attachmentFields[2].Title, ShouldEqual, "key 2")
+				So(attachmentFields[2].Value, ShouldEqual, "value 2")
+				So(attachmentFields[3].Title, ShouldEqual, "key 3")
+				So(attachmentFields[3].Value, ShouldEqual, "value 3")
+				So(attachmentFields[4].Value, ShouldEqual, "<http://example.com/1|link 1>")
+				So(attachmentFields[5].Value, ShouldEqual, "<http://example.com/2|link 2>")
+				So(attachmentFields[6].Value, ShouldEqual, "<http://example.com/3|link 3>")
+			})
+		})
+	})
+
+	Convey("Given no error, details, and links", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(nil, testDetails, testLinks)
+
+			Convey("Then the returned attachmentFields contain only details and links", func() {
+				So(len(attachmentFields), ShouldEqual, 6)
+				So(attachmentFields[0].Title, ShouldEqual, "key 1")
+				So(attachmentFields[0].Value, ShouldEqual, "value 1")
+				So(attachmentFields[1].Title, ShouldEqual, "key 2")
+				So(attachmentFields[1].Value, ShouldEqual, "value 2")
+				So(attachmentFields[2].Title, ShouldEqual, "key 3")
+				So(attachmentFields[2].Value, ShouldEqual, "value 3")
+				So(attachmentFields[3].Value, ShouldEqual, "<http://example.com/1|link 1>")
+				So(attachmentFields[4].Value, ShouldEqual, "<http://example.com/2|link 2>")
+				So(attachmentFields[5].Value, ShouldEqual, "<http://example.com/3|link 3>")
+			})
+		})
+	})
+
+	Convey("Given an error, details, but no links", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(errExampleError, testDetails, nil)
+
+			Convey("Then the returned attachmentFields contain error and details", func() {
 				So(len(attachmentFields), ShouldEqual, 4)
 				So(attachmentFields[0].Title, ShouldEqual, "Error")
 				So(attachmentFields[0].Value, ShouldEqual, "test error")
@@ -324,25 +364,9 @@ func TestBuildAttachmentFieldsFromDetails(t *testing.T) {
 		})
 	})
 
-	Convey("Given no error and details", t, func() {
-		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(nil, testDetails)
-
-			Convey("Then the returned attachmentFields contain only the details", func() {
-				So(len(attachmentFields), ShouldEqual, 3)
-				So(attachmentFields[0].Title, ShouldEqual, "key 1")
-				So(attachmentFields[0].Value, ShouldEqual, "value 1")
-				So(attachmentFields[1].Title, ShouldEqual, "key 2")
-				So(attachmentFields[1].Value, ShouldEqual, "value 2")
-				So(attachmentFields[2].Title, ShouldEqual, "key 3")
-				So(attachmentFields[2].Value, ShouldEqual, "value 3")
-			})
-		})
-	})
-
-	Convey("Given an error and no details", t, func() {
-		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(errExampleError, nil)
+	Convey("Given an error, but no details and no links", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(errExampleError, nil, nil)
 
 			Convey("Then the returned attachmentFields contain only the error", func() {
 				So(len(attachmentFields), ShouldEqual, 1)
@@ -352,60 +376,60 @@ func TestBuildAttachmentFieldsFromDetails(t *testing.T) {
 		})
 	})
 
-	Convey("Given no error and no details", t, func() {
-		Convey("When buildAttachmentFieldsFromDetails is called", func() {
-			attachmentFields := buildAttachmentFieldsFromDetails(nil, nil)
+	Convey("Given no error, no details, and no links", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(nil, nil, nil)
 
 			Convey("Then the returned attachmentFields are empty", func() {
 				So(len(attachmentFields), ShouldEqual, 0)
 			})
 		})
 	})
-}
 
-func TestBuildAttachmentFieldsFromLinks(t *testing.T) {
-	Convey("Given some links", t, func() {
-		Convey("When buildAttachmentFieldsFromLinks is called", func() {
-			attachmentLinks := buildAttachmentFieldsFromLinks(testLinks)
+	Convey("Given details and links, but no error", t, func() {
+		Convey("When buildAttachmentFields is called", func() {
+			attachmentFields := buildAttachmentFields(nil, testDetails, testLinks)
 
-			Convey("Then the returned attachmentLinks match the input links", func() {
-				So(len(attachmentLinks), ShouldEqual, 3)
-				So(attachmentLinks[0].Value, ShouldEqual, "<http://example.com/1|link 1>")
-				So(attachmentLinks[1].Value, ShouldEqual, "<http://example.com/2|link 2>")
-				So(attachmentLinks[2].Value, ShouldEqual, "<http://example.com/3|link 3>")
-			})
-		})
-	})
-
-	Convey("Given no links", t, func() {
-		Convey("When buildAttachmentFieldsFromLinks is called", func() {
-			attachmentLinks := buildAttachmentFieldsFromLinks(nil)
-
-			Convey("Then the returned links are empty", func() {
-				So(len(attachmentLinks), ShouldEqual, 0)
+			Convey("Then the returned attachmentFields contain details and links", func() {
+				So(len(attachmentFields), ShouldEqual, 6)
 			})
 		})
 	})
 }
 
 func TestBuildAttachments(t *testing.T) {
-	Convey("Given valid parameters", t, func() {
+	Convey("Given valid parameters with error, details, and links", t, func() {
 		Convey("When buildAttachments is called", func() {
 			attachments := buildAttachments(errExampleError, testDetails, testLinks, RedColour)
 
-			Convey("Then 2 attachments are returned", func() {
-				So(len(attachments), ShouldEqual, 2)
-				So(attachments[0].Color, ShouldEqual, RedColour.String())
-				So(attachments[1].Title, ShouldEqual, "Resources")
-			})
-		})
-
-		Convey("When buildAttachments is called without links", func() {
-			attachments := buildAttachments(errExampleError, testDetails, nil, RedColour)
-
-			Convey("Then 1 attachment is returned", func() {
+			Convey("Then 1 attachment is returned with all fields", func() {
 				So(len(attachments), ShouldEqual, 1)
 				So(attachments[0].Color, ShouldEqual, RedColour.String())
+				So(len(attachments[0].Fields), ShouldEqual, 7)
+			})
+		})
+	})
+
+	Convey("Given parameters without links", t, func() {
+		Convey("When buildAttachments is called", func() {
+			attachments := buildAttachments(errExampleError, testDetails, nil, RedColour)
+
+			Convey("Then 1 attachment is returned with error and details", func() {
+				So(len(attachments), ShouldEqual, 1)
+				So(attachments[0].Color, ShouldEqual, RedColour.String())
+				So(len(attachments[0].Fields), ShouldEqual, 4)
+			})
+		})
+	})
+
+	Convey("Given parameters without error", t, func() {
+		Convey("When buildAttachments is called", func() {
+			attachments := buildAttachments(nil, testDetails, testLinks, YellowColour)
+
+			Convey("Then 1 attachment is returned with details and links", func() {
+				So(len(attachments), ShouldEqual, 1)
+				So(attachments[0].Color, ShouldEqual, YellowColour.String())
+				So(len(attachments[0].Fields), ShouldEqual, 6)
 			})
 		})
 	})
