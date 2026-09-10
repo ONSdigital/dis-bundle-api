@@ -37,9 +37,10 @@ type StateMachineBundleAPI struct {
 	DataBundleSlackClient           slack.Clienter
 	PreviewServiceURL               string
 	BundleFailedToPublishRunbookURL string
+	BundlePublishSlowThreshold      time.Duration
 }
 
-func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL, bundleFailedToPublishRunbookURL string) *StateMachineBundleAPI {
+func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClient datasetAPISDK.Clienter, permissionsAPIClient permissionsAPISDK.Clienter, dataBundleSlackClient slack.Clienter, previewServiceURL, bundleFailedToPublishRunbookURL string, bundlePublishSlowThreshold time.Duration) *StateMachineBundleAPI {
 	return &StateMachineBundleAPI{
 		Datastore:                       datastore,
 		StateMachine:                    stateMachine,
@@ -48,6 +49,7 @@ func Setup(datastore store.Datastore, stateMachine *StateMachine, datasetAPIClie
 		DataBundleSlackClient:           dataBundleSlackClient,
 		PreviewServiceURL:               previewServiceURL,
 		BundleFailedToPublishRunbookURL: bundleFailedToPublishRunbookURL,
+		BundlePublishSlowThreshold:      bundlePublishSlowThreshold,
 	}
 }
 
@@ -702,13 +704,35 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 	}
 
 	publishEndTime := time.Now()
+	bundlePublishDuration := publishEndTime.Sub(publishStartTime)
+
 	publishLogDetails = append(publishLogDetails,
 		slack.Detail{Title: "Publish End Date", Value: publishEndTime.Format(utils.SlackPublishTimeFormat)},
-		slack.Detail{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", publishEndTime.Sub(publishStartTime).Seconds())},
+		slack.Detail{Title: "Duration", Value: fmt.Sprintf("%.4f seconds", bundlePublishDuration.Seconds())},
 	)
 	logData["slack_details"] = publishLogDetails
 
 	var slackMessageUpdateWg sync.WaitGroup
+
+	if bundlePublishDuration > smBundle.BundlePublishSlowThreshold {
+		slackMessageUpdateWg.Add(1)
+		go func() {
+			defer slackMessageUpdateWg.Done()
+			slackCtx, cancel := newSlackContext(ctx, smBundle.DataBundleSlackClient.GetTimeout())
+			defer cancel()
+
+			slowPublishTitle := fmt.Sprintf("Bundle took longer than %g seconds to publish", smBundle.BundlePublishSlowThreshold.Seconds())
+			alarmLinks := []slack.Link{
+				{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
+			}
+
+			log.Info(slackCtx, "sending slack alarm for slow bundle publish", log.Data{"bundle_id": bundle.ID, "duration": bundlePublishDuration.Seconds()})
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, slowPublishTitle, nil, publishLogDetails, alarmLinks)
+			if alarmErr != nil {
+				log.Error(slackCtx, "failed to send slack alarm for slow bundle publish", alarmErr, logData)
+			}
+		}()
+	}
 
 	if len(contentItemsErrs) > 0 {
 		slackMessageUpdateWg.Add(1)

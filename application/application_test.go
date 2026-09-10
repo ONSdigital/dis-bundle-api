@@ -3,6 +3,7 @@ package application_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -1718,10 +1719,12 @@ func TestPutBundleState_Success(t *testing.T) {
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
-			Datastore:             store.Datastore{Backend: mockedDatastore},
-			StateMachine:          application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
-			DataBundleSlackClient: mockSlackClient,
-			DatasetAPIClient:      mockDatasetAPIClient,
+			Datastore:                       store.Datastore{Backend: mockedDatastore},
+			StateMachine:                    application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+			DataBundleSlackClient:           mockSlackClient,
+			DatasetAPIClient:                mockDatasetAPIClient,
+			BundleFailedToPublishRunbookURL: "runbook-url",
+			BundlePublishSlowThreshold:      59 * time.Second,
 		}
 
 		Convey("When UpdateBundleState is called to publish a bundle which is a valid transition", func() {
@@ -1734,6 +1737,7 @@ func TestPutBundleState_Success(t *testing.T) {
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 3)
 				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.UpdateMessageCalls()), ShouldEqual, 1)
+				So(mockSlackClient.UpdateMessageCalls()[0].Color, ShouldEqual, slack.GreenColour)
 				So(len(mockSlackClient.GetTimeoutCalls()), ShouldEqual, 2)
 			})
 		})
@@ -1836,7 +1840,8 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 			StateMachine:                    application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
 			DataBundleSlackClient:           mockSlackClient,
 			DatasetAPIClient:                mockDatasetAPIClient,
-			BundleFailedToPublishRunbookURL: "",
+			BundleFailedToPublishRunbookURL: "runbook-url",
+			BundlePublishSlowThreshold:      59 * time.Second,
 		}
 
 		Convey("When UpdateBundleState is called to publish a bundle which has content items that will fail", func() {
@@ -1849,6 +1854,7 @@ func TestPutBundleState_ContentItemFails(t *testing.T) {
 				So(len(mockedDatastore.CreateEventCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.SendPublishLogCalls()), ShouldEqual, 1)
 				So(len(mockSlackClient.UpdateMessageCalls()), ShouldEqual, 1)
+				So(mockSlackClient.UpdateMessageCalls()[0].Color, ShouldEqual, slack.RedColour)
 				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, 2)
 				So(len(mockSlackClient.GetTimeoutCalls()), ShouldEqual, 2)
 			})
@@ -2370,6 +2376,222 @@ func TestApproveBundle_RefreshesContentItemMetadataAndLinks(t *testing.T) {
 				So(calls[0].DatasetID, ShouldEqual, "dataset-1")
 				So(calls[0].EditLink, ShouldEqual, "/data-admin/series/dataset-1/editions/new-edition/versions/1")
 				So(calls[0].PreviewLink, ShouldEqual, "/datasets/dataset-1/editions/new-edition/versions/1")
+			})
+		})
+	})
+}
+
+func TestPutBundleState_SlowPublish_Success(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI where the bundle publish exceeds the configured slow publish threshold", t, func() {
+		ctx := context.Background()
+		bundleID := bundle123
+		userEmail := userEmail
+
+		currentBundle := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateApproved,
+			ETag:  "old-etag",
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStatePublished,
+			ETag:  "new-etag",
+		}
+
+		authEntityData := &models.AuthEntityData{
+			EntityData: &permissionsAPISDK.EntityData{
+				UserID: userEmail,
+			},
+			Headers: datasetAPISDK.Headers{
+				AccessToken: "test-token",
+			},
+		}
+
+		var states = make([]application.State, 0, 1)
+		states = append(states, application.Draft)
+
+		var transitions = make([]application.Transition, 0, 1)
+		transitions = append(transitions, application.Transition{
+			Label:               "PUBLISHED",
+			TargetState:         application.Published,
+			AllowedSourceStates: []string{"APPROVED"},
+		})
+
+		mockContentItems := createMockVersionsAndContentItems(models.BundleStateApproved)
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return currentBundle, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+				contentItems := make([]models.ContentItem, len(mockContentItems))
+				for index := range contentItems {
+					contentItems[index] = *mockContentItems[index]
+				}
+				return &contentItems, nil
+			},
+			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID, state string) error {
+				return nil
+			},
+		}
+
+		mockDatasetAPIClient := &datasetAPIMocks.ClienterMock{
+			PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+				return nil
+			},
+		}
+
+		mockSlackClient := &slackMock.ClienterMock{
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
+				return &slack.MessageRef{ChannelID: "example-channel", Timestamp: "example-timestamp"}, nil
+			},
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
+				return &slack.MessageRef{}, nil
+			},
+			SendAlarmFunc: func(ctx context.Context, title string, err error, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
+				return &slack.MessageRef{ChannelID: "example-channel", Timestamp: "example-timestamp"}, nil
+			},
+			GetTimeoutFunc: func() time.Duration {
+				return time.Second * 30
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:                       store.Datastore{Backend: mockedDatastore},
+			StateMachine:                    application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+			DataBundleSlackClient:           mockSlackClient,
+			DatasetAPIClient:                mockDatasetAPIClient,
+			BundleFailedToPublishRunbookURL: "runbook-url",
+			BundlePublishSlowThreshold:      time.Duration(-1),
+		}
+
+		Convey("When UpdateBundleState is called to publish the bundle", func() {
+			result, err := stateMachine.UpdateBundleState(ctx, bundleID, currentBundle.ETag, bundleUpdate.State, authEntityData)
+
+			Convey("Then the bundle should still publish successfully", func() {
+				So(err, ShouldBeNil)
+				So(result, ShouldNotBeNil)
+				So(result.State, ShouldEqual, models.BundleStatePublished)
+			})
+
+			Convey("And the bundle slow publish alarm should be sent", func() {
+				expectedTitle := fmt.Sprintf("Bundle took longer than %g seconds to publish", time.Duration(-1).Seconds())
+				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, 1)
+				So(mockSlackClient.SendAlarmCalls()[0].Title, ShouldEqual, expectedTitle)
+			})
+		})
+	})
+}
+
+func TestPutBundleState_SlowAndFailingContentItems(t *testing.T) {
+	Convey("Given a StateMachineBundleAPI where the bundle publish is slow and every content item also fails", t, func() {
+		ctx := context.Background()
+		bundleID := bundle123
+		userEmail := userEmail
+
+		currentBundle := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStateApproved,
+			ETag:  "old-etag",
+		}
+
+		bundleUpdate := &models.Bundle{
+			ID:    bundleID,
+			State: models.BundleStatePublished,
+			ETag:  "new-etag",
+		}
+
+		authEntityData := &models.AuthEntityData{
+			EntityData: &permissionsAPISDK.EntityData{
+				UserID: userEmail,
+			},
+			Headers: datasetAPISDK.Headers{
+				AccessToken: "test-token",
+			},
+		}
+
+		var states = make([]application.State, 0, 1)
+		states = append(states, application.Draft)
+
+		var transitions = make([]application.Transition, 0, 1)
+		transitions = append(transitions, application.Transition{
+			Label:               "PUBLISHED",
+			TargetState:         application.Published,
+			AllowedSourceStates: []string{"APPROVED"},
+		})
+
+		mockContentItems := createMockVersionsAndContentItems(models.BundleStateApproved)
+
+		mockedDatastore := &storetest.StorerMock{
+			GetBundleFunc: func(ctx context.Context, bundleID string) (*models.Bundle, error) {
+				return currentBundle, nil
+			},
+			UpdateBundleFunc: func(ctx context.Context, bundleID string, bundle *models.Bundle) (*models.Bundle, error) {
+				return bundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetBundleContentsForBundleFunc: func(ctx context.Context, bundleID string) (*[]models.ContentItem, error) {
+				contentItems := make([]models.ContentItem, len(mockContentItems))
+				for index := range contentItems {
+					contentItems[index] = *mockContentItems[index]
+				}
+				return &contentItems, nil
+			},
+			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID, state string) error {
+				return nil
+			},
+		}
+
+		mockDatasetAPIClient := &datasetAPIMocks.ClienterMock{
+			PutVersionStateFunc: func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+				return errors.New("state not allowed to transition")
+			},
+		}
+
+		mockSlackClient := &slackMock.ClienterMock{
+			SendPublishLogFunc: func(ctx context.Context, title string, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
+				return &slack.MessageRef{ChannelID: "example-channel", Timestamp: "example-timestamp"}, nil
+			},
+			SendAlarmFunc: func(ctx context.Context, title string, err error, details []slack.Detail, links []slack.Link) (*slack.MessageRef, error) {
+				return &slack.MessageRef{ChannelID: "example-channel", Timestamp: "example-timestamp"}, nil
+			},
+			UpdateMessageFunc: func(ctx context.Context, ref *slack.MessageRef, title string, err error, details []slack.Detail, links []slack.Link, color slack.Colour, emoji slack.Emoji) (*slack.MessageRef, error) {
+				return &slack.MessageRef{ChannelID: "example-channel", Timestamp: "example-timestamp"}, nil
+			},
+			GetTimeoutFunc: func() time.Duration {
+				return time.Second * 30
+			},
+		}
+
+		stateMachine := &application.StateMachineBundleAPI{
+			Datastore:                       store.Datastore{Backend: mockedDatastore},
+			StateMachine:                    application.NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, nil),
+			DataBundleSlackClient:           mockSlackClient,
+			DatasetAPIClient:                mockDatasetAPIClient,
+			BundleFailedToPublishRunbookURL: "runbook-url",
+			BundlePublishSlowThreshold:      time.Duration(-1),
+		}
+
+		Convey("When UpdateBundleState is called to publish the bundle", func() {
+			result, err := stateMachine.UpdateBundleState(ctx, bundleID, currentBundle.ETag, bundleUpdate.State, authEntityData)
+
+			Convey("Then the bundle should still publish, since content item failures don't block the bundle-level publish", func() {
+				So(err, ShouldBeNil)
+				So(result, ShouldNotBeNil)
+				So(result.State, ShouldEqual, models.BundleStatePublished)
+			})
+
+			Convey("And a slow-publish alarm and one failure alarm per failing content item should be sent", func() {
+				So(len(mockSlackClient.SendAlarmCalls()), ShouldEqual, len(mockContentItems)+1)
 			})
 		})
 	})
