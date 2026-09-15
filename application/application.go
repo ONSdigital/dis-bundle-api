@@ -722,12 +722,9 @@ func PublishBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *
 			defer cancel()
 
 			slowPublishTitle := fmt.Sprintf("Bundle took longer than %g seconds to publish", smBundle.BundlePublishSlowThreshold.Seconds())
-			alarmLinks := []slack.Link{
-				{Title: "Bundle Failed to Publish Runbook", URL: smBundle.BundleFailedToPublishRunbookURL},
-			}
 
 			log.Info(slackCtx, "sending slack alarm for slow bundle publish", log.Data{"bundle_id": bundle.ID, "duration": bundlePublishDuration.Seconds()})
-			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, slowPublishTitle, nil, publishLogDetails, alarmLinks)
+			_, alarmErr := smBundle.DataBundleSlackClient.SendAlarm(slackCtx, slowPublishTitle, nil, publishLogDetails, nil)
 			if alarmErr != nil {
 				log.Error(slackCtx, "failed to send slack alarm for slow bundle publish", alarmErr, logData)
 			}
