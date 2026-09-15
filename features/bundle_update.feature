@@ -554,7 +554,7 @@ Feature: Update a bundle - PUT /bundles/{id}
                     "dataset_id": "test-dataset",
                     "edition": "test-edition",
                     "version": 1,
-                    "state": "APPROVED"
+                    "state": "approved"
                 }
             ]
             """
@@ -673,14 +673,14 @@ Feature: Update a bundle - PUT /bundles/{id}
                     "dataset_id": "shared-dataset",
                     "edition": "edition-1",
                     "version": 1,
-                    "state": "APPROVED"
+                    "state": "approved"
                 },
                 {
                     "id": "v2",
                     "dataset_id": "shared-dataset",
                     "edition": "edition-2",
                     "version": 1,
-                    "state": "APPROVED"
+                    "state": "approved"
                 }
             ]
             """

@@ -890,15 +890,61 @@ func ReviewBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *m
 func DraftBundle(ctx context.Context, smBundle StateMachineBundleAPI, bundle *models.Bundle, authEntityData *models.AuthEntityData) (*models.Bundle, error) {
 	logData := log.Data{"bundle_id": bundle.ID, "bundle_type": bundle.BundleType, "title": bundle.Title}
 
+	contentItems, err := smBundle.Datastore.GetContentItemsByBundleID(ctx, bundle.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if bundle.State == models.BundleStateApproved && len(contentItems) > 0 {
+		err = revertContentItemVersionState(ctx, smBundle, contentItems, authEntityData)
+		if err != nil {
+			return nil, err
+		}
+		log.Info(ctx, "content item states reverted", logData)
+	}
+
 	bundle.State = models.BundleStateDraft
 	bundle.LastUpdatedBy.Email = authEntityData.GetUserEmail()
-
 	updatedBundle, err := smBundle.updateBundleAndCreateEvent(ctx, bundle, authEntityData, logData)
 	if err != nil {
 		return nil, err
 	}
 
 	return updatedBundle, nil
+}
+
+func revertContentItemVersionState(ctx context.Context, smBundle StateMachineBundleAPI, contentItems []*models.ContentItem, authEntityData *models.AuthEntityData) (err error) {
+	for index := range contentItems {
+		contentItem := contentItems[index]
+		logData := log.Data{"dataset_id": contentItem.Metadata.DatasetID, "edition_id": contentItem.Metadata.EditionID, "version_id": contentItem.Metadata.VersionID}
+		versionID := strconv.Itoa(contentItem.Metadata.VersionID)
+
+		version, err := smBundle.DatasetAPIClient.GetVersion(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID)
+		if err != nil {
+			log.Error(ctx, "error retrieving dataset version", err, logData)
+			return err
+		}
+
+		switch version.State {
+		case datasetAPIModels.ApprovedState:
+			if err := smBundle.DatasetAPIClient.PutVersionState(ctx, authEntityData.Headers, contentItem.Metadata.DatasetID, contentItem.Metadata.EditionID, versionID, datasetAPIModels.AssociatedState); err != nil {
+				log.Error(ctx, "failed to update version state for content item", err, logData)
+				return err
+			}
+			log.Info(ctx, "version state of content item set to 'associated'", logData)
+			if err = UpdateContentItemCreateEvent(ctx, smBundle, authEntityData, contentItem, ""); err != nil {
+				log.Error(ctx, "failed to update content item state", err, logData)
+				return err
+			}
+			log.Info(ctx, "content item state updated", logData)
+		case datasetAPIModels.PublishedState:
+			log.Error(ctx, "content item version already published", errs.ErrInvalidTransition, logData)
+			return errs.ErrInvalidTransition
+		default:
+			continue
+		}
+	}
+	return nil
 }
 
 func (s *StateMachineBundleAPI) updateBundleAndCreateEvent(ctx context.Context, bundle *models.Bundle, authEntityData *models.AuthEntityData, logData log.Data) (*models.Bundle, error) {

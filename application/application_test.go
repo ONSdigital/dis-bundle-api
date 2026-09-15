@@ -1569,6 +1569,9 @@ func TestPutBundle_Success(t *testing.T) {
 			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
 			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
+			},
 		}
 
 		stateMachine := &application.StateMachineBundleAPI{
