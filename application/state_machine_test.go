@@ -144,7 +144,74 @@ func TestTransition_Success(t *testing.T) {
 		CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 			return nil
 		},
+		GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+			return []*models.ContentItem{}, nil
+		},
 	}
+
+	Convey("When transitioning from 'APPROVED' to 'DRAFT' with content items", t, func() {
+		draftBundle := &models.Bundle{ID: "draft-bundle", State: models.BundleStateDraft, LastUpdatedBy: &models.User{}}
+		approvedBundle := &models.Bundle{State: models.BundleStateApproved, LastUpdatedBy: &models.User{}}
+		mockedDatastore := &storetest.StorerMock{
+			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+				return draftBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{{ID: "1",
+					BundleID:    "bundle1",
+					ContentType: models.ContentTypeDataset,
+					Metadata:    models.Metadata{DatasetID: "dataset-1"}}}, nil
+			},
+			UpdateContentItemStateFunc: func(ctx context.Context, contentItemID, state string) error {
+				return nil
+			},
+		}
+		mockDatasetAPIClient.GetVersionFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID string) (datasetAPIModels.Version, error) {
+			return datasetAPIModels.Version{
+				State: "approved",
+			}, nil
+		}
+		mockDatasetAPIClient.PutVersionStateFunc = func(ctx context.Context, headers datasetAPISDK.Headers, datasetID, editionID, versionID, state string) error {
+			return nil
+		}
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "", 59*time.Second)
+		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, approvedBundle, draftBundle.State, *authEntityData)
+		Convey("Then the transition should be successful", func() {
+			So(err, ShouldBeNil)
+			So(bundle, ShouldNotBeNil)
+			So(bundle.ID, ShouldEqual, draftBundle.ID)
+			So(bundle.State, ShouldEqual, draftBundle.State)
+		})
+	})
+
+	Convey("When transitioning from 'APPROVED' to 'DRAFT' with no content items", t, func() {
+		draftBundle := &models.Bundle{ID: "draft-bundle", State: models.BundleStateDraft, LastUpdatedBy: &models.User{}}
+		approvedBundle := &models.Bundle{State: models.BundleStateApproved, LastUpdatedBy: &models.User{}}
+		mockedDatastore := &storetest.StorerMock{
+			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
+				return draftBundle, nil
+			},
+			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
+				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
+			},
+		}
+		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
+		stateMachineBundleAPI := Setup(store.Datastore{Backend: mockedDatastore}, stateMachine, mockDatasetAPIClient, mockPermissionsAPIClient, mockSlackClient, "", "", 59*time.Second)
+		bundle, err := stateMachine.Transition(ctx, stateMachineBundleAPI, approvedBundle, draftBundle.State, *authEntityData)
+		Convey("Then the transition should be successful", func() {
+			So(err, ShouldBeNil)
+			So(bundle, ShouldNotBeNil)
+			So(bundle.ID, ShouldEqual, draftBundle.ID)
+			So(bundle.State, ShouldEqual, draftBundle.State)
+		})
+	})
 
 	Convey("When transitioning from 'DRAFT' to 'IN_REVIEW'", t, func() {
 		mockedDatastore.UpdateBundleFunc = func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
@@ -269,12 +336,14 @@ func TestTransition_Success(t *testing.T) {
 
 	Convey("When transitioning from 'IN_REVIEW' to 'DRAFT'", t, func() {
 		mockedDatastore := &storetest.StorerMock{
-
 			UpdateBundleFunc: func(ctx context.Context, id string, update *models.Bundle) (*models.Bundle, error) {
 				return bundleUpdateWithStateDraft, nil
 			},
 			CreateEventFunc: func(ctx context.Context, event *models.Event) error {
 				return nil
+			},
+			GetContentItemsByBundleIDFunc: func(ctx context.Context, bundleID string) ([]*models.ContentItem, error) {
+				return []*models.ContentItem{}, nil
 			},
 		}
 		stateMachine := NewStateMachine(ctx, states, transitions, store.Datastore{Backend: mockedDatastore}, mockDatasetAPIClient)
